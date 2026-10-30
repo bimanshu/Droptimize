@@ -11,7 +11,7 @@
 | Branch | `claude/fervent-thompson-2620yn` (the only branch so far; no `main` yet, nothing merged, no PR) |
 | Phase | **0: code complete, compiles and passes tests in CI, not yet run by a person on a Mac** |
 | CI | [Build workflow](https://github.com/bimanshu/Droptimize/actions/workflows/build.yml): green on this branch (Xcode 16.4, macOS 15 runner). Compiler warnings fail the build. |
-| Next | Get the owner (or an agent with a Mac) to run it and tune the feel, then start Phase 1 |
+| Next | Get Phase 0 running on the owner's Mac (they couldn't run it yet; see step 2), tune the feel, then start Phase 1 |
 
 ## ✱ Where things stand
 
@@ -38,7 +38,7 @@
 ## ✱ Next steps (in order)
 
 1. **Make sure CI is green** on the branch. If it's red, open the run, read the failing step's log and fix it. Use `mcp__github__get_job_logs` with `failed_only: true` if you don't have a browser.
-2. **Run Phase 0 on a Mac and tune it** (owner, or an agent on a Mac). Work through the *Manual test checklist* below and adjust `Bubble/Motion.swift` by feel. Phase 0 is done when it feels right and never steals focus. Record the tuned values and any changes in `CORE.md` §14.
+2. **Run Phase 0 on a Mac and tune it** (owner, or an agent on a Mac). *2026-10-30: the owner said they can't run it on their Mac; the reason isn't known yet.* They were pointed to the prebuilt app from CI (no Xcode needed; see "How to build, run and test") and asked for the exact error and their macOS version. Likely causes: no Xcode/Homebrew; Gatekeeper blocking the unsigned app (fix: `xattr -cr`); macOS older than 14 (the app requires Sonoma); or the app is running but looks like nothing happened, because it has no window or Dock icon, only a menu bar icon and the bubble on the right edge. If they'd like a one-click download, offer a GitHub Release with a DMG (the repo is public, so ask first). Work through the *Manual test checklist* below and adjust `Bubble/Motion.swift` by feel. Phase 0 is done when it feels right and never steals focus. Record the tuned values and any changes in `CORE.md` §14.
 3. **Owner decisions needed before Phase 1 goes far** (see *Questions for the owner*): free vs paid (decides pngquant), and how we bundle encoders.
 4. **Phase 1, step 1** (`CORE.md` §11), suggested order:
    1. `Pipeline/Output.swift`: output naming (`photo.webp`; same format → `photo-min.png`; clash → `photo-min-2.png`), the size guard (Rule 3), saving next to the original, and the clipboard (file URL plus PNG/TIFF image representation). Unit-test the naming and the size guard.
@@ -112,7 +112,7 @@ Then Run (⌘R) or Test (⌘U). From the command line:
 xcodegen generate && xcodebuild test -project Droptimize.xcodeproj -scheme Droptimize -destination 'platform=macOS'
 ```
 
-To try a CI build without Xcode, download `Droptimize-app` from a run's artifacts, unzip it, and run `xattr -cr Droptimize.app` (it's ad-hoc signed and quarantined) before opening it.
+**Without Xcode** (how the owner runs it for now): while signed in to GitHub, open the latest green run of the [Build workflow](https://github.com/bimanshu/Droptimize/actions/workflows/build.yml) and download the `Droptimize-app` artifact (artifacts expire after 14 days; re-run the workflow for a fresh one). Unzip until you get `Droptimize.app` (it's zipped twice), move it to Applications, run `xattr -cr /Applications/Droptimize.app` (it's ad-hoc signed, so Gatekeeper blocks it until Phase 3 notarization), then open it. It needs macOS 14+. There's no window or Dock icon: look for the drop icon in the menu bar and the bubble on the right edge of the screen.
 
 **Checking code without a Mac** (Linux containers, like the one used to write Phase 0): AppKit and SwiftUI can't compile on Linux. Download a Swift toolchain (about 900 MB; Swift 6.1.2 for Ubuntu 24.04 is at `https://download.swift.org/swift-6.1.2-release/ubuntu2404/swift-6.1.2-RELEASE/swift-6.1.2-RELEASE-ubuntu24.04.tar.gz`), extract it, put its `usr/bin` on `PATH`, then run:
 
