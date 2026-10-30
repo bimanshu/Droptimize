@@ -13,7 +13,7 @@
 | CI | [Build workflow](https://github.com/bimanshu/Droptimize/actions/workflows/build.yml): green at `d07fd8e` (Xcode 16.4, macOS 15 runner): **125/125 tests** (96 of them also on Linux), 0 warnings (warnings fail the build), universal libwebp/libaom/libavif and app, install script tested, preview published. The app is now ~8.5 MB (DMG), mostly libaom. The first deps build after a `build-deps.sh` change takes ~3 minutes in CI; otherwise it's cached |
 | Install / update | One Terminal command: **`curl -fsSL https://github.com/bimanshu/Droptimize/releases/download/preview/install.sh \| bash`** (or the [DMG](https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg)). Both come from the [preview release](https://github.com/bimanshu/Droptimize/releases/tag/preview), which CI replaces on every green push. |
 | Owner | Doesn't build with Xcode. Updates with the one-line command above (asked for this instead of re-downloading DMGs). Not technical about Terminal: give exact click-by-click steps. |
-| Next | Owner tries the new menu (Convert · Compress · Half size · Remove BG) via the update command → fix what they report → Auto classification (Phase 1 step 2) |
+| Next | Owner tries the new menu and the History window via the update command → fix what they report → Auto classification (Phase 1 step 2) |
 
 ## ✱ Where things stand
 
@@ -30,6 +30,8 @@
 - **Batches** run in parallel (performance cores, at most 4). Progress counts files; a single file shows a spinner.
 - **AVIF** (Convert → AVIF; added 2026-10-30, owner approved libaom + libavif): libaom 3.15.2 + libavif 1.4.2, 8-bit, tagged sRGB (CICP 1/13/6, full range), 4:4:4 for graphics and 4:2:0 for photos, alpha lossless, no alpha plane when opaque, quality 60 at speed 6 (`EncoderTuning`). The AVIF button converts; Compress and Half size keep AVIF sources as AVIF. Compress-to-size searches at speed 8, then re-encodes the winner at speed 6 and keeps whichever fits. macOS decodes AVIF natively (ImageIO), so libaom's decoder is only used by tests.
 - **Every video action** answers "Video is coming soon."
+
+**History (owner asked for it in the app, 2026-10-30):** menu bar → **History…** (⌘Y in the menu) opens a normal window (`App/HistoryWindow.swift`; it activates the app, since you asked to look at it). Every file made, newest first: thumbnail, output name, action · option ("Compress · Under 500 KB"), relative date, change ("−84%" in green, "+12%" grey) and before → after sizes, with a total "saved" figure at the top. Double-click or 🔍 shows it in Finder; drag a row into any app; the context menu has Open, Copy, Show Original and Remove; "Clear History…" asks first and never touches files. Files that were moved or deleted are dimmed. Stored as JSON in `~/Library/Application Support/Droptimize/history.json`, kept on the Mac only (Rule 4), at most 500 entries (`HistoryLog.limit`). The menu bar's Recent list now comes from it. Model: `Pipeline/History.swift` (portable, tested on Linux); `JobResult.items` carries each original with its result.
 
 **Image menu (restructured 2026-10-30, owner approved):** **Convert** → WebP · AVIF · JPG · PNG · HEIC · **Compress** → sizes · **Half size** · **Remove BG** → backgrounds, with **Auto** in the center. One slot is free for later (Resize presets or Crop). Dropping on Convert itself = WebP, like Auto. Converting to another format is **exempt from Rule 3** (the owner agreed: WebP → PNG is often bigger), and Convert to the source's own format counts as a recompress (`-min`, size guard applies). JPG output flattens transparency onto white and says so on the card.
 
@@ -84,9 +86,10 @@
 13. Drag a `.txt` over it: "Can't open this file type yet." while over, gone on exit.
 14. While a big batch works: hovering shows ×, and a click cancels.
 15. Type in TextEdit and drop on the bubble mid-sentence: TextEdit keeps focus.
-16. Switch Spaces and enter a full-screen app: the bubble is still there. ⌃⌥⌘D hides and shows it.
-17. Turn on Reduce Motion (System Settings → Accessibility → Display): fades only. Check light and dark mode.
-18. With two displays: move the bubble to the second one, relaunch, and it's still there.
+16. Menu bar → **History…**: every file you made, newest first. Double-click one (Finder), drag one into Slack, right-click → Copy. Clear History asks first.
+17. Switch Spaces and enter a full-screen app: the bubble is still there. ⌃⌥⌘D hides and shows it.
+18. Turn on Reduce Motion (System Settings → Accessibility → Display): fades only. Check light and dark mode.
+19. With two displays: move the bubble to the second one, relaunch, and it's still there.
 
 ## ✱ Decisions made so far (also in `CORE.md` §14)
 
@@ -183,13 +186,15 @@ It parses every Swift file, builds libwebp, libaom and libavif for Linux (needs 
 | `Pipeline/Output.swift` | Portable: `OutputNaming`, `SizeGuard` (Rule 3), `OutputWriter` (never overwrites; Downloads fallback). |
 | `Pipeline/ImageJobRunner.swift` | macOS: `ImageOptimizer` (one file: plain, compress-to-fit, Remove BG) and `ImageJobRunner` (parallel batches, clipboard, notes). |
 | `Pipeline/Clipboard.swift` | macOS: file URLs plus a PNG picture on the pasteboard. |
+| `Pipeline/History.swift` | Portable: `HistoryEntry`, `HistoryLog` (newest first, 500 max, Recent, totals), `HistoryFile` (JSON in Application Support), `ActionOption.title`. |
+| `App/HistoryWindow.swift` | macOS: `HistoryStore` (saves on every change), the History window and its rows. |
 | `Modules/module.modulemap` | Lets Swift import libwebp (`CWebP`), libavif + libaom (`CAvif`) and zlib (`CZlib`, where the SDK has no `zlib` module). |
 | `scripts/build-deps.sh` | Builds pinned libwebp, libaom and libavif into `Vendor/` (universal static libs on macOS, host builds on Linux). Needs cmake, and nasm for a fast Intel slice. |
 | `scripts/check-linux.sh` | Parse, build libwebp, and run the portable tests without a Mac. |
 | `scripts/install.sh` | One-command install/update from the preview release (published as a release asset; tested in CI). |
 | `scripts/dmg-readme.txt` | The "READ ME FIRST" note inside the DMG. |
 | `.github/workflows/build.yml` | macOS CI: deps (cached), generate, build, test (warnings fail), universal Release build, DMG and zip, install-script test; then publishes DMG, zip and `install.sh` to the `preview` release. |
-| `Tests/` | XCTest. Portable (also run on Linux): `LayoutTests`, `DockPositionTests`, `SpringTests`, `ActionTests`, `OutputTests`, `EncoderTests`, `OptionTests`, `AVIFTests`, `Support/TestPNGReader` (test-only PNG reader plus test images). macOS only: `MacTests`, `PipelineMacTests`, `OptionMacTests`. |
+| `Tests/` | XCTest. Portable (also run on Linux): `LayoutTests`, `DockPositionTests`, `SpringTests`, `ActionTests`, `OutputTests`, `EncoderTests`, `OptionTests`, `AVIFTests`, `HistoryTests`, `Support/TestPNGReader` (test-only PNG reader plus test images). macOS only: `MacTests`, `PipelineMacTests`, `OptionMacTests`. |
 
 ## How the bubble works (so you don't have to rediscover it)
 

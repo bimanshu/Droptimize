@@ -30,6 +30,7 @@ clipboard. Video is coming soon.
 The first time it saves into Desktop, Documents or Downloads, macOS asks whether
 Droptimize may access that folder. Click Allow. (Each new preview build may ask again.)
 
+Everything you make is listed in History (click the drop icon in the menu bar).
 Hide or show the bubble with Control-Option-Command-D.
 
 To update later, you don't need this disk image. Paste this into Terminal:

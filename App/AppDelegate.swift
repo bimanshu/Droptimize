@@ -10,9 +10,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Unit tests run inside the app; keep the bubble and menu bar out of their way.
         guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
 
-        let bubble = BubbleController()
+        let history = HistoryStore()
+        let bubble = BubbleController(history: history)
         self.bubble = bubble
-        menuBar = MenuBar(bubble: bubble)
+        menuBar = MenuBar(bubble: bubble, history: history)
         hotKey = HotKey(keyCode: MenuBar.toggleKeyCode, modifiers: MenuBar.toggleCarbonModifiers) { [weak bubble] in
             bubble?.toggle()
         }

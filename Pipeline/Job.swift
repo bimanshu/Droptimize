@@ -23,6 +23,15 @@ struct JobResult {
     var outputBytes: Int64
     /// Something worth saying on the done card, such as "Resized to 1600 × 1200 to fit".
     var note: String? = nil
+    /// Each file, original and result, for History.
+    var items: [Item] = []
+
+    struct Item: Equatable {
+        var input: URL
+        var output: URL
+        var inputBytes: Int
+        var outputBytes: Int
+    }
 
     /// How much smaller the outputs are, 0...1.
     var saving: Double {

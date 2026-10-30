@@ -5,8 +5,7 @@ import AppKit
 @MainActor
 final class BubbleController {
     let model = BubbleModel()
-    /// The last ten outputs, newest first, for the menu bar's Recent list.
-    private(set) var recents: [URL] = []
+    private let history: HistoryStore
 
     private let panel = BubblePanel()
     private let host: BubbleHostView
@@ -23,14 +22,16 @@ final class BubbleController {
     private var dismissTask: Task<Void, Never>?
     private var shrinkTask: Task<Void, Never>?
     private var lastResult: JobResult?
-    /// What the running (or just finished) job does.
+    /// What the running (or just finished) job does, for the card and History.
     private var runningAction: Action?
+    private var runningOption: ActionOption?
     /// True while an unsupported drag is over the bubble and we're saying so.
     private var isRejectingDrag = false
 
     private var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
-    init() {
+    init(history: HistoryStore) {
+        self.history = history
         host = BubbleHostView(model: model)
         mover = PanelMover(view: host)
         host.controller = self
@@ -288,6 +289,7 @@ final class BubbleController {
     private func start(_ job: Job, runner: JobRunner) {
         jobTask?.cancel()
         runningAction = job.action
+        runningOption = job.option
         dismissTask?.cancel()
         model.target = nil
         model.phase = .working(JobProgress(completed: 0, total: job.files.count, fraction: 0))
@@ -311,7 +313,10 @@ final class BubbleController {
     private func finish(_ result: JobResult) {
         jobTask = nil
         lastResult = result
-        recents = Array((result.outputs + recents.filter { !result.outputs.contains($0) }).prefix(10))
+        history.record(result.items.map { item in
+            HistoryEntry(action: runningAction?.title ?? "", detail: runningOption?.title,
+                         input: item.input, output: item.output, inputBytes: item.inputBytes, outputBytes: item.outputBytes)
+        })
         // Removing a background isn't about size, so the card says "Done" rather than a saving.
         let saving = runningAction == .removeBackground ? 0 : result.saving
         let info = DoneInfo(saving: saving, count: result.outputs.count, thumbnail: nil, detail: result.note)

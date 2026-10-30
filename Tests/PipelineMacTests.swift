@@ -220,6 +220,8 @@ final class PipelineMacTests: XCTestCase {
         let result = try await ImageJobRunner().run(Job(files: inputs, action: .compress)) { updates.append($0) }
 
         XCTAssertEqual(result.outputs.map(\.lastPathComponent), ["batch-0-min.png", "batch-1-min.png", "batch-2-min.png"])
+        XCTAssertEqual(result.items.map(\.input), inputs, "History gets each original with its result")
+        XCTAssertEqual(result.items.map(\.output), result.outputs)
         XCTAssertGreaterThan(result.saving, 0)
         XCTAssertEqual(updates.last?.completed, 3)
         let pasted = NSPasteboard.general.readObjects(forClasses: [NSURL.self], options: nil) as? [URL]

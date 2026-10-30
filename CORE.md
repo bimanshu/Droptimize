@@ -93,7 +93,7 @@ Video segments (Phase 2): **MP4 · WebM · GIF · 1080p · Mute** (center: **Aut
 
 ### 4.4 Menu bar
 
-An icon with: Show/Hide bubble (plus a global shortcut), Recent (last 10 outputs, click to reveal), Settings, Quit.
+An icon with: Show/Hide bubble (plus a global shortcut), **History…** (a window listing every file made: thumbnail, action, before → after size, date; reveal, drag out, copy, remove, clear; kept on this Mac only, max 500), Recent (last 10 outputs, click to reveal), Settings, Quit.
 
 ### 4.5 Motion
 
@@ -333,6 +333,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-10-30: History window (owner asked for it in the app): menu bar → History… lists every file made with sizes and the saving, with reveal, drag out, copy and clear. Stored in Application Support, local only. The publish step now swaps release files in place; the owner had hit a 404 during the old delete-and-recreate gap.
 - 2026-10-30: Menu restructured (owner approved): Convert (→ WebP · AVIF · JPG · PNG · HEIC) replaces the separate WebP and AVIF buttons, freeing a slot. Conversions to another format are exempt from Rule 3. Owner asked "conversions or only optimizations?": decided on conversions only into web/upload formats, always optimized.
 - 2026-10-30: AVIF works: libaom 3.15.2 + libavif 1.4.2 (owner approved), built by `scripts/build-deps.sh` with CMake (libavif pinned by commit). The AVIF button converts; Compress, Half size and compress-to-size handle AVIF sources. Video is the only "coming soon" left.
 - 2026-10-30: Option bubbles (owner's design): hovering Compress fans out target sizes (100 KB–2 MB, Custom); hovering Remove BG fans out backgrounds (None, White, Black, last color, Custom hex). Built Remove BG with Vision (Phase 1 step 4 brought forward) and compress-to-size (quality bisection, resize only as a last resort). Custom values are asked for in a non-activating panel after the drop. Remove BG is exempt from Rule 3. The bubble now keeps ~180 pt from the screen's top and bottom so the outer ring fits.

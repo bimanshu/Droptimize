@@ -10,12 +10,16 @@ final class MenuBar: NSObject, NSMenuDelegate {
     private static let toggleMenuModifiers: NSEvent.ModifierFlags = [.control, .option, .command]
 
     private let bubble: BubbleController
+    private let history: HistoryStore
+    private let historyWindow: HistoryWindowController
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let toggleItem = NSMenuItem()
     private let recentMenu = NSMenu(title: "Recent")
 
-    init(bubble: BubbleController) {
+    init(bubble: BubbleController, history: HistoryStore) {
         self.bubble = bubble
+        self.history = history
+        self.historyWindow = HistoryWindowController(store: history)
         super.init()
 
         statusItem.button?.image = NSImage(systemSymbolName: "drop.circle", accessibilityDescription: "Droptimize")
@@ -28,6 +32,10 @@ final class MenuBar: NSObject, NSMenuDelegate {
         toggleItem.keyEquivalent = "d"
         toggleItem.keyEquivalentModifierMask = Self.toggleMenuModifiers
         menu.addItem(toggleItem)
+
+        let historyItem = NSMenuItem(title: "History…", action: #selector(showHistory), keyEquivalent: "y")
+        historyItem.target = self
+        menu.addItem(historyItem)
 
         let recentItem = NSMenuItem(title: "Recent", action: nil, keyEquivalent: "")
         recentItem.submenu = recentMenu
@@ -46,10 +54,11 @@ final class MenuBar: NSObject, NSMenuDelegate {
         toggleItem.title = bubble.isVisible ? "Hide Bubble" : "Show Bubble"
 
         recentMenu.removeAllItems()
-        if bubble.recents.isEmpty {
+        let recents = history.log.recentOutputs()
+        if recents.isEmpty {
             recentMenu.addItem(NSMenuItem(title: "No recent files", action: nil, keyEquivalent: ""))
         }
-        for url in bubble.recents {
+        for url in recents {
             let item = NSMenuItem(title: url.lastPathComponent, action: #selector(revealRecent(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = url
@@ -58,6 +67,10 @@ final class MenuBar: NSObject, NSMenuDelegate {
             item.image = icon
             recentMenu.addItem(item)
         }
+    }
+
+    @objc private func showHistory() {
+        historyWindow.show()
     }
 
     @objc private func toggleBubble() {

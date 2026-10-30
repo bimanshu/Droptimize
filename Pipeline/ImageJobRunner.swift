@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 /// One image, optimized and saved.
 struct FileOutcome {
+    var input: URL
     var output: URL
     var inputBytes: Int
     var outputBytes: Int
@@ -142,7 +143,8 @@ enum ImageOptimizer {
         let picture = wantsPicture && image.pixelCount <= EncoderTuning.clipboardImagePixelLimit
             ? try? ImageIOEncoder.encode(image, as: .png)
             : nil
-        return FileOutcome(output: output, inputBytes: inputBytes, outputBytes: data.count, picture: picture, note: note)
+        return FileOutcome(input: input, output: output, inputBytes: inputBytes, outputBytes: data.count,
+                           picture: picture, note: note)
     }
 }
 
@@ -191,7 +193,9 @@ struct ImageJobRunner: JobRunner {
         return JobResult(outputs: outputs,
                          inputBytes: Int64(results.reduce(0) { $0 + $1.inputBytes }),
                          outputBytes: Int64(results.reduce(0) { $0 + $1.outputBytes }),
-                         note: results.count == 1 ? results[0].note : nil)
+                         note: results.count == 1 ? results[0].note : nil,
+                         items: results.map { JobResult.Item(input: $0.input, output: $0.output,
+                                                            inputBytes: $0.inputBytes, outputBytes: $0.outputBytes) })
     }
 
     /// Images at once: the performance cores, at most four (each one can hold a few hundred MB).  (tune)

@@ -37,3 +37,17 @@ final class DoneInfoTests: XCTestCase {
         XCTAssertEqual(DoneInfo(saving: 0, count: 1).savingText, "Done")
     }
 }
+
+final class HistoryStoreTests: XCTestCase {
+    @MainActor
+    func testPersistsAcrossLaunches() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("HistoryStoreTests-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = HistoryStore(url: url)
+        store.record([HistoryEntry(action: "Convert", detail: "To JPG", input: URL(fileURLWithPath: "/w/a.png"),
+                                   output: URL(fileURLWithPath: "/w/a.jpg"), inputBytes: 900, outputBytes: 300)])
+        XCTAssertEqual(HistoryStore(url: url).log.entries.map(\.summary), ["Convert · To JPG"])
+        store.clear()
+        XCTAssertTrue(HistoryStore(url: url).log.entries.isEmpty)
+    }
+}
