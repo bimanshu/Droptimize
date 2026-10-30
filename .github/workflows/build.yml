@@ -1,0 +1,80 @@
+# Builds the app and runs the unit tests on macOS. This is the real compile check:
+# agents working in Linux containers can't build AppKit/SwiftUI code locally (see HANDOFF.md).
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Build and test
+        run: |
+          set +e
+          xcodebuild test \
+            -project Droptimize.xcodeproj \
+            -scheme Droptimize \
+            -destination 'platform=macOS' \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY=- \
+            > build.log 2>&1
+          status=$?
+          grep -E 'error:|Test Suite .* (passed|failed)|Test Case .* failed|Executed|\*\* (BUILD|TEST)' build.log || true
+          exit $status
+
+      - name: Warnings
+        if: always()
+        run: |
+          grep -E '^/.*: warning:' build.log | sort -u > warnings.txt || true
+          echo "$(wc -l < warnings.txt | tr -d ' ') unique warning(s)"
+          cat warnings.txt
+
+      - name: Release build (universal)
+        run: |
+          set +e
+          xcodebuild build \
+            -project Droptimize.xcodeproj \
+            -scheme Droptimize \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY=- \
+            > release.log 2>&1
+          status=$?
+          grep -E 'error:|\*\* BUILD' release.log || true
+          exit $status
+
+      - name: Package app
+        # ditto keeps the executable bit and signature, which a plain artifact upload would lose.
+        run: |
+          app=build/Build/Products/Release/Droptimize.app
+          lipo -archs "$app/Contents/MacOS/Droptimize"
+          ditto -c -k --keepParent "$app" Droptimize.zip
+
+      - name: Upload app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Droptimize-app
+          path: Droptimize.zip
+          retention-days: 14

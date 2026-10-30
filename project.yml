@@ -1,0 +1,52 @@
+# XcodeGen spec. Generate the Xcode project with `xcodegen generate`; the .xcodeproj is not committed.
+name: Droptimize
+options:
+  bundleIdPrefix: com.droptimize
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # Ad-hoc signing until Phase 3 (Developer ID + notarization).
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+  configs:
+    Release:
+      ENABLE_HARDENED_RUNTIME: YES
+targets:
+  Droptimize:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+      - path: Bubble
+      - path: Pipeline
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.droptimize.app
+        PRODUCT_NAME: Droptimize
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Droptimize
+        INFOPLIST_KEY_LSUIElement: YES
+        INFOPLIST_KEY_NSPrincipalClass: NSApplication
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.graphics-design
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+    scheme:
+      testTargets:
+        - DroptimizeTests
+  DroptimizeTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: Droptimize
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.droptimize.tests
