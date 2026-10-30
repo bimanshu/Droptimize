@@ -271,7 +271,7 @@ final class BubbleController {
         Task { [weak self] in
             let thumbnail = await Thumbnails.make(for: first, side: Motion.thumbnailSide, scale: scale)
             guard let self, case .done(var current) = self.model.phase, current.id == info.id else { return }
-            current.thumbnail = thumbnail
+            current.thumbnail = thumbnail.image
             self.model.phase = .done(current)
         }
     }

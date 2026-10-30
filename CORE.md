@@ -11,6 +11,7 @@ Working name: **Droptimize** (also considered: Blip, Ripple, Halo, PixDrop). If 
 
 ## How to use and update this file
 
+- **Start with `HANDOFF.md`**: it says where the work stands right now and what's next. This file is the spec and the rules.
 - Read the relevant section before building. **Rules** (§3) are decisions, not suggestions; change them only on purpose and record why in the Changelog.
 - After each work session, update **Status** (§1) and add one line per change to **Changelog** (§14), newest first.
 - Keep this file under ~500 lines. When a section grows past ~60 lines, move detail to `references/<topic>.md` and leave a pointer here.
@@ -22,7 +23,7 @@ Working name: **Droptimize** (also considered: Blip, Ripple, Halo, PixDrop). If 
 
 | Area | State | Notes |
 |---|---|---|
-| Phase 0: app shell, bubble, radial menu (dummy actions) | Not started | |
+| Phase 0: app shell, bubble, radial menu (dummy actions) | Code complete; needs hands-on tuning on a Mac | Builds and passes tests in CI. Feel and window behaviour not yet tried by a person; see HANDOFF.md |
 | Phase 1: image pipeline | Not started | |
 | Phase 1.5: benchmark, polish, launch clip | Not started | |
 | Phase 2: video pipeline | Not started | |
@@ -62,17 +63,18 @@ The tools that inspired this all kill a detour. CleanShot X keeps the screenshot
 - A small circle (~44pt, *tune*) docked near a screen edge. Default: right edge, vertically centered.
 - Lives in an `NSPanel`: borderless, `.nonactivatingPanel` (never steals focus from the app you're in), floating level, `collectionBehavior` with `.canJoinAllSpaces` and `.fullScreenAuxiliary` so it's on every desktop and over full-screen apps. `hidesOnDeactivate = false`, clear background.
 - Quiet when idle: reduced opacity (~0.6, *tune*), soft shadow. Full opacity on hover.
-- Drag the bubble itself to move it; it springs to the nearest edge and remembers its position per display.
+- Drag the bubble itself to move it; it springs to the nearest **left or right** edge (top has the menu bar, bottom usually the Dock) and remembers its position per display.
 - Nice-to-have: when a file drag starts *anywhere* on screen, the bubble wakes up (grows slightly, glows) so it's easy to find. This needs a global mouse monitor plus a look at the drag pasteboard; check what permission macOS asks for before relying on it (§13).
 
 ### 4.2 The radial menu (while dragging over)
 
-- When a drag carrying image or video files enters the bubble, the panel **expands** (keeping the bubble's center fixed) and segments fan out in a ring with a short stagger (~20–30ms each, *tune*). Expanding the panel matters: segments must be real drop targets inside the window.
-- Hovering a segment highlights it, shows its one-word label, and gives a light trackpad haptic (`NSHapticFeedbackManager`, `.alignment`).
+- When a drag carrying image or video files enters the bubble, the panel **expands** (keeping the bubble's center fixed) and segments fan out with a short stagger (~20–30ms each, *tune*). Expanding the panel matters: segments must be real drop targets inside the window.
+- Segments sit on an **arc facing into the screen** (160°, *tune*), not a full ring, because the bubble is always docked to an edge. They're ordered top to bottom. The ring grows if there are 6 segments so neighbours never touch.
+- Hovering a segment highlights it, shows its one-word label **inside the bubble** (the drag image under the pointer would cover a label on the segment), and gives a light trackpad haptic (`NSHapticFeedbackManager`, `.alignment`). Beyond the center, segments are picked by angle (pie-menu style), which is forgiving at drag speed.
 - **Drop on the center = Auto.** Drop on a segment = that action. Drag back out without dropping = collapse.
 - Maximum 6 segments; more becomes unreadable at drag speed. Icons are SF Symbols.
 
-Image segments, clockwise from top: **WebP · AVIF · Compress · Half size · Remove BG** (center: **Auto**).
+Image segments, top to bottom: **WebP · AVIF · Compress · Half size · Remove BG** (center: **Auto**).
 Video segments (Phase 2): **MP4 · WebM · GIF · 1080p · Mute** (center: **Auto**).
 
 - Mixed drops (images and videos): show only actions that apply to both (Auto, Compress).
@@ -81,8 +83,8 @@ Video segments (Phase 2): **MP4 · WebM · GIF · 1080p · Mute** (center: **Aut
 ### 4.3 Working → done
 
 - **Working:** a progress ring around the bubble; batches show a count ("3/12"). Click to cancel.
-- **Done:** a checkmark and the saving ("−68%"), then a small thumbnail of the result rests on the bubble for a few seconds (~4s, *tune*). Drag the thumbnail into any app (Finder, Figma, Slack, a browser upload). Click it to reveal in Finder.
-- **Errors:** a gentle shake and one short line, for example:
+- **Done:** a checkmark on the bubble, and a small card beside it (on the side facing into the screen) with a thumbnail of the result and the saving ("−68%"). It rests there for a few seconds (~4s, *tune*), longer while hovered. Drag the card into any app (Finder, Figma, Slack, a browser upload). Click it to reveal in Finder.
+- **Errors:** a gentle shake and one short line in a pill beside the bubble, for example:
   - "Already as small as it gets." (size guard)
   - "Couldn't find a clear subject." (background removal)
   - "Can't open this file type yet."
@@ -109,21 +111,26 @@ An icon with: Show/Hide bubble (plus a global shortcut), Recent (last 10 outputs
 - **Concurrency:** Swift concurrency. A `JobQueue` actor runs jobs with a limit (images: number of performance cores; video: one at a time). Every job is cancellable.
 - **Distribution:** direct download with Developer ID and notarization, **not** the Mac App Store, for v1. The App Store sandbox makes "save next to the original" and bundled encoders much harder. Revisit later.
 
-Proposed structure:
+Structure (current; `HANDOFF.md` has a one-line description of every file):
 
 ```
 Droptimize/
-├── project.yml
-├── App/            DroptimizeApp.swift, AppDelegate.swift, MenuBar.swift, Settings.swift
-├── Bubble/         BubblePanel.swift, BubbleView.swift, RadialMenu.swift, DropTarget.swift, Motion.swift
-├── Pipeline/       Job.swift, JobQueue.swift, Action.swift, Output.swift (naming, clipboard, saving)
-├── Image/          Decode.swift, Normalize.swift, Classify.swift, AutoTune.swift, BackgroundRemoval.swift
+├── project.yml     XcodeGen spec (the .xcodeproj is generated, not committed)
+├── CORE.md         this spec · HANDOFF.md where work stands · CLAUDE.md agent instructions
+├── App/            DroptimizeApp.swift, AppDelegate.swift, MenuBar.swift, HotKey.swift (Settings.swift in Phase 1)
+├── Bubble/         BubblePanel, BubbleHostView (all events), BubbleController (state machine),
+│                   BubbleModel, BubbleView, RadialMenu, BubbleLayout, DockPosition, Spring,
+│                   PanelMover, Thumbnails, Motion.swift
+├── Pipeline/       Action.swift, MediaKind+Files.swift, Job.swift, FakeJobRunner.swift (Phase 0 only)
+│                   Phase 1 adds JobQueue.swift, Output.swift (naming, clipboard, saving)
+├── Image/          (Phase 1) Decode.swift, Normalize.swift, Classify.swift, AutoTune.swift, BackgroundRemoval.swift
 │   └── Encoders/   JPEG.swift, WebP.swift, AVIF.swift, PNG.swift
 ├── Video/          (Phase 2) Probe.swift, Remux.swift, AppleEncoder.swift, FFmpegEncoder.swift, GIF.swift
 ├── Metrics/        SSIMULACRA2.swift, VMAF.swift
 ├── Vendor/         prebuilt static libraries and headers (§8)
 ├── bench/          benchmark corpus (§9)
-├── scripts/        build-deps.sh, benchmark.sh
+├── scripts/        check-linux.sh; later build-deps.sh, benchmark.sh
+├── .github/        workflows/build.yml (macOS CI: build, test, universal Release, zipped app)
 └── Tests/
 ```
 
@@ -298,12 +305,14 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 - Read this file at the start of a session and build what the current phase says, in order.
 - Build after every meaningful change (`xcodegen generate && xcodebuild …`) and fix warnings, not just errors.
+- No Mac (for example, a Linux container)? Run `scripts/check-linux.sh` (parse plus portable tests), then push and let CI (`.github/workflows/build.yml`) compile and test on macOS. Never call AppKit/SwiftUI code "working" until CI is green, and never call the feel "done" until a person has tried it.
+- Keep pure logic (geometry, naming, size maths) Foundation-only and in the portable lists of `scripts/check-linux.sh`, so it's tested everywhere.
 - Keep the main thread free (Rule 5). If something might be slow, it's a job.
 - Before adding a dependency, state its license and why it's needed (Rule 7).
 - Keep motion and sizing constants in `Motion.swift`; no magic numbers scattered through views.
 - Unit-test the pipeline basics: naming and clashes, size guard, orientation, sRGB conversion, alpha preservation.
 - When a choice affects licensing, distribution or the interaction feel, ask instead of guessing.
-- End of session: update **Status**, add **Changelog** lines, and list anything needing a decision under **Open decisions**.
+- End of session: update `HANDOFF.md`, update **Status**, add **Changelog** lines, and list anything needing a decision under **Open decisions**.
 
 ---
 
@@ -314,9 +323,15 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 - Auto's default format: WebP (current) or AVIF.
 - Whether "wake on any drag" (§4.1) is worth a permission prompt.
 - Direct download only, or the Mac App Store later.
+- Hovered label inside the bubble (current) or next to the segment?
+- Show/hide shortcut: ⌃⌥⌘D for now (⌥⌘D is macOS's Dock toggle). Make it configurable in Settings?
+- How to ship oxipng (Rust, no C API): a bundled binary via `Process`, or a different lossless PNG optimizer with a C library?
 
 ---
 
 ## 14. Changelog
 
+- 2026-10-30: Phase 0 code complete on branch `claude/fervent-thompson-2620yn`: menu bar app, non-activating floating bubble, edge snapping with a display-synced spring and per-display memory, radial menu with stagger, haptics and Reduce Motion, fake 1s job, done card (drag out or click to reveal), error pill with shake, ⌃⌥⌘D show/hide, unit tests, Linux check script, macOS CI. Builds and passes tests in CI; not yet tried by a person.
+- 2026-10-30: Interaction decisions while building Phase 0 (§4): dock to left/right edges only; segments on a 160° arc facing into the screen instead of a full ring (a docked bubble would put half a ring off-screen); hovered label shown inside the bubble; segments picked by angle; results and messages shown beside the bubble. Swift 5 language mode for now, ad-hoc signing until Phase 3.
+- 2026-10-30: Added `HANDOFF.md` (where work stands, next steps) and `CLAUDE.md` (agent start/end routine).
 - 2026-10-30: Spec created from the planning chat: idea, rules, interaction, image and video pipelines, auto-tune, licensing, benchmark, phases.

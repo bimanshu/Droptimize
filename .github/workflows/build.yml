@@ -44,11 +44,12 @@ jobs:
           exit $status
 
       - name: Warnings
-        if: always()
+        # CORE.md §12: fix warnings, not just errors. Any compiler warning fails the build.
         run: |
           grep -E '^/.*: warning:' build.log | sort -u > warnings.txt || true
           echo "$(wc -l < warnings.txt | tr -d ' ') unique warning(s)"
           cat warnings.txt
+          test ! -s warnings.txt
 
       - name: Release build (universal)
         run: |
