@@ -45,6 +45,15 @@ enum Motion {
     static let centerHitRadius: CGFloat = 30
     /// Delay between segments as they fan out (CORE.md §4.2: ~20–30ms).
     static let fanStagger: Double = 0.025                  // (tune)
+    /// The option bubbles that fan out beyond a hovered segment (Compress sizes, Remove BG backgrounds).
+    static let optionDiameter: CGFloat = 34                // (tune)
+    static let optionHoverScale: CGFloat = 1.15
+    /// How far beyond the main ring the options sit.
+    static let optionRingDistance: CGFloat = 56            // (tune)
+    /// Options stay within this angle of straight into the screen, so none lands past the edge (radians).
+    static let optionArcLimit: Double = 85 * .pi / 180
+    /// Delay between options as they fan out.
+    static let optionStagger: Double = 0.02                // (tune)
     /// Empty space kept around everything the panel has to show.
     static let panelMargin: CGFloat = 12
     /// Fill behind the open menu so the gaps between segments still catch the drag. Fully

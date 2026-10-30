@@ -78,7 +78,7 @@ final class BubbleLayoutTests: XCTestCase {
         for side in [DockSide.left, .right] {
             let layout = BubbleLayout(side: side)
             var contents: [PanelContent] = [.bubble, .accessory]
-            contents += (1...ActionMenu.maxSegments).map { PanelContent.menu(segments: $0) }
+            contents += (1...ActionMenu.maxSegments).map { PanelContent.menu(segments: $0, submenu: nil) }
             for content in contents {
                 let frame = layout.panelFrame(for: content, center: center)
                 XCTAssertTrue(canvas.contains(frame), "\(side) \(content): \(frame) outside \(canvas)")
@@ -88,7 +88,7 @@ final class BubbleLayoutTests: XCTestCase {
 
     func testMenuPanelHoldsEverySegment() {
         let layout = BubbleLayout(side: .right)
-        let frame = layout.panelFrame(for: .menu(segments: 5), center: center)
+        let frame = layout.panelFrame(for: .menu(segments: 5, submenu: nil), center: center)
         let ring = RadialLayout(count: 5, side: .right)
         let reach = Motion.segmentDiameter * Motion.segmentHoverScale / 2
         for index in 0..<5 {

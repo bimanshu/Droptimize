@@ -19,8 +19,12 @@ PORTABLE_SOURCES=(
   Pipeline/Job.swift
   Pipeline/Output.swift
   Pipeline/ImagePlan.swift
+  Pipeline/ActionOptions.swift
   Image/RGBAImage.swift
   Image/ImageFormat.swift
+  Image/RGBColor.swift
+  Image/SizeSearch.swift
+  Image/Compositor.swift
   Image/Encoders/PNG.swift
   Image/Encoders/WebP.swift
 )
@@ -31,6 +35,7 @@ PORTABLE_TESTS=(
   Tests/ActionTests.swift
   Tests/OutputTests.swift
   Tests/EncoderTests.swift
+  Tests/OptionTests.swift
   Tests/Support/TestPNGReader.swift
 )
 

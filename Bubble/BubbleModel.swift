@@ -7,6 +7,8 @@ final class BubbleModel: ObservableObject {
         case idle
         /// A drag with files we can handle is over the bubble.
         case menu
+        /// Dropped on a Custom option; waiting for a size or color in the input panel.
+        case asking
         case working(JobProgress)
         case done(DoneInfo)
         /// A short error or notice beside the bubble.
@@ -19,6 +21,8 @@ final class BubbleModel: ObservableObject {
     /// The menu last opened. Kept after it closes so the segments can animate out.
     @Published var menu: ActionMenu = .image
     @Published var target: MenuTarget?
+    /// The segment whose option bubbles are showing, if any.
+    @Published var submenu: Int?
     @Published var ripples: [Ripple] = []
     /// Bumped to shake the bubble once.
     @Published var shakes = 0
@@ -32,6 +36,8 @@ struct DoneInfo: Equatable {
     var saving: Double
     var count: Int
     var thumbnail: NSImage?
+    /// Replaces the card's second line, such as "Resized to 1600 × 1200 to fit".
+    var detail: String? = nil
 
     /// "−68%" (with a real minus sign), or "Done" when there's no saving to show.
     var savingText: String {

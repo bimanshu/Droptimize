@@ -5,6 +5,8 @@ struct Job: Identifiable {
     let id = UUID()
     var files: [URL]
     var action: Action
+    /// The option bubble it was dropped on, with any custom value already filled in.
+    var option: ActionOption? = nil
 }
 
 struct JobProgress: Equatable {
@@ -19,6 +21,8 @@ struct JobResult {
     var outputs: [URL]
     var inputBytes: Int64
     var outputBytes: Int64
+    /// Something worth saying on the done card, such as "Resized to 1600 × 1200 to fit".
+    var note: String? = nil
 
     /// How much smaller the outputs are, 0...1.
     var saving: Double {
@@ -33,6 +37,8 @@ enum JobError: LocalizedError, Equatable {
     case unsupported
     case unreadable
     case cantSave
+    case alreadyUnder(Int)
+    case cantFit(Int)
     /// An action or format that isn't built yet; the message says which.
     case notYet(String)
 
@@ -43,6 +49,8 @@ enum JobError: LocalizedError, Equatable {
         case .unsupported: return "Can't open this file type yet."
         case .unreadable: return "Couldn't open this image."
         case .cantSave: return "Couldn't save the result."
+        case .alreadyUnder(let bytes): return "Already under \(ByteCount.describe(bytes))."
+        case .cantFit(let bytes): return "Couldn't get it under \(ByteCount.describe(bytes))."
         case .notYet(let message): return message
         }
     }

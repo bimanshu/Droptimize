@@ -106,11 +106,25 @@ final class ImagePlanTests: XCTestCase {
         XCTAssertEqual(try ImagePlan.make(action: .halfSize, source: .bmp, sourceExtension: "bmp").fileExtension, "png")
     }
 
+    func testCompressToATargetSizeNamesTheSize() throws {
+        XCTAssertEqual(try ImagePlan.make(action: .compress, option: .maxBytes(500_000), source: .jpeg, sourceExtension: "jpg"),
+                       ImagePlan(encoding: .jpeg, fileExtension: "jpg", suffix: "-500kb", scale: 1))
+        XCTAssertEqual(try ImagePlan.make(action: .compress, option: .maxBytes(1_500_000), source: .png, sourceExtension: "png").suffix,
+                       "-1.5mb")
+    }
+
+    func testRemoveBackgroundAlwaysMakesAPNG() throws {
+        XCTAssertEqual(try ImagePlan.make(action: .removeBackground, option: .background(nil), source: .jpeg, sourceExtension: "jpg"),
+                       ImagePlan(encoding: .png, fileExtension: "png", suffix: "-nobg", scale: 1))
+        XCTAssertEqual(try ImagePlan.make(action: .removeBackground, option: .background(.white), source: .heic, sourceExtension: "heic").suffix,
+                       "-bg")
+        XCTAssertEqual(try ImagePlan.make(action: .removeBackground, source: .png, sourceExtension: "png").suffix, "-nobg")
+    }
+
     func testUnbuiltActionsSaySo() {
         XCTAssertThrowsError(try ImagePlan.make(action: .avif, source: .png, sourceExtension: "png")) {
             XCTAssertEqual($0 as? JobError, .notYet("AVIF is coming soon."))
         }
-        XCTAssertThrowsError(try ImagePlan.scale(for: .removeBackground))
         XCTAssertThrowsError(try ImagePlan.scale(for: .mp4))
         XCTAssertThrowsError(try ImagePlan.make(action: .compress, source: .gif, sourceExtension: "gif"))
     }

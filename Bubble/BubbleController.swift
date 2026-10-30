@@ -12,6 +12,8 @@ final class BubbleController {
     private let host: BubbleHostView
     private let mover: PanelMover
     private let store = DockStore()
+    private let inputs = InputPanel()
+    private let memory = OptionMemory()
 
     /// The bubble's center in screen coordinates. Everything is positioned from this.
     private var center: CGPoint = .zero
@@ -21,6 +23,8 @@ final class BubbleController {
     private var dismissTask: Task<Void, Never>?
     private var shrinkTask: Task<Void, Never>?
     private var lastResult: JobResult?
+    /// What the running (or just finished) job does.
+    private var runningAction: Action?
     /// True while an unsupported drag is over the bubble and we're saying so.
     private var isRejectingDrag = false
 
@@ -106,10 +110,14 @@ final class BubbleController {
 
     private var panelContent: PanelContent {
         switch model.phase {
-        case .idle, .working: return .bubble
-        case .menu: return .menu(segments: model.menu.segments.count)
+        case .idle, .asking, .working: return .bubble
+        case .menu: return .menu(segments: model.menu.segments.count, submenu: model.submenu.flatMap(menuGeometry.submenu(for:)))
         case .done, .message: return .accessory
         }
+    }
+
+    private var menuGeometry: MenuGeometry {
+        MenuGeometry(side: model.side, optionCounts: model.menu.geometryOptionCounts)
     }
 
     /// Sizes the panel for the current state, keeping the bubble's center fixed on screen.
@@ -156,6 +164,8 @@ final class BubbleController {
 
     func click(in region: BubbleRegion) {
         switch model.phase {
+        case .asking:
+            inputs.cancel()
         case .working:
             cancelJob()
         case .done where region != .elsewhere:
@@ -172,8 +182,9 @@ final class BubbleController {
     /// A drag carrying `urls` came over the bubble. Returns whether we can take any of them.
     func dragEntered(_ urls: [URL]) -> Bool {
         if case .working = model.phase { return false }     // one job at a time until the JobQueue (Phase 1)
+        if inputs.isShowing { inputs.cancel() }               // a new drag wins over an unanswered question
         let kinds = Set(urls.compactMap(MediaKind.init(url:)))
-        guard let menu = ActionMenu(kinds: kinds) else {
+        guard let menu = ActionMenu(kinds: kinds, lastColor: memory.lastColor) else {
             if !urls.isEmpty {
                 isRejectingDrag = true
                 showMessage(JobError.unsupported.errorDescription ?? "", autoDismiss: false)
@@ -184,17 +195,25 @@ final class BubbleController {
         isRejectingDrag = false
         model.menu = menu
         model.target = nil
+        model.submenu = nil
         model.phase = .menu
         updatePanelFrame()
         return true
     }
 
-    /// The drag moved; highlight whatever is under the pointer.
+    /// The drag moved; highlight whatever is under the pointer, and show the options of the
+    /// segment it's over (Compress sizes, Remove BG backgrounds).
     func dragMoved() -> NSDragOperation {
         guard model.isMenuOpen else { return [] }
         let mouse = NSEvent.mouseLocation
-        let target = RadialLayout(count: model.menu.segments.count, side: model.side)
-            .target(at: CGVector(dx: mouse.x - center.x, dy: mouse.y - center.y))
+        let geometry = menuGeometry
+        let target = geometry.target(at: CGVector(dx: mouse.x - center.x, dy: mouse.y - center.y),
+                                     openSubmenu: model.submenu)
+        let submenu = geometry.openSubmenu(after: target, current: model.submenu)
+        if submenu != model.submenu {
+            model.submenu = submenu
+            updatePanelFrame()                                 // grows at once to hold the options
+        }
         if target != model.target {
             model.target = target
             if target != nil {
@@ -227,14 +246,48 @@ final class BubbleController {
             let mouse = NSEvent.mouseLocation
             addRipple(at: CGVector(dx: mouse.x - center.x, dy: mouse.y - center.y))
         }
-        start(Job(files: files, action: action), runner: ImageJobRunner())
+        let option = model.menu.option(for: target)?.option
+        if option == .custom {
+            ask(for: action, files: files)
+        } else {
+            start(Job(files: files, action: action, option: option), runner: ImageJobRunner())
+        }
         return true
+    }
+
+    /// Dropped on a Custom option: ask for the size or color beside the bubble, then run.
+    private func ask(for action: Action, files: [URL]) {
+        dismissTask?.cancel()
+        model.target = nil
+        model.submenu = nil
+        model.phase = .asking
+        updatePanelFrame()
+        let anchor = BubbleLayout(side: model.side).accessoryRect(center: center)
+        switch action {
+        case .compress:
+            inputs.askForSize(initial: memory.lastCustomSize, beside: anchor, side: model.side) { [weak self] bytes in
+                guard let self else { return }
+                guard let bytes else { return self.returnToIdle() }
+                self.memory.lastCustomSize = bytes
+                self.start(Job(files: files, action: .compress, option: .maxBytes(bytes)), runner: ImageJobRunner())
+            }
+        case .removeBackground:
+            inputs.askForColor(initial: memory.lastColor ?? .white, beside: anchor, side: model.side) { [weak self] color in
+                guard let self else { return }
+                guard let color else { return self.returnToIdle() }
+                self.memory.lastColor = color
+                self.start(Job(files: files, action: .removeBackground, option: .background(color)), runner: ImageJobRunner())
+            }
+        default:
+            returnToIdle()
+        }
     }
 
     // MARK: Jobs
 
     private func start(_ job: Job, runner: JobRunner) {
         jobTask?.cancel()
+        runningAction = job.action
         dismissTask?.cancel()
         model.target = nil
         model.phase = .working(JobProgress(completed: 0, total: job.files.count, fraction: 0))
@@ -259,7 +312,9 @@ final class BubbleController {
         jobTask = nil
         lastResult = result
         recents = Array((result.outputs + recents.filter { !result.outputs.contains($0) }).prefix(10))
-        let info = DoneInfo(saving: result.saving, count: result.outputs.count, thumbnail: nil)
+        // Removing a background isn't about size, so the card says "Done" rather than a saving.
+        let saving = runningAction == .removeBackground ? 0 : result.saving
+        let info = DoneInfo(saving: saving, count: result.outputs.count, thumbnail: nil, detail: result.note)
         model.phase = .done(info)
         updatePanelFrame()
         scheduleDismiss(after: Motion.doneDuration)
@@ -312,6 +367,7 @@ final class BubbleController {
         dismissTask?.cancel()
         isRejectingDrag = false
         model.target = nil
+        model.submenu = nil
         model.phase = .idle
         updatePanelFrame()
     }

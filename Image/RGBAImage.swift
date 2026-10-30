@@ -81,4 +81,18 @@ enum EncoderTuning {
     static let colorSampleSize = 1_000_000
     /// Above this many pixels, the clipboard gets the file but no picture (building one is slow).
     static let clipboardImagePixelLimit = 30_000_000
+
+    // Compress to a target size
+    /// Quality ranges searched for the best fit (format-native units).
+    static let jpegQualities: ClosedRange<Double> = 0.1...0.95
+    static let heicQualities: ClosedRange<Double> = 0.1...0.9
+    static let webpQualities: ClosedRange<Double> = 5...95
+    /// Bisection steps per search (each one is an encode).                         (tune)
+    static let searchSteps = 6
+    /// When the lowest quality is still too big, shrink by this much and try again.  (tune)
+    static let fitScaleStep = 0.8
+    /// Never shrink an image below this many pixels on its short side to hit a size.
+    static let minimumFitSide = 64
+    /// Custom sizes users can type.
+    static let customSizeRange = 10_000...500_000_000
 }

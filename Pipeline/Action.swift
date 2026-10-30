@@ -67,39 +67,64 @@ enum MediaKind: Hashable {
     case image, video
 }
 
-/// What the radial menu offers for one drag: Auto in the center, up to six segments around it.
+/// What the radial menu offers for one drag: Auto in the center, up to six segments around it,
+/// and for some segments a second ring of options (CORE.md §4.2).
 struct ActionMenu: Equatable {
     static let maxSegments = 6
+    static let maxOptions = 6
 
     var center: Action
     var segments: [Action]
+    /// Each segment's option bubbles, in segment order (empty when it has none).
+    var options: [[MenuOption]]
 
-    init(center: Action = .auto, segments: [Action]) {
+    init(center: Action = .auto, segments: [Action], lastColor: RGBColor? = nil) {
         assert(segments.count <= Self.maxSegments, "More than six segments is unreadable at drag speed")
         self.center = center
         self.segments = segments
+        self.options = segments.map { $0.options(lastColor: lastColor) }
+        assert(options.allSatisfy { $0.count <= Self.maxOptions }, "More than six options is unreadable at drag speed")
     }
 
-    /// Listed top to bottom as they sit on the arc (CORE.md §4.2).
-    static let image = ActionMenu(segments: [.webp, .avif, .compress, .halfSize, .removeBackground])
-    static let video = ActionMenu(segments: [.mp4, .webm, .gif, .scale1080p, .mute])
+    /// Listed top to bottom as they sit on the arc.
+    static let imageSegments: [Action] = [.webp, .avif, .compress, .halfSize, .removeBackground]
+    static let videoSegments: [Action] = [.mp4, .webm, .gif, .scale1080p, .mute]
     /// Images and videos together: only what applies to both.
-    static let mixed = ActionMenu(segments: [.compress])
+    static let mixedSegments: [Action] = [.compress]
+
+    static let image = ActionMenu(segments: imageSegments)
+    static let video = ActionMenu(segments: videoSegments)
+    static let mixed = ActionMenu(segments: mixedSegments)
 
     /// The menu for a drag carrying `kinds`, or nil when there's nothing to offer.
-    init?(kinds: Set<MediaKind>) {
+    init?(kinds: Set<MediaKind>, lastColor: RGBColor? = nil) {
         switch kinds {
         case []: return nil
-        case [.image]: self = .image
-        case [.video]: self = .video
-        default: self = .mixed
+        case [.image]: self.init(segments: Self.imageSegments, lastColor: lastColor)
+        case [.video]: self.init(segments: Self.videoSegments, lastColor: lastColor)
+        default: self.init(segments: Self.mixedSegments, lastColor: lastColor)
         }
     }
 
     func action(for target: MenuTarget) -> Action? {
         switch target {
         case .center: return center
-        case .segment(let index): return segments.indices.contains(index) ? segments[index] : nil
+        case .segment(let index), .option(let index, _):
+            return segments.indices.contains(index) ? segments[index] : nil
         }
     }
+
+    /// The option bubble `target` points at, if it's one.
+    func option(for target: MenuTarget) -> MenuOption? {
+        guard case .option(let segment, let index) = target,
+              options.indices.contains(segment), options[segment].indices.contains(index) else { return nil }
+        return options[segment][index]
+    }
+
+    /// What the bubble shows while `target` is hovered.
+    func title(for target: MenuTarget) -> String? {
+        option(for: target)?.title ?? action(for: target)?.title
+    }
+
+    var geometryOptionCounts: [Int] { options.map(\.count) }
 }

@@ -19,28 +19,48 @@ struct ImagePlan: Equatable {
     /// Fails for actions that aren't built yet, before any work is done.
     static func scale(for action: Action) throws -> Double {
         switch action {
-        case .auto, .webp, .compress: return 1
+        case .auto, .webp, .compress, .removeBackground: return 1
         case .halfSize: return 0.5
         case .avif: throw JobError.notYet("AVIF is coming soon.")
-        case .removeBackground: throw JobError.notYet("Remove BG is coming soon.")
         case .mp4, .webm, .gif, .scale1080p, .mute: throw JobError.notYet("Video is coming soon.")
         }
     }
 
-    /// The plan for `action` on an image in `source` format, whose file ends in `sourceExtension`.
-    static func make(action: Action, source: ImageFormat, sourceExtension: String) throws -> ImagePlan {
+    static let noBackgroundSuffix = "-nobg"
+    static let backgroundSuffix = "-bg"
+
+    /// The plan for `action` (and the option bubble it was dropped on, if any) on an image in
+    /// `source` format, whose file ends in `sourceExtension`.
+    static func make(action: Action, option: ActionOption? = nil, source: ImageFormat,
+                     sourceExtension: String) throws -> ImagePlan {
         let scale = try scale(for: action)
         switch action {
+        case .compress:
+            let encoding = try sameFormatEncoding(for: source)
+            let keepsFormat = encoding == sameFormatEncoding(ofExactly: source)
+            let fileExtension = keepsFormat ? sourceExtension.lowercased() : extensionFor(encoding)
+            let suffix: String?
+            if case .maxBytes(let bytes) = option {
+                suffix = ByteCount.suffix(bytes)            // photo-500kb.jpg
+            } else {
+                suffix = keepsFormat ? compressSuffix : nil
+            }
+            return ImagePlan(encoding: encoding, fileExtension: fileExtension, suffix: suffix, scale: scale)
+        case .removeBackground:
+            // Always PNG: it keeps the transparency, or the exact background color (CORE.md §6.5).
+            var hasColor = false
+            if case .background(.some) = option { hasColor = true }
+            return ImagePlan(encoding: .png, fileExtension: "png",
+                             suffix: hasColor ? backgroundSuffix : noBackgroundSuffix, scale: scale)
         case .auto, .webp:
             // Auto picks between formats once it can classify images (Phase 1 step 2); until then, WebP.
             return ImagePlan(encoding: .webp, fileExtension: "webp",
                              suffix: source == .webp ? compressSuffix : nil, scale: scale)
-        case .compress, .halfSize:
+        case .halfSize:
             let encoding = try sameFormatEncoding(for: source)
             let keepsFormat = encoding == sameFormatEncoding(ofExactly: source)
             let fileExtension = keepsFormat ? sourceExtension.lowercased() : extensionFor(encoding)
-            let suffix: String? = action == .halfSize ? halfSizeSuffix : (keepsFormat ? compressSuffix : nil)
-            return ImagePlan(encoding: encoding, fileExtension: fileExtension, suffix: suffix, scale: scale)
+            return ImagePlan(encoding: encoding, fileExtension: fileExtension, suffix: halfSizeSuffix, scale: scale)
         default:
             throw JobError.notYet("Coming soon.")
         }

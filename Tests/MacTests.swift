@@ -21,7 +21,10 @@ final class MediaKindTests: XCTestCase {
 final class SymbolTests: XCTestCase {
     func testEverySymbolExists() {
         var names = Action.allCases.map(\.symbol)
-        names += ["drop.fill", "drop.circle", "checkmark", "exclamationmark", "xmark"]
+        names += ["drop.fill", "drop.circle", "checkmark", "exclamationmark", "xmark", "ellipsis"]
+        for option in Action.allCases.flatMap({ $0.options(lastColor: nil) }) {
+            if case .symbol(let name) = option.label { names.append(name) }
+        }
         for name in names {
             XCTAssertNotNil(NSImage(systemSymbolName: name, accessibilityDescription: nil), "missing SF Symbol \(name)")
         }

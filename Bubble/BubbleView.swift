@@ -9,7 +9,8 @@ struct BubbleView: View {
     var body: some View {
         ZStack {
             catchArea
-            RadialMenu(menu: model.menu, side: model.side, isOpen: model.isMenuOpen, target: model.target)
+            RadialMenu(menu: model.menu, side: model.side, isOpen: model.isMenuOpen, target: model.target,
+                       submenu: model.submenu)
             accessory
             ForEach(model.ripples) { RippleView(ripple: $0) }
             progressRing
@@ -50,17 +51,22 @@ struct BubbleView: View {
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(.secondary)
         case .menu:
-            if let title = model.target.flatMap(model.menu.action(for:))?.title {
+            if let title = model.target.flatMap(model.menu.title(for:)) {
                 Text(title)
                     .font(.system(size: 10, weight: .semibold))
-                    .lineLimit(1)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
                     .minimumScaleFactor(0.6)
-                    .padding(.horizontal, 3)
+                    .padding(.horizontal, 4)
             } else {
                 Image(systemName: "drop.fill")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Color.accentColor)
             }
+        case .asking:
+            Image(systemName: "ellipsis")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Color.accentColor)
         case .working(let progress):
             if model.isHovering {
                 Image(systemName: "xmark")       // a click cancels
@@ -90,7 +96,8 @@ struct BubbleView: View {
     private var glyphKey: String {
         switch model.phase {
         case .idle: return "idle"
-        case .menu: return "menu-\(model.target.flatMap(model.menu.action(for:))?.rawValue ?? "none")"
+        case .menu: return "menu-\(model.target.flatMap(model.menu.title(for:)) ?? "none")"
+        case .asking: return "asking"
         case .working(let progress): return model.isHovering ? "cancel" : (progress.total > 1 ? "count" : "working")
         case .done: return "done"
         case .message: return "message"
@@ -110,7 +117,10 @@ struct BubbleView: View {
     private var accessibilityValue: String {
         switch model.phase {
         case .idle: return ""
-        case .menu: return model.target.flatMap(model.menu.action(for:))?.accessibilityLabel ?? ""
+        case .menu:
+            guard let target = model.target else { return "" }
+            return model.menu.option(for: target)?.accessibilityLabel ?? model.menu.action(for: target)?.accessibilityLabel ?? ""
+        case .asking: return "Waiting for your choice"
         case .working(let progress): return "Working, \(Int(progress.fraction * 100)) percent"
         case .done(let info): return "Done, \(info.savingText.replacingOccurrences(of: "\u{2212}", with: "")) smaller"
         case .message(let text): return text
@@ -119,12 +129,16 @@ struct BubbleView: View {
 
     // MARK: Around the bubble
 
-    /// Nearly invisible disc behind the open menu so the gaps between segments still catch the drag.
+    /// Nearly invisible disc behind the open menu so the gaps between segments (and out to the
+    /// options) still catch the drag.
     private var catchArea: some View {
-        Circle()
+        let submenu = model.submenu.flatMap {
+            MenuGeometry(side: model.side, optionCounts: model.menu.geometryOptionCounts).submenu(for: $0)
+        }
+        let diameter = BubbleLayout.catchDiameter(segments: model.menu.segments.count, submenu: submenu)
+        return Circle()
             .fill(Color.black.opacity(model.isMenuOpen ? Motion.hitCatchOpacity : 0))
-            .frame(width: BubbleLayout.catchDiameter(segments: model.menu.segments.count),
-                   height: BubbleLayout.catchDiameter(segments: model.menu.segments.count))
+            .frame(width: diameter, height: diameter)
             .accessibilityHidden(true)
     }
 
@@ -195,7 +209,8 @@ private struct ResultCard: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(info.savingText)
                     .font(.system(size: 13, weight: .semibold).monospacedDigit())
-                Text(info.count > 1 ? "\(info.count) files" : "Drag to use")
+                Text(info.detail ?? (info.count > 1 ? "\(info.count) files" : "Drag to use"))
+                    .lineLimit(1)
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
             }
