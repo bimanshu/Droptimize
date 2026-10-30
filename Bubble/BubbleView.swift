@@ -142,11 +142,11 @@ struct BubbleView: View {
             .accessibilityHidden(true)
     }
 
-    /// Fills as files finish; spins while there's nothing finished to show yet (one file, or the first of a batch).
+    /// Fills as work is done (each finished file, or frames of a video); spins until there's something to show.
     @ViewBuilder private var progressRing: some View {
         if case .working(let progress) = model.phase {
             Group {
-                if progress.fraction > 0 && progress.total > 1 {
+                if progress.fraction > 0 {
                     Circle()
                         .trim(from: 0, to: progress.fraction)
                         .stroke(Color.accentColor, style: StrokeStyle(lineWidth: Motion.progressLineWidth, lineCap: .round))

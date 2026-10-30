@@ -61,6 +61,34 @@ enum OutputWriter {
     }
 }
 
+extension OutputWriter {
+    /// Moves a finished file (a video written to a temporary folder) next to `input` under a fresh
+    /// name; never overwrites. Falls back to Downloads like `write`.
+    static func move(_ file: URL, for input: URL, fileExtension: String, suffix: String?,
+                     fallbackDirectory: URL? = defaultFallback) throws -> URL {
+        do {
+            return try move(file, for: input, fileExtension: fileExtension, suffix: suffix, in: nil)
+        } catch let error as CocoaError where error.isPermissionProblem {
+            guard let fallbackDirectory else { throw JobError.cantSave }
+            return try move(file, for: input, fileExtension: fileExtension, suffix: suffix, in: fallbackDirectory)
+        }
+    }
+
+    private static func move(_ file: URL, for input: URL, fileExtension: String, suffix: String?,
+                             in directory: URL?) throws -> URL {
+        for _ in 0..<100 {
+            let url = OutputNaming.url(for: input, fileExtension: fileExtension, suffix: suffix, in: directory)
+            do {
+                try FileManager.default.moveItem(at: file, to: url)
+                return url
+            } catch let error as CocoaError where error.code == .fileWriteFileExists {
+                continue
+            }
+        }
+        throw JobError.cantSave
+    }
+}
+
 private extension CocoaError {
     var isPermissionProblem: Bool {
         [.fileWriteNoPermission, .fileWriteVolumeReadOnly].contains(code)

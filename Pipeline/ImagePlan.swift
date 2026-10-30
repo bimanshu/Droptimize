@@ -21,7 +21,7 @@ struct ImagePlan: Equatable {
         switch action {
         case .auto, .convert, .compress, .removeBackground: return 1
         case .halfSize: return 0.5
-        case .mp4, .webm, .gif, .scale1080p, .mute: throw JobError.notYet("Video is coming soon.")
+        case .resize, .mute: throw JobError.notYet("That's for videos.")
         }
     }
 

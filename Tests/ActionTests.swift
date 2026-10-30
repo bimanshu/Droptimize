@@ -8,7 +8,7 @@ final class ActionMenuTests: XCTestCase {
     }
 
     func testVideosGetTheVideoMenu() {
-        XCTAssertEqual(ActionMenu(kinds: [.video])?.segments, [.mp4, .webm, .gif, .scale1080p, .mute])
+        XCTAssertEqual(ActionMenu(kinds: [.video])?.segments, [.convert, .compress, .resize, .mute])
     }
 
     func testMixedDropsOnlyOfferWhatAppliesToBoth() {

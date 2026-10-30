@@ -48,6 +48,9 @@ enum JobError: LocalizedError, Equatable {
     case cantSave
     case alreadyUnder(Int)
     case cantFit(Int)
+    case noAudio
+    case alreadyAtMost(Int)
+    case unreadableVideo
     /// An action or format that isn't built yet; the message says which.
     case notYet(String)
 
@@ -60,6 +63,9 @@ enum JobError: LocalizedError, Equatable {
         case .cantSave: return "Couldn't save the result."
         case .alreadyUnder(let bytes): return "Already under \(ByteCount.describe(bytes))."
         case .cantFit(let bytes): return "Couldn't get it under \(ByteCount.describe(bytes))."
+        case .noAudio: return "This video has no sound to remove."
+        case .alreadyAtMost(let side): return "Already \(side)p or smaller."
+        case .unreadableVideo: return "Can't open this video. MOV and MP4 work."
         case .notYet(let message): return message
         }
     }

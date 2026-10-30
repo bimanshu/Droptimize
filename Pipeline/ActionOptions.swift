@@ -2,8 +2,12 @@ import Foundation
 
 /// A choice within an action, picked from the smaller bubbles that fan out around it.
 enum ActionOption: Hashable {
-    /// Convert to this format.
+    /// Convert an image to this format.
     case format(ImageFormat)
+    /// Convert a video to this format.
+    case videoFormat(VideoFormat)
+    /// Resize a video so its shorter side is at most this, as in "720p".
+    case maxShortSide(Int)
     /// Compress to at most this many bytes.
     case maxBytes(Int)
     /// Remove BG and put this color behind the subject; nil keeps it transparent.
@@ -50,9 +54,48 @@ extension Action {
     /// Compress's target sizes (the owner's choice, 2026-10-30).
     static let targetSizes = [100_000, 250_000, 500_000, 1_000_000, 2_000_000]
 
-    /// The option bubbles that fan out when this segment is hovered; empty when it has none.
-    /// `lastColor` is the last custom background, offered again as its own bubble.
+    /// The image option bubbles (see `options(for:lastColor:)`).
     func options(lastColor: RGBColor?) -> [MenuOption] {
+        options(for: .image, lastColor: lastColor)
+    }
+
+    /// The option bubbles that fan out when this segment is hovered, for a drag of `kind`
+    /// (nil: images and videos together, which get none); empty when it has none.
+    /// `lastColor` is the last custom background, offered again as its own bubble.
+    func options(for kind: MediaKind?, lastColor: RGBColor?) -> [MenuOption] {
+        switch kind {
+        case .video?: return videoOptions
+        case .image?: return imageOptions(lastColor: lastColor)
+        case nil: return []
+        }
+    }
+
+    private var videoOptions: [MenuOption] {
+        switch self {
+        case .convert:
+            return VideoFormat.allCases.map { format in
+                MenuOption(option: .videoFormat(format), label: .text(format.displayName), title: "To \(format.displayName)",
+                           accessibilityLabel: "Convert to \(format.displayName)")
+            }
+        case .compress:
+            let sizes = VideoTuning.targetSizes.map { bytes in
+                MenuOption(option: .maxBytes(bytes), label: .text(ByteCount.short(bytes)),
+                           title: "Under \(ByteCount.describe(bytes))",
+                           accessibilityLabel: "Compress to under \(ByteCount.describe(bytes))")
+            }
+            return sizes + [MenuOption(option: .custom, label: .symbol("ellipsis"), title: "Custom size",
+                                       accessibilityLabel: "Compress to a size you choose")]
+        case .resize:
+            return VideoTuning.resizeSides.map { side in
+                MenuOption(option: .maxShortSide(side), label: .text("\(side)p"), title: "\(side)p",
+                           accessibilityLabel: "Resize to \(side)p")
+            }
+        default:
+            return []
+        }
+    }
+
+    private func imageOptions(lastColor: RGBColor?) -> [MenuOption] {
         switch self {
         case .convert:
             return Self.convertFormats.map { format in

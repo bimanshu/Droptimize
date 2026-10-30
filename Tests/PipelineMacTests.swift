@@ -207,7 +207,7 @@ final class PipelineMacTests: XCTestCase {
 
     func testUnbuiltActionsWriteNothing() throws {
         let input = try write(flatGraphic, "x.png")
-        XCTAssertThrowsError(try ImageOptimizer.process(input, action: .mp4, wantsPicture: false))
+        XCTAssertThrowsError(try ImageOptimizer.process(input, action: .mute, wantsPicture: false))
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: folder.path), ["x.png"])
     }
 

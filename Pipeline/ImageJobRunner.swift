@@ -17,7 +17,6 @@ struct FileOutcome {
 /// off the main thread.
 enum ImageOptimizer {
     static func process(_ input: URL, action: Action, option: ActionOption? = nil, wantsPicture: Bool) throws -> FileOutcome {
-        if MediaKind(url: input) == .video { throw JobError.notYet("Video is coming soon.") }
         let inputBytes = (try? input.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
 
         switch (action, option) {
@@ -148,17 +147,20 @@ enum ImageOptimizer {
     }
 }
 
-/// Runs a drop through `ImageOptimizer`, several files at a time (CORE.md §5), and puts the
-/// results on the clipboard.
+/// Runs a drop through `ImageOptimizer` (several images at a time) or `VideoOptimizer` (one video at
+/// a time, CORE.md §5), and puts the results on the clipboard.
 struct ImageJobRunner: JobRunner {
     func run(_ job: Job, progress: @escaping @MainActor (JobProgress) -> Void) async throws -> JobResult {
-        _ = try ImagePlan.scale(for: job.action)        // fail at once for actions that aren't built yet
         let action = job.action
         let option = job.option
         let total = job.files.count
         let wantsPicture = total == 1
         var outcomes: [(index: Int, outcome: FileOutcome)] = []
         var errors: [Error] = []
+        let hasVideo = job.files.contains { MediaKind(url: $0) == .video }
+        let concurrency = hasVideo ? 1 : Self.concurrency
+        // Videos report progress within the file; images only as each one finishes.
+        let reporter = ProgressReporter(total: total, report: progress)
 
         await withTaskGroup(of: (Int, Result<FileOutcome, Error>).self) { group in
             func collect(_ finished: (Int, Result<FileOutcome, Error>)) async {
@@ -167,15 +169,24 @@ struct ImageJobRunner: JobRunner {
                 case .failure(let error): errors.append(error)
                 }
                 let done = outcomes.count + errors.count
+                reporter.finished(count: done)
                 await progress(JobProgress(completed: done, total: total, fraction: Double(done) / Double(total)))
             }
             for (index, url) in job.files.enumerated() {
-                if index >= Self.concurrency, let finished = await group.next() { await collect(finished) }
+                if index >= concurrency, let finished = await group.next() { await collect(finished) }
                 group.addTask {
-                    (index, Result<FileOutcome, Error> {
+                    do {
                         try Task.checkCancellation()
-                        return try ImageOptimizer.process(url, action: action, option: option, wantsPicture: wantsPicture)
-                    })
+                        if MediaKind(url: url) == .video {
+                            let outcome = try await VideoOptimizer.process(url, action: action, option: option,
+                                                                           progress: reporter.within)
+                            return (index, .success(outcome))
+                        }
+                        return (index, .success(try ImageOptimizer.process(url, action: action, option: option,
+                                                                           wantsPicture: wantsPicture)))
+                    } catch {
+                        return (index, .failure(error))
+                    }
                 }
             }
             for await finished in group { await collect(finished) }
@@ -196,6 +207,40 @@ struct ImageJobRunner: JobRunner {
                          note: results.count == 1 ? results[0].note : nil,
                          items: results.map { JobResult.Item(input: $0.input, output: $0.output,
                                                             inputBytes: $0.inputBytes, outputBytes: $0.outputBytes) })
+    }
+
+    /// Turns progress within the current file into batch progress on the main actor, about once
+    /// per percent rather than once per video frame.
+    private final class ProgressReporter: @unchecked Sendable {
+        private let lock = NSLock()
+        private let total: Int
+        private let report: Unchecked<@MainActor (JobProgress) -> Void>
+        private var completed = 0
+        private var lastFraction = -1.0
+
+        init(total: Int, report: @escaping @MainActor (JobProgress) -> Void) {
+            self.total = total
+            self.report = Unchecked(report)
+        }
+
+        func finished(count: Int) {
+            lock.lock(); defer { lock.unlock() }
+            completed = count
+        }
+
+        /// 0…1 through the file being worked on.
+        var within: @Sendable (Double) -> Void {
+            { [self] part in
+                lock.lock()
+                let fraction = (Double(completed) + min(max(part, 0), 1)) / Double(max(total, 1))
+                guard fraction - lastFraction >= 0.01 else { lock.unlock(); return }
+                lastFraction = fraction
+                let progress = JobProgress(completed: completed, total: total, fraction: fraction)
+                lock.unlock()
+                let report = self.report
+                Task { @MainActor in report.value(progress) }
+            }
+        }
     }
 
     /// Images at once: the performance cores, at most four (each one can hold a few hundred MB).  (tune)

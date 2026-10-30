@@ -109,6 +109,8 @@ extension ActionOption {
         switch self {
         case .maxBytes(let bytes): return "Under \(ByteCount.describe(bytes))"
         case .format(let format): return "To \(format.displayName)"
+        case .videoFormat(let format): return "To \(format.displayName)"
+        case .maxShortSide(let side): return "\(side)p"
         case .background(nil): return "No background"
         case .background(let color?): return color.name
         case .custom: return nil

@@ -65,6 +65,20 @@ final class OutputWriterTests: XCTestCase {
         try? FileManager.default.removeItem(at: folder)
     }
 
+    func testMovesFinishedFilesInWithoutOverwriting() throws {
+        let original = folder.appendingPathComponent("clip.mov")
+        try Data("original".utf8).write(to: original)
+        let temp = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).mp4")
+        try Data("a".utf8).write(to: temp)
+        let first = try OutputWriter.move(temp, for: original, fileExtension: "mp4", suffix: nil)
+        try Data("b".utf8).write(to: temp)
+        let second = try OutputWriter.move(temp, for: original, fileExtension: "mp4", suffix: nil)
+        XCTAssertEqual(first.lastPathComponent, "clip.mp4")
+        XCTAssertEqual(second.lastPathComponent, "clip-2.mp4")
+        XCTAssertEqual(try Data(contentsOf: first), Data("a".utf8))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: temp.path))
+    }
+
     func testWritesNextToTheOriginalAndNeverOverwrites() throws {
         let original = folder.appendingPathComponent("shot.png")
         try Data("original".utf8).write(to: original)
@@ -133,10 +147,10 @@ final class ImagePlanTests: XCTestCase {
     }
 
     func testUnbuiltActionsSaySo() {
-        XCTAssertThrowsError(try ImagePlan.make(action: .gif, source: .png, sourceExtension: "png")) {
-            XCTAssertEqual($0 as? JobError, .notYet("Video is coming soon."))
+        XCTAssertThrowsError(try ImagePlan.make(action: .mute, source: .png, sourceExtension: "png")) {
+            XCTAssertEqual($0 as? JobError, .notYet("That's for videos."))
         }
-        XCTAssertThrowsError(try ImagePlan.scale(for: .mp4))
+        XCTAssertThrowsError(try ImagePlan.scale(for: .resize))
         XCTAssertThrowsError(try ImagePlan.make(action: .compress, source: .gif, sourceExtension: "gif"))
     }
 }

@@ -32,6 +32,7 @@ targets:
       - path: Bubble
       - path: Pipeline
       - path: Image
+      - path: Video
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.droptimize.app
