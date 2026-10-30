@@ -13,7 +13,7 @@
 | CI | [Build workflow](https://github.com/bimanshu/Droptimize/actions/workflows/build.yml): green at `ea846a0` (Xcode 16.4, macOS 15 runner): **122/122 tests** (95 of them also on Linux), 0 warnings (warnings fail the build), universal libwebp/libaom/libavif and app, install script tested, preview published. The app is now ~8.5 MB (DMG), mostly libaom. The first deps build after a `build-deps.sh` change takes ~3 minutes in CI; otherwise it's cached |
 | Install / update | One Terminal command: **`curl -fsSL https://github.com/bimanshu/Droptimize/releases/download/preview/install.sh \| bash`** (or the [DMG](https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg)). Both come from the [preview release](https://github.com/bimanshu/Droptimize/releases/tag/preview), which CI replaces on every green push. |
 | Owner | Doesn't build with Xcode. Updates with the one-line command above (asked for this instead of re-downloading DMGs). Not technical about Terminal: give exact click-by-click steps. |
-| Next | Owner tries AVIF, the option bubbles and Remove BG (update command above) → fix what they report → Auto classification (Phase 1 step 2) |
+| Next | **IN PROGRESS: restructure the image menu (owner approved 2026-10-30), see Next steps 1.** Then the owner tries it, then Auto classification |
 
 ## ✱ Where things stand
 
@@ -46,6 +46,15 @@
 **Not verified (needs a person on a Mac):** the feel, including reaching the option bubbles mid-drag; the window behaviour (see *Risks*); typing into the Custom panel while another app is in front; **Remove BG quality on real photos** (CI ran Vision on a synthetic image, which it may not treat as a subject; the tests accept either outcome); how the clipboard pastes into Figma, Slack, Chrome, Notes and Messages (CORE.md §6.6); and real-world savings on a variety of images.
 
 ## ✱ Next steps (in order)
+
+0. **IN PROGRESS: menu restructure (owner approved 2026-10-30).** The image menu becomes: **Convert** → WebP · AVIF · JPG · PNG · HEIC; **Compress** → 100K · 250K · 500K · 1M · 2M · Custom; **Half size**; **Remove BG** → None · White · Black · last color · Custom; center **Auto**. That leaves one free slot for later (Resize presets or Crop). Video and mixed menus are unchanged. Plan:
+   1. `Pipeline/Action.swift`: add `case convert` (title "Convert", SF Symbol `arrow.triangle.2.circlepath`, VoiceOver "Convert to another format") and remove `.webp`/`.avif` as segments: `imageSegments = [.convert, .compress, .halfSize, .removeBackground]`. Simplest is to drop the `.webp`/`.avif` cases and fix every reference.
+   2. `Pipeline/ActionOptions.swift`: `ActionOption.format(ImageFormat)`; `Action.convert.options` = WebP, AVIF, JPG, PNG, HEIC as `.text` labels, titles "To WebP" and so on.
+   3. `Pipeline/ImagePlan.swift`: `.convert` + `.format(f)` → that encoding and extension; suffix `-min` only when it's the source's own format. Dropping on Convert itself (no option) = WebP, like Auto.
+   4. **Rule 3 decision (agreed with the owner):** explicit conversions are exempt from the size guard, like Remove BG (WebP → PNG is often bigger). Auto and Compress keep it. In `ImageOptimizer.process`, skip `SizeGuard` for `.convert`.
+   5. JPG can't hold transparency: flatten onto white (CORE.md §6.2) with `Compositor.cutOut(image, mask: all 1s, background: .white)`, or add `RGBAImage.flattened(onto:)`, and set the note "Transparency filled with white".
+   6. Update tests (`ActionMenuTests`, `ActionOptionTests.testMenuTitlesAndTargets` option counts become `[5, 6, 0, 4]`, `ImagePlanTests`, `PipelineMacTests` WebP/AVIF tests now use `.convert` + `.format`), the DMG read-me, the release notes in the workflow, CORE.md §4.2 menu list, §6.5, Rule 3 note, and the changelog.
+   7. Run `scripts/check-linux.sh`, push, check CI.
 
 1. **Make sure CI is green** on the branch. If it's red, open the run, read the failing step's log and fix it. Use `mcp__github__get_job_logs` with `failed_only: true` if you don't have a browser.
 2. **Owner tries the preview DMG** (the Snapshot link). History: on 2026-10-30 they said they couldn't run it on their Mac (reason never confirmed); they were given step-by-step DMG instructions, saw the Phase 0 build's pretend actions, asked for real functionality, and approved libwebp. Ask what they saw with real files, and fix what they report. Run through the *Manual test checklist* below as far as they're willing; tune `Bubble/Motion.swift` from their feedback.
