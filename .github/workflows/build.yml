@@ -169,12 +169,19 @@ jobs:
           Needs macOS 14 (Sonoma) or newer. Works on Apple Silicon and Intel Macs.
           EOF
 
-      - name: Replace the preview release
+      - name: Update the preview release
+        # Swap the files in place (install.sh first) rather than deleting the release, so the
+        # links are never missing for more than a moment while someone is downloading.
         run: |
-          gh release delete preview --yes --cleanup-tag || true
-          gh release create preview Droptimize.dmg Droptimize.zip scripts/install.sh \
-            --target "$GITHUB_SHA" \
-            --prerelease \
-            --title "Droptimize preview" \
-            --notes-file notes.md
+          if gh release view preview >/dev/null 2>&1; then
+            gh release upload preview scripts/install.sh Droptimize.zip Droptimize.dmg --clobber
+            gh api -X PATCH "repos/$GH_REPO/git/refs/tags/preview" -f sha="$GITHUB_SHA" -F force=true >/dev/null
+            gh release edit preview --prerelease --title "Droptimize preview" --notes-file notes.md
+          else
+            gh release create preview scripts/install.sh Droptimize.zip Droptimize.dmg \
+              --target "$GITHUB_SHA" \
+              --prerelease \
+              --title "Droptimize preview" \
+              --notes-file notes.md
+          fi
           echo "curl -fsSL https://github.com/$GH_REPO/releases/download/preview/install.sh | bash"

@@ -28,8 +28,9 @@ main() {
   trap 'rm -rf "$work"' EXIT
 
   say "Downloading the latest Droptimize…"
-  curl -fsSL "$zip_url" -o "$work/app.zip" \
-    || fail "couldn't download it. Check your internet connection and try again."
+  # Retries cover the few seconds while a new build is being swapped in.
+  curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$zip_url" -o "$work/app.zip" \
+    || fail "couldn't download it. Check your internet connection and try again in a minute."
   ditto -x -k "$work/app.zip" "$work/unzipped"
   local new="$work/unzipped/$app_name.app"
   [ -d "$new" ] || fail "the download didn't contain the app."
