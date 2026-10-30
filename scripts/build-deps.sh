@@ -10,6 +10,7 @@
 # Macs (`brew install nasm`); without it, the Intel slice is built without SIMD.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Mind macOS's bash 3.2: declare local arrays first, then assign (`local a=(…)` makes a string there).
 
 # libwebp: WebP encoding. BSD-3-Clause. Approved by the owner 2026-10-30.
 WEBP_VERSION=1.6.0
@@ -52,7 +53,8 @@ build_webp() {
   local src="$work/libwebp-$WEBP_VERSION"
 
   # The encoder, the decoder (used by tests), and their shared code. No mux/demux: no animation yet.
-  local sources=("$src"/src/{dec,enc,dsp,utils}/*.c "$src"/sharpyuv/*.c)
+  local sources
+  sources=("$src"/src/{dec,enc,dsp,utils}/*.c "$src"/sharpyuv/*.c)
 
   # compile <objdir> <compiler and flags…>: compiles every source in parallel into objdir.
   # (Written for the bash 3.2 that ships with macOS: no `wait -n`.)
@@ -67,13 +69,16 @@ build_webp() {
     done | xargs -0 -n 2 -P "$jobs" "$objdir/cc.sh"
   }
 
-  local common=(-O2 -DNDEBUG -DWEBP_USE_THREAD -I "$src" -w)
+  local common
+  common=(-O2 -DNDEBUG -DWEBP_USE_THREAD -I "$src" -w)
   rm -rf "$out"
   mkdir -p "$out/lib" "$out/include/webp"
   if [[ "$platform" == Darwin ]]; then
-    local slices=()
+    local slices
+    slices=()
     for arch in arm64 x86_64; do
-      local flags=(xcrun clang -arch "$arch" -mmacosx-version-min="$MIN_MACOS" "${common[@]}")
+      local flags
+      flags=(xcrun clang -arch "$arch" -mmacosx-version-min="$MIN_MACOS" "${common[@]}")
       # Every Intel Mac that runs macOS 14 has SSE4.1, so use it everywhere.
       [[ "$arch" == x86_64 ]] && flags+=(-msse4.1)
       compile "$work/webp-obj-$arch" "${flags[@]}"
@@ -97,12 +102,15 @@ build_webp() {
 build_avif_slice() {
   local arch=$1 prefix=$2
   local aom_src="$work/libaom-$AOM_VERSION" avif_src="$work/libavif"
-  local cmake_common=(-DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$prefix"
-                      -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_POSITION_INDEPENDENT_CODE=ON)
-  local aom_flags=(-DENABLE_TESTS=0 -DENABLE_EXAMPLES=0 -DENABLE_TOOLS=0 -DENABLE_DOCS=0 -DENABLE_TESTDATA=0)
-  local avif_flags=(-DAVIF_CODEC_AOM=SYSTEM -DAVIF_LIBYUV=OFF -DAVIF_LIBSHARPYUV=OFF -DAVIF_JPEG=OFF
-                    -DAVIF_ZLIBPNG=OFF -DAVIF_BUILD_APPS=OFF -DAVIF_BUILD_TESTS=OFF
-                    -DAOM_INCLUDE_DIR="$prefix/include" -DAOM_LIBRARY="$prefix/lib/libaom.a")
+  local cmake_common
+  cmake_common=(-DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$prefix"
+                -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_POSITION_INDEPENDENT_CODE=ON)
+  local aom_flags
+  aom_flags=(-DENABLE_TESTS=0 -DENABLE_EXAMPLES=0 -DENABLE_TOOLS=0 -DENABLE_DOCS=0 -DENABLE_TESTDATA=0)
+  local avif_flags
+  avif_flags=(-DAVIF_CODEC_AOM=SYSTEM -DAVIF_LIBYUV=OFF -DAVIF_LIBSHARPYUV=OFF -DAVIF_JPEG=OFF
+              -DAVIF_ZLIBPNG=OFF -DAVIF_BUILD_APPS=OFF -DAVIF_BUILD_TESTS=OFF
+              -DAOM_INCLUDE_DIR="$prefix/include" -DAOM_LIBRARY="$prefix/lib/libaom.a")
   if [[ "$arch" != host ]]; then
     cmake_common+=(-DCMAKE_OSX_ARCHITECTURES="$arch" -DCMAKE_OSX_DEPLOYMENT_TARGET="$MIN_MACOS")
     aom_flags+=(-DCMAKE_TOOLCHAIN_FILE="$aom_src/cmake/toolchains/$arch-macos.cmake")
