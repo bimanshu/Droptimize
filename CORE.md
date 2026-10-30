@@ -24,7 +24,7 @@ Working name: **Droptimize** (also considered: Blip, Ripple, Halo, PixDrop). If 
 | Area | State | Notes |
 |---|---|---|
 | Phase 0: app shell, bubble, radial menu (dummy actions) | Code complete; needs hands-on tuning on a Mac | Builds and passes tests in CI; DMG on the `preview` release. Feel not yet tuned by a person; see HANDOFF.md |
-| Phase 1: image pipeline | Step 1 done (WebP, Compress, Half size, naming, size guard, clipboard) | libwebp; own lossless PNG optimizer; ImageIO for JPEG/HEIC until jpegli. Steps 2–4 next (AVIF + Auto, auto-tune, Remove BG) |
+| Phase 1: image pipeline | Steps 1 and 4 done (WebP, Compress incl. target sizes, Half size, Remove BG with backgrounds, naming, size guard, clipboard) | libwebp; own lossless PNG optimizer; ImageIO for JPEG/HEIC until jpegli; Vision for Remove BG. Next: step 2 (AVIF + Auto), step 3 (auto-tune) |
 | Phase 1.5: benchmark, polish, launch clip | Not started | |
 | Phase 2: video pipeline | Not started | |
 | Phase 3: signing, notarization, distribution | Not started | |
@@ -73,6 +73,7 @@ The tools that inspired this all kill a detour. CleanShot X keeps the screenshot
 - Hovering a segment highlights it, shows its one-word label **inside the bubble** (the drag image under the pointer would cover a label on the segment), and gives a light trackpad haptic (`NSHapticFeedbackManager`, `.alignment`). Beyond the center, segments are picked by angle (pie-menu style), which is forgiving at drag speed.
 - **Drop on the center = Auto.** Drop on a segment = that action. Drag back out without dropping = collapse.
 - Maximum 6 segments; more becomes unreadable at drag speed. Icons are SF Symbols.
+- **Option bubbles:** some segments have a second ring of smaller bubbles (max 6) that fan out beyond them while hovered. Dropping on the segment itself does its default; dropping on an option picks it. Options are centered on their segment but kept within 85° of straight into the screen. **Compress:** 100 KB · 250 KB · 500 KB · 1 MB · 2 MB · Custom. **Remove BG:** None (transparent) · White · Black · last custom color · Custom. You can't type mid-drag, so **Custom** opens a small panel beside the bubble after the drop (a size in KB/MB, or a hex color with swatches and an eyedropper). It takes the keyboard without activating the app.
 
 Image segments, top to bottom: **WebP · AVIF · Compress · Half size · Remove BG** (center: **Auto**).
 Video segments (Phase 2): **MP4 · WebM · GIF · 1080p · Mute** (center: **Auto**).
@@ -183,9 +184,9 @@ Quality presets (in Settings; calibrate with the §9 benchmark and by eye):
 
 - **Auto (center):** classify the image as photo or graphic/screenshot (unique-colour count, alpha, edge statistics). Photo → lossy WebP, auto-tuned. Graphic → try lossless WebP and PNG (pngquant/oxipng), keep the smaller. WebP is the default because every current browser supports it; a setting lets users prefer AVIF.
 - **WebP / AVIF:** convert, auto-tuned.
-- **Compress:** keep the same format, auto-tuned (JPEG → jpegli, PNG → pngquant + oxipng, WebP/AVIF → re-encode).
+- **Compress:** keep the same format, auto-tuned (JPEG → jpegli, PNG → pngquant + oxipng, WebP/AVIF → re-encode). **To a target size** (option bubbles): the best quality that fits, found by bisection; only if the lowest quality is still too big, shrink the image step by step and say so. Named `photo-500kb.jpg`.
 - **Half size:** scale to 50% (2x retina export → 1x) with high-quality resampling (vImage), then compress in the same format. A setting allows a custom max width instead.
-- **Remove BG:** Vision's `VNGenerateForegroundInstanceMaskRequest` → `VNInstanceMaskObservation.generateMaskedImage(ofInstances: allInstances, from: handler, croppedToInstancesExtent: false)` → save as PNG (through oxipng) or lossless WebP with alpha. On-device, free, offline. Works best on people, products, pets and objects with clear edges; weaker on UI screenshots, low-contrast images and busy scenes. No subject found → "Couldn't find a clear subject." Possible later upgrade: an open-source matting model (such as RMBG) converted to Core ML, only if Vision proves not good enough, and only after checking its license.
+- **Remove BG:** Vision's `VNGenerateForegroundInstanceMaskRequest` → `VNInstanceMaskObservation.generateMaskedImage(ofInstances: allInstances, from: handler, croppedToInstancesExtent: false)` → save as PNG (through oxipng) or lossless WebP with alpha. **Background choice** (option bubbles): keep it transparent, or lay the subject over white, black or any hex color (then opaque). Named `-nobg` / `-bg`. Remove BG is exempt from Rule 3: it changes content rather than optimizing, so the PNG may be bigger than the original. On-device, free, offline. Works best on people, products, pets and objects with clear edges; weaker on UI screenshots, low-contrast images and busy scenes. No subject found → "Couldn't find a clear subject." Possible later upgrade: an open-source matting model (such as RMBG) converted to Core ML, only if Vision proves not good enough, and only after checking its license.
 
 ### 6.6 Output
 
@@ -332,6 +333,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-10-30: Option bubbles (owner's design): hovering Compress fans out target sizes (100 KB–2 MB, Custom); hovering Remove BG fans out backgrounds (None, White, Black, last color, Custom hex). Built Remove BG with Vision (Phase 1 step 4 brought forward) and compress-to-size (quality bisection, resize only as a last resort). Custom values are asked for in a non-activating panel after the drop. Remove BG is exempt from Rule 3. The bubble now keeps ~180 pt from the screen's top and bottom so the outer ring fits.
 - 2026-10-30: One-command install/update for the owner: `curl -fsSL https://github.com/bimanshu/Droptimize/releases/download/preview/install.sh | bash` (`scripts/install.sh`, published with each preview and tested in CI). The app itself still makes no network calls; in-app updates wait for Sparkle (Phase 3).
 - 2026-10-30: Phase 1 step 1: real WebP (libwebp 1.6.0; lossy, plus lossless for graphics), Compress (own lossless PNG optimizer; ImageIO JPEG/HEIC), Half size (vImage), normalize (orientation, sRGB, metadata dropped), naming (`-min`, `-half`, `-2`…), size guard, clipboard (file + picture), parallel batches. Replaced the fake runner and the Option-drop test failure. Auto = WebP until classification; AVIF, Remove BG and video say "coming soon". Owner approved libwebp; free vs paid still open.
 - 2026-10-30: CI now builds a DMG and publishes it to a `preview` pre-release on every green push, so the owner can try builds without Xcode: https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg (owner approved making it public). Not notarized until Phase 3, so the first launch needs `xattr -cr` or Open Anyway.

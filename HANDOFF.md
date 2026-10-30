@@ -9,11 +9,11 @@
 |---|---|
 | Last updated | 2026-10-30 |
 | Branch | `claude/fervent-thompson-2620yn` (the only branch so far; no `main` yet, nothing merged, no PR) |
-| Phase | **1, step 1 done: WebP, Compress and Half size really work.** Phase 0 interaction is built but the feel hasn't been tuned by a person yet. |
-| CI | [Build workflow](https://github.com/bimanshu/Droptimize/actions/workflows/build.yml): green at `9d5d93c` (Xcode 16.4, macOS 15 runner): **80/80 tests**, 0 warnings (warnings fail the build), universal libwebp and app, DMG published |
+| Phase | **1: WebP, Compress (incl. target sizes), Half size and Remove BG (with background choices) work.** Option bubbles fan out of Compress and Remove BG. The feel hasn't been tuned by a person yet. |
+| CI | [Build workflow](https://github.com/bimanshu/Droptimize/actions/workflows/build.yml): green at `3dd9f7f` (Xcode 16.4, macOS 15 runner): **112/112 tests** (87 of them also on Linux), 0 warnings (warnings fail the build), universal libwebp and app, install script tested, preview published |
 | Install / update | One Terminal command: **`curl -fsSL https://github.com/bimanshu/Droptimize/releases/download/preview/install.sh \| bash`** (or the [DMG](https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg)). Both come from the [preview release](https://github.com/bimanshu/Droptimize/releases/tag/preview), which CI replaces on every green push. |
 | Owner | Doesn't build with Xcode. Updates with the one-line command above (asked for this instead of re-downloading DMGs). Not technical about Terminal: give exact click-by-click steps. |
-| Next | Owner tries the real actions from the DMG → fix what they report → Phase 1 step 2 (AVIF, Auto classification) |
+| Next | Owner tries the option bubbles and Remove BG (update command above) → fix what they report → AVIF (awaiting license OK) and Auto classification |
 
 ## ✱ Where things stand
 
@@ -28,22 +28,29 @@
 - **Output**: a new file next to the original: `photo.webp`, `photo-min.png`, `photo-half.png`, then `-2`, `-3`… Never overwrites (`.withoutOverwriting`). Falls back to Downloads if the folder is read-only. **Never bigger than the input** (≥ 1% saving or "Already as small as it gets.").
 - **Clipboard**: every output as a file URL, plus the first as PNG picture data when there's a single file under 30 MP.
 - **Batches** run in parallel (performance cores, at most 4). Progress counts files; a single file shows a spinner.
-- **AVIF, Remove BG and every video action** answer "… is coming soon."
+- **AVIF and every video action** answer "… is coming soon."
+
+**Option bubbles (the owner's design, 2026-10-30):** hovering a segment that has options fans out a second ring of smaller bubbles beyond it; dropping on the segment itself still does its default.
+
+- **Compress** → **100K · 250K · 500K · 1M · 2M · Custom**. Compress to at most that size, same format: bisection over the encoder's quality (`SizeSearch`, 6 steps) for the best quality that fits. If even the lowest quality is too big, it shrinks the image in 0.8× steps (never under 64 px), and the card says "Resized to W × H to fit". "Already under 500 KB." if it already is; "Couldn't get it under 100 KB." if impossible. PNG has no quality knob, so PNG targets work by shrinking only (pngquant would do better; waits on free vs paid). Named `photo-500kb.jpg`.
+- **Remove BG** (now built, Phase 1 step 4 brought forward) → **None (transparent) · White · Black · last custom color · Custom**. Uses Vision's `VNGenerateForegroundInstanceMaskRequest` (on device, macOS 14), applies the soft mask as alpha (`Compositor`), and lays it over the color if one was chosen. Always PNG, named `-nobg` / `-bg`. **Exempt from the size guard**: it isn't an optimization, and a cut-out PNG can be bigger than the JPEG it came from. The card shows "Done" plus "Background removed" or "Background: #HEX".
+- **Custom** (both menus): you can't type mid-drag, so dropping on Custom shows a small panel beside the bubble (`Bubble/InputPanel.swift`). Size: a number plus KB/MB (decimal, as Finder shows). Color: a hex field, 8 preset swatches and the system eyedropper (`NSColorSampler`). It takes the keyboard without activating the app, handles ⌘C/⌘V itself (menu bar apps have no Edit menu), Return confirms, Esc or Cancel cancels, and clicking the bubble cancels. The last size pre-fills the field; the last color becomes its own bubble next time (`OptionMemory`, UserDefaults).
+- **Geometry** (`SubmenuLayout`, `MenuGeometry` in `Bubble/BubbleLayout.swift`): options sit 56 pt beyond the main ring, centered on their segment's angle but clamped within 85° of straight into the screen, so none goes past the edge. Past the midpoint between the rings the pointer picks options; inside it, segments. Options stay open while the pointer is out among them. The bubble now keeps ~180 pt from the top and bottom of the screen so the outer ring fits (`BubbleLayout.verticalClearance`).
 
 **Verified:**
 
 - `scripts/check-linux.sh`: every file parses; **62 portable tests pass on Linux**, including exact PNG round trips (checked by a test-only PNG reader that verifies CRCs and undoes filters itself), exact lossless WebP, lossy WebP closeness, alpha kept, naming, size guard, writer, plans.
 - CI on macOS: see the Snapshot. The macOS tests (`Tests/PipelineMacTests.swift`) cover EXIF rotation, P3→sRGB conversion, transparency, half size, ImageIO reading our PNG/WebP exactly, real files end to end, Rule 2 (original untouched), Rule 3 (nothing written when it can't get smaller), clashes, and batch plus clipboard.
 
-**Not verified (needs a person on a Mac):** the feel, the window behaviour (see *Risks*), how the clipboard pastes into Figma, Slack, Chrome, Notes and Messages (CORE.md §6.6), and real-world savings on a variety of images.
+**Not verified (needs a person on a Mac):** the feel, including reaching the option bubbles mid-drag; the window behaviour (see *Risks*); typing into the Custom panel while another app is in front; **Remove BG quality on real photos** (CI ran Vision on a synthetic image, which it may not treat as a subject; the tests accept either outcome); how the clipboard pastes into Figma, Slack, Chrome, Notes and Messages (CORE.md §6.6); and real-world savings on a variety of images.
 
 ## ✱ Next steps (in order)
 
 1. **Make sure CI is green** on the branch. If it's red, open the run, read the failing step's log and fix it. Use `mcp__github__get_job_logs` with `failed_only: true` if you don't have a browser.
 2. **Owner tries the preview DMG** (the Snapshot link). History: on 2026-10-30 they said they couldn't run it on their Mac (reason never confirmed); they were given step-by-step DMG instructions, saw the Phase 0 build's pretend actions, asked for real functionality, and approved libwebp. Ask what they saw with real files, and fix what they report. Run through the *Manual test checklist* below as far as they're willing; tune `Bubble/Motion.swift` from their feedback.
-3. **Phase 1 step 2** (`CORE.md` §11): **AVIF** (libavif + libaom, BSD-2 + AOM patent license; state the license and ask the owner before adding it, per Rule 7), the **Auto classification** (photo → lossy WebP; graphic → lossless WebP vs PNG, smaller wins; replace `RGBAImage.looksLikeGraphic`), and the fuller PNG pipeline once **free vs paid** is decided (pngquant is GPL).
+3. **Phase 1 step 2** (`CORE.md` §11), still to do: **AVIF** (libavif + libaom, BSD-2 + AOM patent license; state the license and ask the owner before adding it, per Rule 7), the **Auto classification** (photo → lossy WebP; graphic → lossless WebP vs PNG, smaller wins; replace `RGBAImage.looksLikeGraphic`), and the fuller PNG pipeline once **free vs paid** is decided (pngquant is GPL).
 4. **JobQueue** (`CORE.md` §5): drops while a job runs are still ignored (`BubbleController.dragEntered` returns false while working). Make new drops queue, and move cancellation into the queue.
-5. Phase 1 step 3: SSIMULACRA 2 auto-tune (replaces the fixed values in `EncoderTuning`). Step 4: Remove BG with Vision.
+5. Phase 1 step 3: SSIMULACRA 2 auto-tune (replaces the fixed values in `EncoderTuning`). (Step 4, Remove BG, is done.)
 6. Smaller items: accept file promises (`NSFilePromiseReceiver`) so drags from Photos, Safari and Mail work; post a notification for jobs over ~10s; a Settings window (`CORE.md` §10).
 
 ## ✱ Risks to check first on a real Mac
@@ -53,7 +60,9 @@
 3. **Hover on a non-key panel.** This relies on the `.activeAlways` tracking area in `BubbleHostView`.
 4. **Folder permission prompts.** Saving next to a file in Desktop, Documents or Downloads makes macOS ask for access to that folder once. With ad-hoc signing, every new build has a new identity, so it may ask again after each DMG update. Developer ID signing (Phase 3) fixes that.
 5. **JPEG and HEIC through ImageIO** embed an sRGB ICC profile (~3 KB), which matters on small JPEGs. jpegli replaces this.
-6. File promises aren't handled yet (see step 6). Haptics only fire on Force Touch trackpads.
+6. **Option bubbles mid-drag.** Moving outward from Compress to a size bubble is a longer reach. If it feels fiddly, tune `Motion.optionRingDistance`, `optionDiameter` and the boundary in `SubmenuLayout.innerBoundary`.
+7. **Custom panel focus.** It relies on a `.nonactivatingPanel` becoming key while another app stays active. If typing doesn't reach it, the fallback is `NSApp.activate()` while it's open (which breaks Rule 1 briefly).
+8. File promises aren't handled yet (see step 6). Haptics only fire on Force Touch trackpads.
 
 ## Manual test checklist
 
@@ -66,13 +75,15 @@
 7. Compress the `-min.png` again: shake and "Already as small as it gets.", and no new file.
 8. Drag the card into a Finder folder (it copies), and onto a Slack or Chrome upload field. Click the card: Finder reveals the new file.
 9. Drop 10 images at once on Compress: the count goes up, then "10 files" on the card.
-10. AVIF and Remove BG: "… is coming soon." A `.mov`: the video menu, then "Video is coming soon."
-11. Drag a `.txt` over it: "Can't open this file type yet." while over, gone on exit.
-12. While a big batch works: hovering shows ×, and a click cancels.
-13. Type in TextEdit and drop on the bubble mid-sentence: TextEdit keeps focus.
-14. Switch Spaces and enter a full-screen app: the bubble is still there. ⌃⌥⌘D hides and shows it.
-15. Turn on Reduce Motion (System Settings → Accessibility → Display): fades only. Check light and dark mode.
-16. With two displays: move the bubble to the second one, relaunch, and it's still there.
+10. Hover **Compress**: six small bubbles fan out. Drop on **500K** with a big photo → `photo-500kb.jpg` under 500 KB. Drop on **…** → a size panel; type 300, KB, Return.
+11. Hover **Remove BG**: None · White · Black · … Drop a portrait on **None** → `-nobg.png` with a transparent background. Drop on **…** → a color panel; try a hex, a swatch and the eyedropper. Next time, that color is its own bubble.
+12. AVIF: "AVIF is coming soon." A `.mov`: the video menu, then "Video is coming soon."
+13. Drag a `.txt` over it: "Can't open this file type yet." while over, gone on exit.
+14. While a big batch works: hovering shows ×, and a click cancels.
+15. Type in TextEdit and drop on the bubble mid-sentence: TextEdit keeps focus.
+16. Switch Spaces and enter a full-screen app: the bubble is still there. ⌃⌥⌘D hides and shows it.
+17. Turn on Reduce Motion (System Settings → Accessibility → Display): fades only. Check light and dark mode.
+18. With two displays: move the bubble to the second one, relaunch, and it's still there.
 
 ## ✱ Decisions made so far (also in `CORE.md` §14)
 
@@ -83,6 +94,8 @@
 - **libwebp 1.6.0** (BSD-3), approved by the owner. It's built from the pinned, SHA-256-checked release by `scripts/build-deps.sh`, not committed (`Vendor/` is generated).
 - PNG Compress uses **our own lossless optimizer** with the system zlib, so it's license-free while free vs paid is open. JPEG and HEIC use **ImageIO** until jpegli.
 - **Auto = WebP** until classification (Phase 1 step 2). Half size uses the suffix **`-half`**.
+- **Option bubbles** (owner's choice): Compress → target file sizes 100 KB · 250 KB · 500 KB · 1 MB · 2 MB · Custom. Background choices live **inside Remove BG** (None · White · Black · last color · Custom hex), not as a separate bubble. Custom values are asked for after the drop. Sizes are decimal (1 KB = 1000 bytes). Hitting a size shrinks the image only as a last resort, and says so.
+- **Remove BG is exempt from Rule 3** (never bigger): it changes content rather than optimizing. Always PNG.
 - Fixed encoder settings in `EncoderTuning` (`Image/RGBAImage.swift`) until auto-tune: WebP q80/method 4, JPEG 0.8, HEIC 0.75.
 - If the original's folder is read-only, results go to **Downloads**.
 - **Swift 5 language mode** for now. Ad-hoc signing; hardened runtime on Release only (Phase 3 switches to Developer ID).
@@ -93,7 +106,7 @@
 1. **Free/open-source or paid?** ("Decide later" for now.) It decides pngquant (better PNG compression), x264/x265 and gifski.
 2. Is the label inside the bubble right, or would you rather see it next to the hovered segment?
 3. Is ⌃⌥⌘D OK as the show/hide shortcut?
-4. AVIF next needs libavif + libaom (BSD-2, plus AOM's royalty-free patent license; fine in a paid app). OK to add?
+4. AVIF needs libavif + libaom (BSD-2, plus AOM's royalty-free patent license; fine in a paid app). OK to add?
 
 ## How to build, run and test
 
@@ -146,18 +159,24 @@ It parses every Swift file, builds libwebp for Linux (needs `cc` and zlib header
 | `Bubble/BubbleView.swift` | SwiftUI drawing: bubble, glyphs, progress ring and spinner, card, message pill, ripple, shake. |
 | `Bubble/RadialMenu.swift` | SwiftUI segments with fan-out and stagger. |
 | `Bubble/Thumbnails.swift` | QuickLook thumbnails for the card. |
+| `Bubble/InputPanel.swift` | The post-drop panel for Custom: size (KB/MB) or color (hex, swatches, eyedropper); key without activating; `Color(rgb:)`. |
 | `Image/RGBAImage.swift` | Portable pixel buffer (sRGB, straight alpha) with opacity and color-count checks; `EncoderTuning` (all encoder settings). |
 | `Image/ImageFormat.swift` | Portable list of readable formats and their extensions. |
 | `Image/Decode.swift` | macOS: ImageIO decode, orientation, sRGB, vImage resize, unpremultiply; `ImageFormat(typeIdentifier:)`; `RGBAImage.makeCGImage()`. |
 | `Image/Encoders/WebP.swift` | Portable: libwebp lossy and lossless. |
 | `Image/Encoders/PNG.swift` | Portable: our lossless PNG optimizer (zlib). |
 | `Image/Encoders/ImageIOEncoder.swift` | macOS: JPEG, HEIC and plain PNG via ImageIO. |
+| `Image/RGBColor.swift` | Portable: `RGBColor` (hex in and out) and `ByteCount` (500 KB, 500K, -500kb). |
+| `Image/SizeSearch.swift` | Portable: bisection for the best quality under a size, and the shrink steps. |
+| `Image/Compositor.swift` | Portable: applies a subject mask as alpha, optionally over a color. |
+| `Image/SubjectMask.swift` | macOS: Vision foreground mask for Remove BG. |
 | `Pipeline/Action.swift` | `Action` (titles, SF Symbols, VoiceOver labels), `MediaKind`, `ActionMenu`. |
 | `Pipeline/MediaKind+Files.swift` | Image/video detection from a URL via UTType. |
 | `Pipeline/Job.swift` | `Job`, `JobProgress`, `JobResult`, `JobError` (every user-facing error line), and the `JobRunner` protocol. |
-| `Pipeline/ImagePlan.swift` | Portable: action + source format → encoder, extension, suffix, scale; "coming soon" errors. |
+| `Pipeline/ImagePlan.swift` | Portable: action + option + source format → encoder, extension, suffix, scale; "coming soon" errors. |
+| `Pipeline/ActionOptions.swift` | Portable: `ActionOption`, `MenuOption`, each action's option bubbles, `OptionMemory` (last size and color). |
 | `Pipeline/Output.swift` | Portable: `OutputNaming`, `SizeGuard` (Rule 3), `OutputWriter` (never overwrites; Downloads fallback). |
-| `Pipeline/ImageJobRunner.swift` | macOS: `ImageOptimizer` (one file, start to finish) and `ImageJobRunner` (parallel batches, clipboard). |
+| `Pipeline/ImageJobRunner.swift` | macOS: `ImageOptimizer` (one file: plain, compress-to-fit, Remove BG) and `ImageJobRunner` (parallel batches, clipboard, notes). |
 | `Pipeline/Clipboard.swift` | macOS: file URLs plus a PNG picture on the pasteboard. |
 | `Modules/module.modulemap` | Lets Swift import libwebp (`CWebP`) and zlib (`CZlib`, where the SDK has no `zlib` module). |
 | `scripts/build-deps.sh` | Builds pinned libwebp into `Vendor/` (universal static lib on macOS, host build on Linux). |
@@ -165,7 +184,7 @@ It parses every Swift file, builds libwebp for Linux (needs `cc` and zlib header
 | `scripts/install.sh` | One-command install/update from the preview release (published as a release asset; tested in CI). |
 | `scripts/dmg-readme.txt` | The "READ ME FIRST" note inside the DMG. |
 | `.github/workflows/build.yml` | macOS CI: deps (cached), generate, build, test (warnings fail), universal Release build, DMG and zip, install-script test; then publishes DMG, zip and `install.sh` to the `preview` release. |
-| `Tests/` | XCTest. Portable (also run on Linux): `LayoutTests`, `DockPositionTests`, `SpringTests`, `ActionTests`, `OutputTests`, `EncoderTests`, `Support/TestPNGReader` (test-only PNG reader plus test images). macOS only: `MacTests`, `PipelineMacTests`. |
+| `Tests/` | XCTest. Portable (also run on Linux): `LayoutTests`, `DockPositionTests`, `SpringTests`, `ActionTests`, `OutputTests`, `EncoderTests`, `OptionTests`, `Support/TestPNGReader` (test-only PNG reader plus test images). macOS only: `MacTests`, `PipelineMacTests`, `OptionMacTests`. |
 
 ## How the bubble works (so you don't have to rediscover it)
 
