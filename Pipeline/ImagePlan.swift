@@ -19,7 +19,7 @@ struct ImagePlan: Equatable {
     /// Fails for actions that aren't built yet, before any work is done.
     static func scale(for action: Action) throws -> Double {
         switch action {
-        case .auto, .webp, .avif, .compress, .removeBackground: return 1
+        case .auto, .convert, .compress, .removeBackground: return 1
         case .halfSize: return 0.5
         case .mp4, .webm, .gif, .scale1080p, .mute: throw JobError.notYet("Video is coming soon.")
         }
@@ -51,13 +51,15 @@ struct ImagePlan: Equatable {
             if case .background(.some) = option { hasColor = true }
             return ImagePlan(encoding: .png, fileExtension: "png",
                              suffix: hasColor ? backgroundSuffix : noBackgroundSuffix, scale: scale)
-        case .auto, .webp:
-            // Auto picks between formats once it can classify images (Phase 1 step 2); until then, WebP.
-            return ImagePlan(encoding: .webp, fileExtension: "webp",
-                             suffix: source == .webp ? compressSuffix : nil, scale: scale)
-        case .avif:
-            return ImagePlan(encoding: .avif, fileExtension: "avif",
-                             suffix: source == .avif ? compressSuffix : nil, scale: scale)
+        case .auto, .convert:
+            // Auto picks between formats once it can classify images (Phase 1 step 2); until then,
+            // WebP. Dropping on Convert itself (no format bubble) does the same.
+            var target = ImageFormat.webp
+            if action == .convert, case .format(let format) = option { target = format }
+            let encoding = try convertEncoding(for: target)
+            let same = target == source
+            return ImagePlan(encoding: encoding, fileExtension: same ? sourceExtension.lowercased() : extensionFor(encoding),
+                             suffix: same ? compressSuffix : nil, scale: scale)
         case .halfSize:
             let encoding = try sameFormatEncoding(for: source)
             let keepsFormat = encoding == sameFormatEncoding(ofExactly: source)
@@ -65,6 +67,17 @@ struct ImagePlan: Equatable {
             return ImagePlan(encoding: encoding, fileExtension: fileExtension, suffix: halfSizeSuffix, scale: scale)
         default:
             throw JobError.notYet("Coming soon.")
+        }
+    }
+
+    private static func convertEncoding(for target: ImageFormat) throws -> Encoding {
+        switch target {
+        case .webp: return .webp
+        case .avif: return .avif
+        case .jpeg: return .jpeg
+        case .png: return .png
+        case .heic: return .heic
+        default: throw JobError.notYet("Can't convert to \(target.displayName) yet.")
         }
     }
 

@@ -124,7 +124,7 @@ final class PipelineMacTests: XCTestCase {
 
     func testWebPConvertsAndIsSmaller() throws {
         let input = try write(TestImages.gradient(width: 300, height: 200), "photo.png")
-        let outcome = try ImageOptimizer.process(input, action: .webp, wantsPicture: true)
+        let outcome = try ImageOptimizer.process(input, action: .convert, option: .format(.webp), wantsPicture: true)
         XCTAssertEqual(outcome.output.lastPathComponent, "photo.webp")
         XCTAssertLessThan(outcome.outputBytes, outcome.inputBytes)
         XCTAssertNotNil(outcome.picture, "a single file also goes on the clipboard as a picture")
@@ -132,7 +132,7 @@ final class PipelineMacTests: XCTestCase {
 
     func testAVIFConvertsAndMacOSReadsIt() throws {
         let input = try write(TestImages.gradient(width: 300, height: 200, alpha: true), "art.png")
-        let outcome = try ImageOptimizer.process(input, action: .avif, wantsPicture: false)
+        let outcome = try ImageOptimizer.process(input, action: .convert, option: .format(.avif), wantsPicture: false)
         XCTAssertEqual(outcome.output.lastPathComponent, "art.avif")
         XCTAssertLessThan(outcome.outputBytes, outcome.inputBytes)
         let decoded = try ImageDecoder.decode(outcome.output)
@@ -150,6 +150,25 @@ final class PipelineMacTests: XCTestCase {
         let outcome = try ImageOptimizer.process(input, action: .compress, option: .maxBytes(limit), wantsPicture: false)
         XCTAssertEqual(outcome.output.pathExtension, "avif")
         XCTAssertLessThanOrEqual(outcome.outputBytes, limit)
+    }
+
+    func testConvertToJPGFillsTransparencyWithWhite() throws {
+        let input = try write(TestImages.blocks(colors: [[0, 0, 0, 0], [255, 0, 0, 255]]), "logo.png")
+        let outcome = try ImageOptimizer.process(input, action: .convert, option: .format(.jpeg), wantsPicture: false)
+        XCTAssertEqual(outcome.output.lastPathComponent, "logo.jpg")
+        XCTAssertEqual(outcome.note, "Transparency filled with white")
+        let decoded = try ImageDecoder.decode(outcome.output).image
+        XCTAssertTrue(decoded.isOpaque)
+        XCTAssertGreaterThan(decoded.pixels[0], 240, "the transparent corner is now white")
+    }
+
+    func testConversionsMayComeOutBigger() throws {
+        // A tiny WebP of a photo becomes a much bigger PNG: that's what was asked for.
+        let input = folder.appendingPathComponent("tiny.webp")
+        try WebPEncoder.encode(TestImages.gradient(width: 200, height: 150), quality: 50).write(to: input)
+        let outcome = try ImageOptimizer.process(input, action: .convert, option: .format(.png), wantsPicture: false)
+        XCTAssertEqual(outcome.output.lastPathComponent, "tiny.png")
+        XCTAssertGreaterThan(outcome.outputBytes, outcome.inputBytes)
     }
 
     func testCompressJPEG() throws {

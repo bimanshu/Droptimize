@@ -130,7 +130,7 @@ final class ActionOptionTests: XCTestCase {
     }
 
     func testOtherActionsHaveNoOptions() {
-        for action in Action.allCases where action != .compress && action != .removeBackground {
+        for action in Action.allCases where ![.convert, .compress, .removeBackground].contains(action) {
             XCTAssertTrue(action.options(lastColor: nil).isEmpty, "\(action)")
         }
     }
@@ -138,13 +138,21 @@ final class ActionOptionTests: XCTestCase {
     func testMenuTitlesAndTargets() {
         let menu = ActionMenu(segments: ActionMenu.imageSegments)
         XCTAssertEqual(menu.title(for: .center), "Auto")
-        XCTAssertEqual(menu.title(for: .segment(2)), "Compress")
-        XCTAssertEqual(menu.title(for: .option(segment: 2, index: 2)), "Under 500 KB")
-        XCTAssertEqual(menu.action(for: .option(segment: 4, index: 0)), .removeBackground)
-        XCTAssertEqual(menu.option(for: .option(segment: 4, index: 1))?.option, .background(.white))
-        XCTAssertNil(menu.option(for: .segment(2)))
-        XCTAssertNil(menu.option(for: .option(segment: 0, index: 0)), "WebP has no options")
-        XCTAssertEqual(menu.geometryOptionCounts, [0, 0, 6, 0, 4])
+        XCTAssertEqual(menu.title(for: .option(segment: 0, index: 2)), "To JPG")
+        XCTAssertEqual(menu.title(for: .segment(1)), "Compress")
+        XCTAssertEqual(menu.title(for: .option(segment: 1, index: 2)), "Under 500 KB")
+        XCTAssertEqual(menu.action(for: .option(segment: 3, index: 0)), .removeBackground)
+        XCTAssertEqual(menu.option(for: .option(segment: 3, index: 1))?.option, .background(.white))
+        XCTAssertNil(menu.option(for: .segment(1)))
+        XCTAssertNil(menu.option(for: .option(segment: 2, index: 0)), "Half size has no options")
+        XCTAssertEqual(menu.geometryOptionCounts, [5, 6, 0, 4])
+    }
+
+    func testConvertOffersTheWebFormats() {
+        XCTAssertEqual(Action.convert.options(lastColor: nil).map(\.option),
+                       [.format(.webp), .format(.avif), .format(.jpeg), .format(.png), .format(.heic)])
+        XCTAssertEqual(Action.convert.options(lastColor: nil).map(\.label),
+                       [.text("WebP"), .text("AVIF"), .text("JPG"), .text("PNG"), .text("HEIC")])
     }
 }
 

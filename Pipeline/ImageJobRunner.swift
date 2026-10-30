@@ -30,10 +30,22 @@ enum ImageOptimizer {
             let decoded = try ImageDecoder.decode(input, scale: ImagePlan.scale(for: action))
             let plan = try ImagePlan.make(action: action, option: option, source: decoded.format,
                                           sourceExtension: input.pathExtension)
-            let data = try encode(decoded.image, as: plan.encoding)
-            guard SizeGuard.accepts(inputBytes: inputBytes, outputBytes: data.count) else { throw JobError.alreadySmallest }
-            return try save(data, showing: decoded.image, for: input, plan: plan, inputBytes: inputBytes,
-                            wantsPicture: wantsPicture)
+            var image = decoded.image
+            var note: String?
+            if plan.encoding == .jpeg, !image.isOpaque {
+                // JPEG can't hold transparency (CORE.md §6.2).
+                image = Compositor.cutOut(image, mask: [Float](repeating: 1, count: image.pixelCount), background: .white)
+                note = "Transparency filled with white"
+            }
+            let data = try encode(image, as: plan.encoding)
+            // A conversion into another format is what was asked for, even when it comes out bigger
+            // (WebP → PNG often does). Everything else never hands back a bigger file (Rule 3).
+            let isFormatChange = action == .convert && plan.suffix == nil
+            if !isFormatChange {
+                guard SizeGuard.accepts(inputBytes: inputBytes, outputBytes: data.count) else { throw JobError.alreadySmallest }
+            }
+            return try save(data, showing: image, for: input, plan: plan, inputBytes: inputBytes,
+                            wantsPicture: wantsPicture, note: note)
         }
     }
 

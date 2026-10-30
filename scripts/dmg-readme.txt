@@ -16,8 +16,8 @@ Droptimize (preview)
 Needs macOS 14 (Sonoma) or newer.
 
 To use it: drag an image from Finder onto the bubble, move over a button, and let go.
-  WebP       converts to WebP (the center, Auto, does the same for now)
-  AVIF       converts to AVIF: newer than WebP, usually smaller still
+  Convert    keep holding over it and pick a format: WebP, AVIF, JPG, PNG or HEIC.
+             (Let go on Convert itself, or the center, for WebP.)
   Compress   makes it smaller in the same format (JPEG, PNG, WebP, HEIC, AVIF).
              Keep holding over it and smaller bubbles appear: pick a size
              (100K to 2M), or ... to type your own after you let go.

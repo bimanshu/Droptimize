@@ -4,7 +4,7 @@ import Foundation
 enum Action: String, CaseIterable, Identifiable {
     case auto
     // Images
-    case webp, avif, compress, halfSize, removeBackground
+    case convert, compress, halfSize, removeBackground
     // Video
     case mp4, webm, gif, scale1080p, mute
 
@@ -14,8 +14,7 @@ enum Action: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .auto: return "Auto"
-        case .webp: return "WebP"
-        case .avif: return "AVIF"
+        case .convert: return "Convert"
         case .compress: return "Compress"
         case .halfSize: return "Half size"
         case .removeBackground: return "Remove BG"
@@ -31,8 +30,7 @@ enum Action: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .auto: return "wand.and.stars"
-        case .webp: return "w.circle"
-        case .avif: return "a.circle"
+        case .convert: return "arrow.triangle.2.circlepath"
         case .compress: return "rectangle.compress.vertical"
         case .halfSize: return "arrow.down.right.and.arrow.up.left"
         case .removeBackground: return "scissors"
@@ -48,8 +46,7 @@ enum Action: String, CaseIterable, Identifiable {
     var accessibilityLabel: String {
         switch self {
         case .auto: return "Optimize automatically"
-        case .webp: return "Convert to WebP"
-        case .avif: return "Convert to AVIF"
+        case .convert: return "Convert to another format"
         case .compress: return "Compress, same format"
         case .halfSize: return "Half size"
         case .removeBackground: return "Remove background"
@@ -87,7 +84,7 @@ struct ActionMenu: Equatable {
     }
 
     /// Listed top to bottom as they sit on the arc.
-    static let imageSegments: [Action] = [.webp, .avif, .compress, .halfSize, .removeBackground]
+    static let imageSegments: [Action] = [.convert, .compress, .halfSize, .removeBackground]
     static let videoSegments: [Action] = [.mp4, .webm, .gif, .scale1080p, .mute]
     /// Images and videos together: only what applies to both.
     static let mixedSegments: [Action] = [.compress]

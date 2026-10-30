@@ -18,6 +18,15 @@ enum ImageFormat: String, CaseIterable {
         }
     }
 
+    /// How the format is named in the menu.
+    var displayName: String {
+        switch self {
+        case .jpeg: return "JPG"
+        case .webp: return "WebP"
+        default: return rawValue.uppercased()
+        }
+    }
+
     /// The extension for a new file in this format.
     var fileExtension: String {
         switch self {

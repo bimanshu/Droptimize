@@ -4,7 +4,7 @@ import XCTest
 // Portable: also runs on Linux via scripts/check-linux.sh.
 final class ActionMenuTests: XCTestCase {
     func testImagesGetTheImageMenu() {
-        XCTAssertEqual(ActionMenu(kinds: [.image])?.segments, [.webp, .avif, .compress, .halfSize, .removeBackground])
+        XCTAssertEqual(ActionMenu(kinds: [.image])?.segments, [.convert, .compress, .halfSize, .removeBackground])
     }
 
     func testVideosGetTheVideoMenu() {
@@ -30,7 +30,7 @@ final class ActionMenuTests: XCTestCase {
     func testTargetsMapToActions() {
         let menu = ActionMenu.image
         XCTAssertEqual(menu.action(for: .center), .auto)
-        XCTAssertEqual(menu.action(for: .segment(0)), .webp)
+        XCTAssertEqual(menu.action(for: .segment(0)), .convert)
         XCTAssertNil(menu.action(for: .segment(99)))
     }
 

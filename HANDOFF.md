@@ -13,7 +13,7 @@
 | CI | [Build workflow](https://github.com/bimanshu/Droptimize/actions/workflows/build.yml): green at `ea846a0` (Xcode 16.4, macOS 15 runner): **122/122 tests** (95 of them also on Linux), 0 warnings (warnings fail the build), universal libwebp/libaom/libavif and app, install script tested, preview published. The app is now ~8.5 MB (DMG), mostly libaom. The first deps build after a `build-deps.sh` change takes ~3 minutes in CI; otherwise it's cached |
 | Install / update | One Terminal command: **`curl -fsSL https://github.com/bimanshu/Droptimize/releases/download/preview/install.sh \| bash`** (or the [DMG](https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg)). Both come from the [preview release](https://github.com/bimanshu/Droptimize/releases/tag/preview), which CI replaces on every green push. |
 | Owner | Doesn't build with Xcode. Updates with the one-line command above (asked for this instead of re-downloading DMGs). Not technical about Terminal: give exact click-by-click steps. |
-| Next | **IN PROGRESS: restructure the image menu (owner approved 2026-10-30), see Next steps 1.** Then the owner tries it, then Auto classification |
+| Next | Owner tries the new menu (Convert · Compress · Half size · Remove BG) via the update command → fix what they report → Auto classification (Phase 1 step 2) |
 
 ## ✱ Where things stand
 
@@ -21,15 +21,17 @@
 
 **Phase 1 step 1 (`CORE.md` §11), built:**
 
-- **WebP** (and the center, **Auto**, until classification): libwebp lossy at quality 80 with sharp YUV. For graphics (transparency, or ≤ 4096 colors in a sample) it also tries lossless and keeps the smaller.
+- **WebP** (Convert → WebP, and the center, **Auto**, until classification): libwebp lossy at quality 80 with sharp YUV. For graphics (transparency, or ≤ 4096 colors in a sample) it also tries lossless and keeps the smaller.
 - **Compress** keeps the format. JPEG and HEIC go through ImageIO (JPEG is progressive; jpegli later). PNG goes through our own lossless optimizer, `Image/Encoders/PNG.swift`: palette at 1/2/4/8 bits, grayscale, or RGB when opaque, with adaptive filters and zlib level 9. WebP is re-encoded. TIFF and BMP become PNG. GIF and AVIF say "can't yet".
 - **Half size**: vImage Lanczos on premultiplied pixels, then the same format as Compress.
 - **Normalize** (`Image/Decode.swift`): first frame, EXIF orientation applied, converted to sRGB, metadata dropped, alpha kept.
 - **Output**: a new file next to the original: `photo.webp`, `photo-min.png`, `photo-half.png`, then `-2`, `-3`… Never overwrites (`.withoutOverwriting`). Falls back to Downloads if the folder is read-only. **Never bigger than the input** (≥ 1% saving or "Already as small as it gets.").
 - **Clipboard**: every output as a file URL, plus the first as PNG picture data when there's a single file under 30 MP.
 - **Batches** run in parallel (performance cores, at most 4). Progress counts files; a single file shows a spinner.
-- **AVIF** (added 2026-10-30, owner approved libaom + libavif): libaom 3.15.2 + libavif 1.4.2, 8-bit, tagged sRGB (CICP 1/13/6, full range), 4:4:4 for graphics and 4:2:0 for photos, alpha lossless, no alpha plane when opaque, quality 60 at speed 6 (`EncoderTuning`). The AVIF button converts; Compress and Half size keep AVIF sources as AVIF. Compress-to-size searches at speed 8, then re-encodes the winner at speed 6 and keeps whichever fits. macOS decodes AVIF natively (ImageIO), so libaom's decoder is only used by tests.
+- **AVIF** (Convert → AVIF; added 2026-10-30, owner approved libaom + libavif): libaom 3.15.2 + libavif 1.4.2, 8-bit, tagged sRGB (CICP 1/13/6, full range), 4:4:4 for graphics and 4:2:0 for photos, alpha lossless, no alpha plane when opaque, quality 60 at speed 6 (`EncoderTuning`). The AVIF button converts; Compress and Half size keep AVIF sources as AVIF. Compress-to-size searches at speed 8, then re-encodes the winner at speed 6 and keeps whichever fits. macOS decodes AVIF natively (ImageIO), so libaom's decoder is only used by tests.
 - **Every video action** answers "Video is coming soon."
+
+**Image menu (restructured 2026-10-30, owner approved):** **Convert** → WebP · AVIF · JPG · PNG · HEIC · **Compress** → sizes · **Half size** · **Remove BG** → backgrounds, with **Auto** in the center. One slot is free for later (Resize presets or Crop). Dropping on Convert itself = WebP, like Auto. Converting to another format is **exempt from Rule 3** (the owner agreed: WebP → PNG is often bigger), and Convert to the source's own format counts as a recompress (`-min`, size guard applies). JPG output flattens transparency onto white and says so on the card.
 
 **Option bubbles (the owner's design, 2026-10-30):** hovering a segment that has options fans out a second ring of smaller bubbles beyond it; dropping on the segment itself still does its default.
 
@@ -46,15 +48,6 @@
 **Not verified (needs a person on a Mac):** the feel, including reaching the option bubbles mid-drag; the window behaviour (see *Risks*); typing into the Custom panel while another app is in front; **Remove BG quality on real photos** (CI ran Vision on a synthetic image, which it may not treat as a subject; the tests accept either outcome); how the clipboard pastes into Figma, Slack, Chrome, Notes and Messages (CORE.md §6.6); and real-world savings on a variety of images.
 
 ## ✱ Next steps (in order)
-
-0. **IN PROGRESS: menu restructure (owner approved 2026-10-30).** The image menu becomes: **Convert** → WebP · AVIF · JPG · PNG · HEIC; **Compress** → 100K · 250K · 500K · 1M · 2M · Custom; **Half size**; **Remove BG** → None · White · Black · last color · Custom; center **Auto**. That leaves one free slot for later (Resize presets or Crop). Video and mixed menus are unchanged. Plan:
-   1. `Pipeline/Action.swift`: add `case convert` (title "Convert", SF Symbol `arrow.triangle.2.circlepath`, VoiceOver "Convert to another format") and remove `.webp`/`.avif` as segments: `imageSegments = [.convert, .compress, .halfSize, .removeBackground]`. Simplest is to drop the `.webp`/`.avif` cases and fix every reference.
-   2. `Pipeline/ActionOptions.swift`: `ActionOption.format(ImageFormat)`; `Action.convert.options` = WebP, AVIF, JPG, PNG, HEIC as `.text` labels, titles "To WebP" and so on.
-   3. `Pipeline/ImagePlan.swift`: `.convert` + `.format(f)` → that encoding and extension; suffix `-min` only when it's the source's own format. Dropping on Convert itself (no option) = WebP, like Auto.
-   4. **Rule 3 decision (agreed with the owner):** explicit conversions are exempt from the size guard, like Remove BG (WebP → PNG is often bigger). Auto and Compress keep it. In `ImageOptimizer.process`, skip `SizeGuard` for `.convert`.
-   5. JPG can't hold transparency: flatten onto white (CORE.md §6.2) with `Compositor.cutOut(image, mask: all 1s, background: .white)`, or add `RGBAImage.flattened(onto:)`, and set the note "Transparency filled with white".
-   6. Update tests (`ActionMenuTests`, `ActionOptionTests.testMenuTitlesAndTargets` option counts become `[5, 6, 0, 4]`, `ImagePlanTests`, `PipelineMacTests` WebP/AVIF tests now use `.convert` + `.format`), the DMG read-me, the release notes in the workflow, CORE.md §4.2 menu list, §6.5, Rule 3 note, and the changelog.
-   7. Run `scripts/check-linux.sh`, push, check CI.
 
 1. **Make sure CI is green** on the branch. If it's red, open the run, read the failing step's log and fix it. Use `mcp__github__get_job_logs` with `failed_only: true` if you don't have a browser.
 2. **Owner tries the preview DMG** (the Snapshot link). History: on 2026-10-30 they said they couldn't run it on their Mac (reason never confirmed); they were given step-by-step DMG instructions, saw the Phase 0 build's pretend actions, asked for real functionality, and approved libwebp. Ask what they saw with real files, and fix what they report. Run through the *Manual test checklist* below as far as they're willing; tune `Bubble/Motion.swift` from their feedback.
@@ -80,14 +73,14 @@
 2. Hover: full opacity and a slight grow.
 3. Drag the bubble toward the left: it springs to the left edge. Quit and relaunch: it's still there.
 4. Drag a PNG from Finder over it: the bubble grows and 5 segments fan out with a stagger. Hover each: it highlights, its label shows in the bubble, and there's a haptic tick.
-5. Drop on **WebP**: ripple, spinner, checkmark, and a card with the real saving and a thumbnail. `photo.webp` appears next to the original. Paste in Finder (the file) and in Notes (the picture).
+5. Hover **Convert** and drop on **WebP**: ripple, spinner, checkmark, and a card with the real saving and a thumbnail. `photo.webp` appears next to the original. Paste in Finder (the file) and in Notes (the picture).
 6. **Compress** a screenshot PNG → `-min.png`; a camera JPEG → `-min.jpg`. **Half size** → `-half` at half the width and height.
 7. Compress the `-min.png` again: shake and "Already as small as it gets.", and no new file.
 8. Drag the card into a Finder folder (it copies), and onto a Slack or Chrome upload field. Click the card: Finder reveals the new file.
 9. Drop 10 images at once on Compress: the count goes up, then "10 files" on the card.
 10. Hover **Compress**: six small bubbles fan out. Drop on **500K** with a big photo → `photo-500kb.jpg` under 500 KB. Drop on **…** → a size panel; type 300, KB, Return.
 11. Hover **Remove BG**: None · White · Black · … Drop a portrait on **None** → `-nobg.png` with a transparent background. Drop on **…** → a color panel; try a hex, a swatch and the eyedropper. Next time, that color is its own bubble.
-12. **AVIF** on a photo → `photo.avif`, usually smaller than the WebP. Quick Look shows it. A `.mov`: the video menu, then "Video is coming soon."
+12. **Convert → AVIF** on a photo → `photo.avif`, usually smaller than the WebP. **Convert → JPG** on a transparent PNG → white background and a note. **Convert → PNG** on a WebP → a PNG even if it's bigger. Quick Look shows it. A `.mov`: the video menu, then "Video is coming soon."
 13. Drag a `.txt` over it: "Can't open this file type yet." while over, gone on exit.
 14. While a big batch works: hovering shows ×, and a click cancels.
 15. Type in TextEdit and drop on the bubble mid-sentence: TextEdit keeps focus.
@@ -107,6 +100,7 @@
 - **Auto = WebP** until classification (Phase 1 step 2). Half size uses the suffix **`-half`**.
 - **Option bubbles** (owner's choice): Compress → target file sizes 100 KB · 250 KB · 500 KB · 1 MB · 2 MB · Custom. Background choices live **inside Remove BG** (None · White · Black · last color · Custom hex), not as a separate bubble. Custom values are asked for after the drop. Sizes are decimal (1 KB = 1000 bytes). Hitting a size shrinks the image only as a last resort, and says so.
 - **Remove BG is exempt from Rule 3** (never bigger): it changes content rather than optimizing. Always PNG.
+- **Menu: Convert replaces the separate WebP and AVIF buttons** (owner approved): Convert → WebP · AVIF · JPG · PNG · HEIC. Conversions only into formats web pages and uploads take; no general-purpose conversion (PDF, SVG, RAW, documents). **Conversions to another format are exempt from Rule 3.**
 - Fixed encoder settings in `EncoderTuning` (`Image/RGBAImage.swift`) until auto-tune: WebP q80/method 4, JPEG 0.8, HEIC 0.75.
 - If the original's folder is read-only, results go to **Downloads**.
 - **Swift 5 language mode** for now. Ad-hoc signing; hardened runtime on Release only (Phase 3 switches to Developer ID).

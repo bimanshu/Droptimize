@@ -47,7 +47,7 @@ The tools that inspired this all kill a detour. CleanShot X keeps the screenshot
 
 1. **Never leave the user's context.** No windows to manage in the core flow. Drop → result. Images go to the clipboard; videos appear as a draggable thumbnail on the bubble. Both are also saved next to the original.
 2. **Never touch the original.** Always write a new file. Never overwrite; on a name clash append `-2`, `-3`.
-3. **Never hand back a bigger file.** If the output is larger than the input (or saves less than ~1%, *tune*), keep the original and say "Already as small as it gets."
+3. **Never hand back a bigger file.** If the output is larger than the input (or saves less than ~1%, *tune*), keep the original and say "Already as small as it gets." Exceptions, agreed with the owner: **Convert** into another format, and **Remove BG**. They do what was asked even when the result is bigger.
 4. **Everything on-device.** No network calls, no accounts, no analytics in v1. Works offline, costs nothing per use. Privacy is a selling point.
 5. **The bubble never stutters.** Decoding, encoding and analysis all run off the main thread. The UI reacts to a drag within one frame.
 6. **Quality is measured, not guessed.** "Looks the same" means a perceptual metric score (§6.4, §7.3), not a fixed quality number.
@@ -75,7 +75,7 @@ The tools that inspired this all kill a detour. CleanShot X keeps the screenshot
 - Maximum 6 segments; more becomes unreadable at drag speed. Icons are SF Symbols.
 - **Option bubbles:** some segments have a second ring of smaller bubbles (max 6) that fan out beyond them while hovered. Dropping on the segment itself does its default; dropping on an option picks it. Options are centered on their segment but kept within 85° of straight into the screen. **Compress:** 100 KB · 250 KB · 500 KB · 1 MB · 2 MB · Custom. **Remove BG:** None (transparent) · White · Black · last custom color · Custom. You can't type mid-drag, so **Custom** opens a small panel beside the bubble after the drop (a size in KB/MB, or a hex color with swatches and an eyedropper). It takes the keyboard without activating the app.
 
-Image segments, top to bottom: **WebP · AVIF · Compress · Half size · Remove BG** (center: **Auto**).
+Image segments, top to bottom: **Convert · Compress · Half size · Remove BG** (center: **Auto**), leaving one slot free. Convert's option bubbles: **WebP · AVIF · JPG · PNG · HEIC** (only formats that web pages and uploads take; no general-purpose conversion).
 Video segments (Phase 2): **MP4 · WebM · GIF · 1080p · Mute** (center: **Auto**).
 
 - Mixed drops (images and videos): show only actions that apply to both (Auto, Compress).
@@ -183,7 +183,7 @@ Quality presets (in Settings; calibrate with the §9 benchmark and by eye):
 ### 6.5 Actions
 
 - **Auto (center):** classify the image as photo or graphic/screenshot (unique-colour count, alpha, edge statistics). Photo → lossy WebP, auto-tuned. Graphic → try lossless WebP and PNG (pngquant/oxipng), keep the smaller. WebP is the default because every current browser supports it; a setting lets users prefer AVIF.
-- **WebP / AVIF:** convert, auto-tuned.
+- **Convert → WebP · AVIF · JPG · PNG · HEIC:** convert, auto-tuned (each output is the best of its format, not a bloated one). JPG flattens transparency onto white and says so. Converting to the source's own format is a recompress.
 - **Compress:** keep the same format, auto-tuned (JPEG → jpegli, PNG → pngquant + oxipng, WebP/AVIF → re-encode). **To a target size** (option bubbles): the best quality that fits, found by bisection; only if the lowest quality is still too big, shrink the image step by step and say so. Named `photo-500kb.jpg`.
 - **Half size:** scale to 50% (2x retina export → 1x) with high-quality resampling (vImage), then compress in the same format. A setting allows a custom max width instead.
 - **Remove BG:** Vision's `VNGenerateForegroundInstanceMaskRequest` → `VNInstanceMaskObservation.generateMaskedImage(ofInstances: allInstances, from: handler, croppedToInstancesExtent: false)` → save as PNG (through oxipng) or lossless WebP with alpha. **Background choice** (option bubbles): keep it transparent, or lay the subject over white, black or any hex color (then opaque). Named `-nobg` / `-bg`. Remove BG is exempt from Rule 3: it changes content rather than optimizing, so the PNG may be bigger than the original. On-device, free, offline. Works best on people, products, pets and objects with clear edges; weaker on UI screenshots, low-contrast images and busy scenes. No subject found → "Couldn't find a clear subject." Possible later upgrade: an open-source matting model (such as RMBG) converted to Core ML, only if Vision proves not good enough, and only after checking its license.
@@ -333,6 +333,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-10-30: Menu restructured (owner approved): Convert (→ WebP · AVIF · JPG · PNG · HEIC) replaces the separate WebP and AVIF buttons, freeing a slot. Conversions to another format are exempt from Rule 3. Owner asked "conversions or only optimizations?": decided on conversions only into web/upload formats, always optimized.
 - 2026-10-30: AVIF works: libaom 3.15.2 + libavif 1.4.2 (owner approved), built by `scripts/build-deps.sh` with CMake (libavif pinned by commit). The AVIF button converts; Compress, Half size and compress-to-size handle AVIF sources. Video is the only "coming soon" left.
 - 2026-10-30: Option bubbles (owner's design): hovering Compress fans out target sizes (100 KB–2 MB, Custom); hovering Remove BG fans out backgrounds (None, White, Black, last color, Custom hex). Built Remove BG with Vision (Phase 1 step 4 brought forward) and compress-to-size (quality bisection, resize only as a last resort). Custom values are asked for in a non-activating panel after the drop. Remove BG is exempt from Rule 3. The bubble now keeps ~180 pt from the screen's top and bottom so the outer ring fits.
 - 2026-10-30: One-command install/update for the owner: `curl -fsSL https://github.com/bimanshu/Droptimize/releases/download/preview/install.sh | bash` (`scripts/install.sh`, published with each preview and tested in CI). The app itself still makes no network calls; in-app updates wait for Sparkle (Phase 3).

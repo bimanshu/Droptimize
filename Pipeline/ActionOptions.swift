@@ -2,6 +2,8 @@ import Foundation
 
 /// A choice within an action, picked from the smaller bubbles that fan out around it.
 enum ActionOption: Hashable {
+    /// Convert to this format.
+    case format(ImageFormat)
     /// Compress to at most this many bytes.
     case maxBytes(Int)
     /// Remove BG and put this color behind the subject; nil keeps it transparent.
@@ -42,6 +44,9 @@ struct OptionMemory {
 }
 
 extension Action {
+    /// Convert's formats: what web pages and upload fields take (the owner's choice, 2026-10-30).
+    static let convertFormats: [ImageFormat] = [.webp, .avif, .jpeg, .png, .heic]
+
     /// Compress's target sizes (the owner's choice, 2026-10-30).
     static let targetSizes = [100_000, 250_000, 500_000, 1_000_000, 2_000_000]
 
@@ -49,6 +54,11 @@ extension Action {
     /// `lastColor` is the last custom background, offered again as its own bubble.
     func options(lastColor: RGBColor?) -> [MenuOption] {
         switch self {
+        case .convert:
+            return Self.convertFormats.map { format in
+                MenuOption(option: .format(format), label: .text(format.displayName), title: "To \(format.displayName)",
+                           accessibilityLabel: "Convert to \(format.displayName)")
+            }
         case .compress:
             let sizes = Self.targetSizes.map { bytes in
                 MenuOption(option: .maxBytes(bytes), label: .text(ByteCount.short(bytes)),
