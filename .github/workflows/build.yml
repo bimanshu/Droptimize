@@ -1,7 +1,7 @@
 # Builds the app and runs the unit tests on macOS. This is the real compile check:
 # agents working in Linux containers can't build AppKit/SwiftUI code locally (see HANDOFF.md).
-# Every green push also refreshes the "preview" release with a DMG, so the owner can
-# download the latest build from one fixed link without Xcode.
+# Every green push also refreshes the "preview" release (a DMG, a zip and scripts/install.sh),
+# so the owner can install or update with one Terminal command, no Xcode needed.
 name: Build
 
 on:
@@ -88,17 +88,33 @@ jobs:
           cp scripts/dmg-readme.txt "$stage/READ ME FIRST.txt"
           hdiutil create -volname Droptimize -srcfolder "$stage" -fs HFS+ -format UDZO -ov Droptimize.dmg
           hdiutil verify Droptimize.dmg
-          ls -lh Droptimize.dmg
+          # The zip is what scripts/install.sh downloads.
+          ditto -c -k --keepParent "$app" Droptimize.zip
+          ls -lh Droptimize.dmg Droptimize.zip
 
-      - name: Upload DMG
+      - name: Test the install script
+        # With the system bash (3.2), as on the owner's Mac: a fresh install, then an update over it.
+        run: |
+          apps="$RUNNER_TEMP/Applications"
+          for run in install update; do
+            DROPTIMIZE_ZIP="file://$PWD/Droptimize.zip" DROPTIMIZE_DIR="$apps" DROPTIMIZE_NO_OPEN=1 \
+              /bin/bash < scripts/install.sh
+          done
+          codesign --verify --deep --strict "$apps/Droptimize.app"
+          test -x "$apps/Droptimize.app/Contents/MacOS/Droptimize"
+          test ! -e "$apps/Droptimize.app.new"
+
+      - name: Upload build
         uses: actions/upload-artifact@v4
         with:
-          name: Droptimize-dmg
-          path: Droptimize.dmg
+          name: Droptimize-build
+          path: |
+            Droptimize.dmg
+            Droptimize.zip
           retention-days: 14
 
-  # Replaces the "preview" pre-release with this build. Its download link never changes:
-  # https://github.com/<owner>/<repo>/releases/download/preview/Droptimize.dmg
+  # Replaces the "preview" pre-release with this build. Its links never change:
+  # https://github.com/<owner>/<repo>/releases/download/preview/{Droptimize.dmg,Droptimize.zip,install.sh}
   publish:
     needs: build
     if: github.event_name != 'pull_request'
@@ -113,9 +129,13 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+
       - uses: actions/download-artifact@v4
         with:
-          name: Droptimize-dmg
+          name: Droptimize-build
 
       - name: Release notes
         run: |
@@ -125,7 +145,13 @@ jobs:
           Built from \`${GITHUB_REF_NAME}\` at ${GITHUB_SHA::7}, build ${{ github.run_number }}, $(date -u '+%Y-%m-%d %H:%M UTC').
           Early preview. Working: **WebP**, **Compress** (JPEG, PNG, WebP, HEIC) and **Half size**; the center (Auto) does WebP for now. Results are saved next to the original (never changed) and copied to the clipboard. AVIF, Remove BG and video are coming soon.
 
-          ### Install
+          ### Install or update (one command)
+          Open **Terminal**, paste this and press Return. It downloads the latest build, replaces the old one and opens it:
+          \`\`\`
+          curl -fsSL https://github.com/${GITHUB_REPOSITORY}/releases/download/preview/install.sh | bash
+          \`\`\`
+
+          ### Or install by hand
           1. Download **Droptimize.dmg** below and open it.
           2. Drag **Droptimize** into **Applications**.
           3. The app isn't notarized by Apple yet, so macOS blocks it the first time. Open **Terminal** and run:
@@ -142,9 +168,9 @@ jobs:
       - name: Replace the preview release
         run: |
           gh release delete preview --yes --cleanup-tag || true
-          gh release create preview Droptimize.dmg \
+          gh release create preview Droptimize.dmg Droptimize.zip scripts/install.sh \
             --target "$GITHUB_SHA" \
             --prerelease \
             --title "Droptimize preview" \
             --notes-file notes.md
-          echo "https://github.com/$GH_REPO/releases/download/preview/Droptimize.dmg"
+          echo "curl -fsSL https://github.com/$GH_REPO/releases/download/preview/install.sh | bash"

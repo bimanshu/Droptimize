@@ -11,8 +11,8 @@
 | Branch | `claude/fervent-thompson-2620yn` (the only branch so far; no `main` yet, nothing merged, no PR) |
 | Phase | **1, step 1 done: WebP, Compress and Half size really work.** Phase 0 interaction is built but the feel hasn't been tuned by a person yet. |
 | CI | [Build workflow](https://github.com/bimanshu/Droptimize/actions/workflows/build.yml): green at `9d5d93c` (Xcode 16.4, macOS 15 runner): **80/80 tests**, 0 warnings (warnings fail the build), universal libwebp and app, DMG published |
-| Download | **https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg** (the [preview release](https://github.com/bimanshu/Droptimize/releases/tag/preview); CI replaces it on every green push) |
-| Owner | Doesn't build with Xcode; tries builds from the DMG above. Not technical about Terminal: give exact click-by-click steps. |
+| Install / update | One Terminal command: **`curl -fsSL https://github.com/bimanshu/Droptimize/releases/download/preview/install.sh \| bash`** (or the [DMG](https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg)). Both come from the [preview release](https://github.com/bimanshu/Droptimize/releases/tag/preview), which CI replaces on every green push. |
+| Owner | Doesn't build with Xcode. Updates with the one-line command above (asked for this instead of re-downloading DMGs). Not technical about Terminal: give exact click-by-click steps. |
 | Next | Owner tries the real actions from the DMG → fix what they report → Phase 1 step 2 (AVIF, Auto classification) |
 
 ## ✱ Where things stand
@@ -86,7 +86,7 @@
 - Fixed encoder settings in `EncoderTuning` (`Image/RGBAImage.swift`) until auto-tune: WebP q80/method 4, JPEG 0.8, HEIC 0.75.
 - If the original's folder is read-only, results go to **Downloads**.
 - **Swift 5 language mode** for now. Ad-hoc signing; hardened runtime on Release only (Phase 3 switches to Developer ID).
-- CI runs on GitHub's macOS runners (free: the repo is public) and publishes a DMG to the public `preview` release (the owner approved).
+- CI runs on GitHub's macOS runners (free: the repo is public) and publishes a DMG, a zip and `install.sh` to the public `preview` release (the owner approved). Updates are a Terminal one-liner for now; an in-app "Check for Updates" arrives with Sparkle (Phase 3), since the app itself makes no network calls (Rule 4).
 
 ## ✱ Questions for the owner
 
@@ -113,7 +113,7 @@ xcodegen generate && open Droptimize.xcodeproj
 xcodegen generate && xcodebuild test -project Droptimize.xcodeproj -scheme Droptimize -destination 'platform=macOS'
 ```
 
-**Without Xcode** (how the owner runs it): download the DMG from https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg, open it, and drag Droptimize into Applications. Run `xattr -cr /Applications/Droptimize.app` (it's ad-hoc signed, so Gatekeeper blocks it until Phase 3 notarization), then open it. It needs macOS 14+. There's no window or Dock icon: look for the drop icon in the menu bar and the bubble on the right edge of the screen. The DMG also contains `READ ME FIRST.txt` (from `scripts/dmg-readme.txt`; keep it current when the steps or features change).
+**Without Xcode** (how the owner runs it): in Terminal, run `curl -fsSL https://github.com/bimanshu/Droptimize/releases/download/preview/install.sh | bash`. `scripts/install.sh` checks for macOS 14+, downloads `Droptimize.zip` from the preview release, verifies the signature, quits the running copy, swaps the app in `/Applications` (or `~/Applications` if that isn't writable) and opens it. curl downloads aren't quarantined, so no Gatekeeper step. CI runs it on every build (fresh install, then update) before publishing. The same works for a first install. By hand instead: download the DMG from https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg, open it, and drag Droptimize into Applications. Run `xattr -cr /Applications/Droptimize.app` (it's ad-hoc signed, so Gatekeeper blocks it until Phase 3 notarization), then open it. It needs macOS 14+. There's no window or Dock icon: look for the drop icon in the menu bar and the bubble on the right edge of the screen. The DMG also contains `READ ME FIRST.txt` (from `scripts/dmg-readme.txt`; keep it current when the steps or features change).
 
 **How the preview is published:** the `publish` job in `.github/workflows/build.yml` runs after every green push (not for PRs). It deletes the `preview` pre-release and its tag, then recreates them at the pushed commit with the new DMG, so the download link never changes. It publishes from **any** branch, so the preview is always the most recent green push. Each run's DMG is also kept as the `Droptimize-dmg` artifact for 14 days. Release notes are written inline in the workflow; keep them current too.
 
@@ -162,8 +162,9 @@ It parses every Swift file, builds libwebp for Linux (needs `cc` and zlib header
 | `Modules/module.modulemap` | Lets Swift import libwebp (`CWebP`) and zlib (`CZlib`, where the SDK has no `zlib` module). |
 | `scripts/build-deps.sh` | Builds pinned libwebp into `Vendor/` (universal static lib on macOS, host build on Linux). |
 | `scripts/check-linux.sh` | Parse, build libwebp, and run the portable tests without a Mac. |
+| `scripts/install.sh` | One-command install/update from the preview release (published as a release asset; tested in CI). |
 | `scripts/dmg-readme.txt` | The "READ ME FIRST" note inside the DMG. |
-| `.github/workflows/build.yml` | macOS CI: deps (cached), generate, build, test (warnings fail), universal Release build, DMG; then publishes the DMG to the `preview` release. |
+| `.github/workflows/build.yml` | macOS CI: deps (cached), generate, build, test (warnings fail), universal Release build, DMG and zip, install-script test; then publishes DMG, zip and `install.sh` to the `preview` release. |
 | `Tests/` | XCTest. Portable (also run on Linux): `LayoutTests`, `DockPositionTests`, `SpringTests`, `ActionTests`, `OutputTests`, `EncoderTests`, `Support/TestPNGReader` (test-only PNG reader plus test images). macOS only: `MacTests`, `PipelineMacTests`. |
 
 ## How the bubble works (so you don't have to rediscover it)

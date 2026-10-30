@@ -26,3 +26,7 @@ The first time it saves into Desktop, Documents or Downloads, macOS asks whether
 Droptimize may access that folder. Click Allow. (Each new preview build may ask again.)
 
 Hide or show the bubble with Control-Option-Command-D.
+
+To update later, you don't need this disk image. Paste this into Terminal:
+
+    curl -fsSL https://github.com/bimanshu/Droptimize/releases/download/preview/install.sh | bash
