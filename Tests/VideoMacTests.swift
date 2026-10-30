@@ -35,8 +35,10 @@ final class VideoMacTests: XCTestCase {
         let composition = AVMutableComposition()
         let videoAsset = AVURLAsset(url: silent), audioAsset = AVURLAsset(url: tone)
         let duration = try await videoAsset.load(.duration)
-        let videoTrack = try await XCTUnwrap(videoAsset.loadTracks(withMediaType: .video).first)
-        let audioTrack = try await XCTUnwrap(audioAsset.loadTracks(withMediaType: .audio).first)
+        let videoTracks = try await videoAsset.loadTracks(withMediaType: .video)
+        let audioTracks = try await audioAsset.loadTracks(withMediaType: .audio)
+        let videoTrack = try XCTUnwrap(videoTracks.first)
+        let audioTrack = try XCTUnwrap(audioTracks.first)
         let audioDuration = try await audioAsset.load(.duration)
         try XCTUnwrap(composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid))
             .insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: videoTrack, at: .zero)
@@ -96,7 +98,8 @@ final class VideoMacTests: XCTestCase {
 
     private func info(_ url: URL) async throws -> (width: Int, height: Int, hasAudio: Bool, codec: FourCharCode?, seconds: Double) {
         let asset = AVURLAsset(url: url)
-        let video = try await XCTUnwrap(asset.loadTracks(withMediaType: .video).first)
+        let videos = try await asset.loadTracks(withMediaType: .video)
+        let video = try XCTUnwrap(videos.first)
         let (size, formats) = try await video.load(.naturalSize, .formatDescriptions)
         let audio = try await asset.loadTracks(withMediaType: .audio)
         let duration = try await asset.load(.duration)
