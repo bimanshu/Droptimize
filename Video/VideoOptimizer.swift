@@ -41,7 +41,7 @@ enum VideoOptimizer {
             note = try await makeGIF(asset, source: source, to: temp, progress: progress)
         }
 
-        let outputBytes = (try? temp.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
+        let outputBytes = fileSize(temp) ?? 0
         if let target = plan.targetBytes, outputBytes > target { throw JobError.cantFit(target) }
         if plan.appliesSizeGuard, !SizeGuard.accepts(inputBytes: inputBytes, outputBytes: outputBytes) {
             throw JobError.alreadySmallest
@@ -114,18 +114,44 @@ enum VideoOptimizer {
                 bitrate = min(bitrate, Int(Double(sourceBitrate) * VideoTuning.maxShareOfSource))
             }
         }
+        // Retries fill part of what's left of the ring, so it keeps moving forward.
+        var shown = 0.0
+        func stage(_ share: Double) -> @Sendable (Double) -> Void {
+            let start = shown, span = (1 - shown) * share
+            shown = start + span
+            return { progress(start + span * $0) }
+        }
         try await transcode(asset, source: source, width: size.width, height: size.height, bitrate: bitrate,
-                            codec: codec, to: url, fileType: fileType, progress: progress)
+                            codec: codec, to: url, fileType: fileType,
+                            progress: stage(plan.targetBytes == nil ? 1 : VideoTuning.firstTryShare))
 
-        // Encoders don't hit a bitrate exactly; one more try, scaled down by how far over it came.
-        if let target = plan.targetBytes, let written = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize,
-           written > target {
+        // Encoders don't hit a bitrate exactly, and busy footage (grain, confetti, noise) can come out
+        // far over it whatever it's asked for. Try a lower bitrate, then smaller frames, then give up
+        // (process() says it couldn't fit).
+        guard let target = plan.targetBytes else { return note }
+        var attempt = 1
+        while attempt < VideoTuning.fitAttempts, let written = fileSize(url), written > target {
+            attempt += 1
+            let share = Double(target) / Double(written) * VideoTuning.fitRetryMargin
+            if attempt == 2 {
+                bitrate = max(VideoTuning.minBitrate, Int(Double(bitrate) * share))
+            } else if let side = VideoTuning.shortSide(below: min(size.width, size.height), pixelShare: share) {
+                // The bitrate didn't hold, so take pixels away instead.
+                size = VideoTuning.size(width: source.width, height: source.height, maxShortSide: side)
+                note = "Scaled to \(side)p to fit"
+            } else {
+                break
+            }
             try? FileManager.default.removeItem(at: url)
-            let retry = max(VideoTuning.minBitrate, Int(Double(bitrate) * Double(target) / Double(written) * 0.9))
-            try await transcode(asset, source: source, width: size.width, height: size.height, bitrate: retry,
-                                codec: codec, to: url, fileType: fileType, progress: progress)
+            try await transcode(asset, source: source, width: size.width, height: size.height, bitrate: bitrate,
+                                codec: codec, to: url, fileType: fileType, progress: stage(VideoTuning.retryShare))
         }
         return note
+    }
+
+    /// Read from disk each time: a URL's resource values are cached, and these files are rewritten.
+    private static func fileSize(_ url: URL) -> Int? {
+        (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.intValue
     }
 
     private static func transcode(_ asset: AVAsset, source: VideoSource, width: Int, height: Int, bitrate: Int,

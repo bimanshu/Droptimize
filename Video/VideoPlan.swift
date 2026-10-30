@@ -104,6 +104,14 @@ enum VideoTuning {
     /// Below this, a frame size looks smeared; drop to a smaller standard size instead.
     static let minBitsPerPixelForSize = 0.03
     static let standardShortSides = [1080, 720, 480, 360]
+    /// Compress to a size: encodes in all (the first, a lower bitrate, then smaller frames), and how
+    /// far under the target each retry aims.                                                 (tune)
+    static let fitAttempts = 4
+    static let fitRetryMargin = 0.85
+    /// The share of the progress ring the first encode fills when retries may follow, and each retry
+    /// fills of what's left.
+    static let firstTryShare = 0.8
+    static let retryShare = 0.6
     /// Compress's sizes: common upload limits (Discord, email, Slack…).
     static let targetSizes = [10_000_000, 25_000_000, 50_000_000, 100_000_000]
     static let resizeSides = [1080, 720, 480]
@@ -149,6 +157,13 @@ enum VideoTuning {
             if fits(scaled.width, scaled.height) { return side }
         }
         return standardShortSides.last
+    }
+
+    /// The largest standard short side below `shortSide` whose frame has at most `pixelShare` of
+    /// the pixels, or the smallest when none is small enough; nil when there's nothing smaller.
+    static func shortSide(below shortSide: Int, pixelShare: Double) -> Int? {
+        let smaller = standardShortSides.filter { $0 < shortSide }
+        return smaller.first { pow(Double($0) / Double(shortSide), 2) <= pixelShare } ?? smaller.last
     }
 
     private static func clamp(_ bitrate: Int) -> Int { min(max(bitrate, minBitrate), maxBitrate) }

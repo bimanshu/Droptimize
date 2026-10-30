@@ -77,6 +77,13 @@ final class VideoTuningTests: XCTestCase {
         XCTAssertEqual(VideoTuning.shortSide(for: 100_000, width: 1920, height: 1080, fps: 30), 360)
     }
 
+    func testFittingStepsDownByPixels() {
+        XCTAssertEqual(VideoTuning.shortSide(below: 1080, pixelShare: 0.5), 720, "720p has 44% of 1080p's pixels")
+        XCTAssertEqual(VideoTuning.shortSide(below: 720, pixelShare: 0.35), 360, "480p (44%) is still too many")
+        XCTAssertEqual(VideoTuning.shortSide(below: 720, pixelShare: 0.01), 360, "the smallest when none is enough")
+        XCTAssertNil(VideoTuning.shortSide(below: 360, pixelShare: 0.5), "nothing smaller than 360p")
+    }
+
     func testVideoOptionBubbles() {
         XCTAssertEqual(Action.convert.options(for: .video, lastColor: nil).map(\.option),
                        [.videoFormat(.mp4), .videoFormat(.hevc), .videoFormat(.gif)])
