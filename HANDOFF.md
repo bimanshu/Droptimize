@@ -9,91 +9,91 @@
 |---|---|
 | Last updated | 2026-10-30 |
 | Branch | `claude/fervent-thompson-2620yn` (the only branch so far; no `main` yet, nothing merged, no PR) |
-| Phase | **0: code complete, compiles and passes tests in CI, not yet run by a person on a Mac** |
-| CI | [Build workflow](https://github.com/bimanshu/Droptimize/actions/workflows/build.yml): green on this branch (Xcode 16.4, macOS 15 runner). Compiler warnings fail the build. |
+| Phase | **1, step 1 done: WebP, Compress and Half size really work.** Phase 0 interaction is built but the feel hasn't been tuned by a person yet. |
+| CI | [Build workflow](https://github.com/bimanshu/Droptimize/actions/workflows/build.yml): green at `9d5d93c` (Xcode 16.4, macOS 15 runner): **80/80 tests**, 0 warnings (warnings fail the build), universal libwebp and app, DMG published |
 | Download | **https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg** (the [preview release](https://github.com/bimanshu/Droptimize/releases/tag/preview); CI replaces it on every green push) |
-| Next | Get Phase 0 running on the owner's Mac (they couldn't run it yet; see step 2), tune the feel, then start Phase 1 |
+| Owner | Doesn't build with Xcode; tries builds from the DMG above. Not technical about Terminal: give exact click-by-click steps. |
+| Next | Owner tries the real actions from the DMG → fix what they report → Phase 1 step 2 (AVIF, Auto classification) |
 
 ## ✱ Where things stand
 
-**Done (Phase 0, `CORE.md` §11):**
+**Phase 0 (interaction), built:** menu bar app with Show/Hide (⌃⌥⌘D), Recent and Quit; a non-activating floating bubble on every Space; drag to move, springs to the nearest left/right edge and remembers it per display; a file drag fans out the radial menu (inward arc, stagger, haptics, label in the bubble); the done card can be dragged into any app or clicked to reveal in Finder; errors shake and show one line; Reduce Motion fades only; VoiceOver labels everywhere.
 
-- Menu bar app (no Dock icon) with a status item: Show/Hide Bubble, Recent, Settings (disabled until Phase 1), Quit.
-- Global show/hide shortcut **⌃⌥⌘D** (Carbon hot key, no permission needed).
-- Floating bubble in a non-activating `NSPanel`: on every Space and over full-screen apps, never takes focus.
-- Drag the bubble to move it. It springs (custom spring, display-synced) to the nearest **left or right** edge and remembers its place per display.
-- A file drag over the bubble grows the panel, and segments fan out on an arc facing into the screen with a stagger. Hovering a segment highlights it, shows its label inside the bubble and plays a haptic tick. Drop on the center = Auto. Drag out = collapse.
-- Image, video and mixed menus as in `CORE.md` §4.2. Unsupported files show "Can't open this file type yet." while over the bubble.
-- Drop gives a ripple, then a **fake** ~1s job (progress ring, batch count "3/12", hover shows ×, click cancels), then the done state: a checkmark plus a card with a thumbnail and "−NN%". Drag the card into any app, or click it to reveal in Finder. The card stays while hovered and leaves after ~4s.
-- Error state: shake plus a one-line pill. **Option-drop simulates "Already as small as it gets."** (a Phase 0 testing aid; remove in Phase 1).
-- Reduce Motion: fades only (no scale, fan-out, stagger, ripple or shake). VoiceOver labels on the bubble, segments and card. Light/dark mode via system materials.
-- Unit tests: radial layout and hit-testing, panel sizes, dock position and persistence, spring, action menus, media type detection, SF Symbols exist, saving text.
+**Phase 1 step 1 (`CORE.md` §11), built:**
+
+- **WebP** (and the center, **Auto**, until classification): libwebp lossy at quality 80 with sharp YUV. For graphics (transparency, or ≤ 4096 colors in a sample) it also tries lossless and keeps the smaller.
+- **Compress** keeps the format. JPEG and HEIC go through ImageIO (JPEG is progressive; jpegli later). PNG goes through our own lossless optimizer, `Image/Encoders/PNG.swift`: palette at 1/2/4/8 bits, grayscale, or RGB when opaque, with adaptive filters and zlib level 9. WebP is re-encoded. TIFF and BMP become PNG. GIF and AVIF say "can't yet".
+- **Half size**: vImage Lanczos on premultiplied pixels, then the same format as Compress.
+- **Normalize** (`Image/Decode.swift`): first frame, EXIF orientation applied, converted to sRGB, metadata dropped, alpha kept.
+- **Output**: a new file next to the original: `photo.webp`, `photo-min.png`, `photo-half.png`, then `-2`, `-3`… Never overwrites (`.withoutOverwriting`). Falls back to Downloads if the folder is read-only. **Never bigger than the input** (≥ 1% saving or "Already as small as it gets.").
+- **Clipboard**: every output as a file URL, plus the first as PNG picture data when there's a single file under 30 MP.
+- **Batches** run in parallel (performance cores, at most 4). Progress counts files; a single file shows a spinner.
+- **AVIF, Remove BG and every video action** answer "… is coming soon."
 
 **Verified:**
 
-- `scripts/check-linux.sh` passes (every file parses, 32 portable tests pass).
-- CI on macOS (Xcode 16.4): the app compiles, **35/35 tests pass**, the Release build is universal (`x86_64 arm64`), and it's uploaded as the `Droptimize-app` artifact. Zero warnings since the thumbnail `Sendable` fix (check the latest run; if it's red, fixing it is step 1).
+- `scripts/check-linux.sh`: every file parses; **62 portable tests pass on Linux**, including exact PNG round trips (checked by a test-only PNG reader that verifies CRCs and undoes filters itself), exact lossless WebP, lossy WebP closeness, alpha kept, naming, size guard, writer, plans.
+- CI on macOS: see the Snapshot. The macOS tests (`Tests/PipelineMacTests.swift`) cover EXIF rotation, P3→sRGB conversion, transparency, half size, ImageIO reading our PNG/WebP exactly, real files end to end, Rule 2 (original untouched), Rule 3 (nothing written when it can't get smaller), clashes, and batch plus clipboard.
 
-**Not verified (needs a person on a Mac):** everything about the feel and the window behaviour. See *Risks* below.
+**Not verified (needs a person on a Mac):** the feel, the window behaviour (see *Risks*), how the clipboard pastes into Figma, Slack, Chrome, Notes and Messages (CORE.md §6.6), and real-world savings on a variety of images.
 
 ## ✱ Next steps (in order)
 
 1. **Make sure CI is green** on the branch. If it's red, open the run, read the failing step's log and fix it. Use `mcp__github__get_job_logs` with `failed_only: true` if you don't have a browser.
-2. **Run Phase 0 on a Mac and tune it** (owner, or an agent on a Mac). *2026-10-30: the owner said they can't run it on their Mac; the reason isn't known yet.* They were pointed to the prebuilt app from CI (no Xcode needed; see "How to build, run and test") and asked for the exact error and their macOS version. They asked for a DMG, so CI now publishes one to the `preview` release (link in the Snapshot). Likely causes: no Xcode/Homebrew; Gatekeeper blocking the unsigned app (fix: `xattr -cr`); macOS older than 14 (the app requires Sonoma); or the app is running but looks like nothing happened, because it has no window or Dock icon, only a menu bar icon and the bubble on the right edge. Waiting on their report from the DMG. Work through the *Manual test checklist* below and adjust `Bubble/Motion.swift` by feel. Phase 0 is done when it feels right and never steals focus. Record the tuned values and any changes in `CORE.md` §14.
-3. **Owner decisions needed before Phase 1 goes far** (see *Questions for the owner*): free vs paid (decides pngquant), and how we bundle encoders.
-4. **Phase 1, step 1** (`CORE.md` §11), suggested order:
-   1. `Pipeline/Output.swift`: output naming (`photo.webp`; same format → `photo-min.png`; clash → `photo-min-2.png`), the size guard (Rule 3), saving next to the original, and the clipboard (file URL plus PNG/TIFF image representation). Unit-test the naming and the size guard.
-   2. `Pipeline/JobQueue.swift`: an actor with concurrency limits and cancellation that replaces the direct `Task` in `BubbleController.start`. Let new drops queue instead of being ignored while a job runs.
-   3. `Image/Decode.swift` and `Image/Normalize.swift`: ImageIO decode, EXIF orientation applied, sRGB, metadata stripped, alpha kept. Add tests for each.
-   4. Encoders behind one `ImageEncoder` protocol. Begin with ImageIO for JPEG/PNG to get the whole flow working end to end, then add `scripts/build-deps.sh` and `Vendor/` for libwebp and jpegli (`CORE.md` §8). ImageIO can't write WebP, so WebP needs libwebp.
-   5. Replace `FakeJobRunner` with the real image runner, and remove the Option-drop failure.
+2. **Owner tries the preview DMG** (the Snapshot link). History: on 2026-10-30 they said they couldn't run it on their Mac (reason never confirmed); they were given step-by-step DMG instructions, saw the Phase 0 build's pretend actions, asked for real functionality, and approved libwebp. Ask what they saw with real files, and fix what they report. Run through the *Manual test checklist* below as far as they're willing; tune `Bubble/Motion.swift` from their feedback.
+3. **Phase 1 step 2** (`CORE.md` §11): **AVIF** (libavif + libaom, BSD-2 + AOM patent license; state the license and ask the owner before adding it, per Rule 7), the **Auto classification** (photo → lossy WebP; graphic → lossless WebP vs PNG, smaller wins; replace `RGBAImage.looksLikeGraphic`), and the fuller PNG pipeline once **free vs paid** is decided (pngquant is GPL).
+4. **JobQueue** (`CORE.md` §5): drops while a job runs are still ignored (`BubbleController.dragEntered` returns false while working). Make new drops queue, and move cancellation into the queue.
+5. Phase 1 step 3: SSIMULACRA 2 auto-tune (replaces the fixed values in `EncoderTuning`). Step 4: Remove BG with Vision.
+6. Smaller items: accept file promises (`NSFilePromiseReceiver`) so drags from Photos, Safari and Mail work; post a notification for jobs over ~10s; a Settings window (`CORE.md` §10).
 
 ## ✱ Risks to check first on a real Mac
 
-These are assumptions the code relies on that couldn't be tested without a Mac:
-
-1. **Drags between segments.** Transparent pixels let clicks and drags fall through to the window below, so the open menu draws a near-invisible disc (`Motion.hitCatchOpacity` = 0.01) to keep catching the drag. If the menu collapses when the pointer crosses a gap, raise that value.
-2. **Growing the panel mid-drag.** The panel is resized inside `draggingEntered`. If hover or the drop misbehaves right after the menu opens, check `draggingUpdated` keeps arriving after the resize.
+1. **Drags between segments.** Transparent pixels let drags fall through to the window below, so the open menu draws a near-invisible disc (`Motion.hitCatchOpacity` = 0.01). If the menu collapses when crossing a gap, raise it.
+2. **Growing the panel mid-drag.** The panel is resized inside `draggingEntered`. If hover or the drop misbehaves right after the menu opens, check `draggingUpdated` keeps arriving.
 3. **Hover on a non-key panel.** This relies on the `.activeAlways` tracking area in `BubbleHostView`.
-4. **File promises aren't handled.** Only file URLs are read. Drags from Photos, Safari images or Mail attachments won't open the menu yet. Add `NSFilePromiseReceiver` in Phase 1.
-5. **Fake outputs are the originals.** In Phase 0, dragging the card out copies the original file. Nothing is ever written or moved: the drag source only allows Copy, and only outside the app.
-6. Haptics only fire on Force Touch trackpads.
+4. **Folder permission prompts.** Saving next to a file in Desktop, Documents or Downloads makes macOS ask for access to that folder once. With ad-hoc signing, every new build has a new identity, so it may ask again after each DMG update. Developer ID signing (Phase 3) fixes that.
+5. **JPEG and HEIC through ImageIO** embed an sRGB ICC profile (~3 KB), which matters on small JPEGs. jpegli replaces this.
+6. File promises aren't handled yet (see step 6). Haptics only fire on Force Touch trackpads.
 
-## Manual test checklist (Phase 0)
+## Manual test checklist
 
 1. Launch: no Dock icon, a drop icon in the menu bar, and the bubble on the right edge, vertically centered, at about 60% opacity.
 2. Hover: full opacity and a slight grow.
 3. Drag the bubble toward the left: it springs to the left edge. Quit and relaunch: it's still there.
-4. Drag a PNG from Finder over it: the bubble grows and 5 segments fan out with a stagger. Hover each one: it highlights, its label shows in the bubble, and there's a haptic tick.
-5. Drop on a segment: ripple, ~1s progress ring, checkmark, and a card with "−NN%" and a thumbnail. The card stays while hovered and leaves about 4s after.
-6. Drag the card into a Finder folder: it copies. Drop it on a Slack or Chrome upload field. Click the card: Finder reveals the file.
-7. Option-drop: shake and "Already as small as it gets."
-8. Drag a `.txt` over it: "Can't open this file type yet." while over, gone on exit.
-9. Drag a `.mov`: the video menu. Drag images and a video together: only Compress around Auto.
-10. During the fake job: hovering shows ×, and a click cancels.
-11. Type in TextEdit and drop on the bubble mid-sentence: TextEdit keeps focus and typing continues.
-12. Switch Spaces and enter a full-screen app: the bubble is still there.
-13. ⌃⌥⌘D and the menu item both hide and show the bubble.
-14. Turn on Reduce Motion (System Settings → Accessibility → Display): fades only.
-15. Check light and dark mode.
+4. Drag a PNG from Finder over it: the bubble grows and 5 segments fan out with a stagger. Hover each: it highlights, its label shows in the bubble, and there's a haptic tick.
+5. Drop on **WebP**: ripple, spinner, checkmark, and a card with the real saving and a thumbnail. `photo.webp` appears next to the original. Paste in Finder (the file) and in Notes (the picture).
+6. **Compress** a screenshot PNG → `-min.png`; a camera JPEG → `-min.jpg`. **Half size** → `-half` at half the width and height.
+7. Compress the `-min.png` again: shake and "Already as small as it gets.", and no new file.
+8. Drag the card into a Finder folder (it copies), and onto a Slack or Chrome upload field. Click the card: Finder reveals the new file.
+9. Drop 10 images at once on Compress: the count goes up, then "10 files" on the card.
+10. AVIF and Remove BG: "… is coming soon." A `.mov`: the video menu, then "Video is coming soon."
+11. Drag a `.txt` over it: "Can't open this file type yet." while over, gone on exit.
+12. While a big batch works: hovering shows ×, and a click cancels.
+13. Type in TextEdit and drop on the bubble mid-sentence: TextEdit keeps focus.
+14. Switch Spaces and enter a full-screen app: the bubble is still there. ⌃⌥⌘D hides and shows it.
+15. Turn on Reduce Motion (System Settings → Accessibility → Display): fades only. Check light and dark mode.
 16. With two displays: move the bubble to the second one, relaunch, and it's still there.
 
 ## ✱ Decisions made so far (also in `CORE.md` §14)
 
 - The bubble docks to the **left or right** edge only. The top has the menu bar and the bottom usually the Dock.
-- The menu is a **160° arc facing into the screen**, segments ordered top to bottom, instead of a full ring. A docked bubble would put half a ring off-screen. The ring grows when there are 6 segments so neighbours never touch.
-- The hovered action's **label shows inside the bubble**, because the drag image under the pointer covers the segment itself.
-- Segments are picked **by angle** once outside the center (pie-menu style), which is forgiving at drag speed.
-- Results and messages appear as a card or pill **beside the bubble**, on the side facing into the screen.
-- While a job runs, new drags are ignored until the JobQueue exists (Phase 1).
-- **Swift 5 language mode** for now; move to Swift 6 strict concurrency later. Ad-hoc signing; hardened runtime on Release only (Phase 3 switches to Developer ID).
-- CI runs on GitHub's macOS runners, which are free because the repo is public.
+- The menu is a **160° arc facing into the screen**, segments top to bottom, instead of a full ring. The ring grows for 6 segments so neighbours never touch.
+- The hovered action's **label shows inside the bubble**, because the drag image covers the segment. Segments are picked **by angle** outside the center.
+- Results and messages appear **beside the bubble**, on the side facing into the screen.
+- **libwebp 1.6.0** (BSD-3), approved by the owner. It's built from the pinned, SHA-256-checked release by `scripts/build-deps.sh`, not committed (`Vendor/` is generated).
+- PNG Compress uses **our own lossless optimizer** with the system zlib, so it's license-free while free vs paid is open. JPEG and HEIC use **ImageIO** until jpegli.
+- **Auto = WebP** until classification (Phase 1 step 2). Half size uses the suffix **`-half`**.
+- Fixed encoder settings in `EncoderTuning` (`Image/RGBAImage.swift`) until auto-tune: WebP q80/method 4, JPEG 0.8, HEIC 0.75.
+- If the original's folder is read-only, results go to **Downloads**.
+- **Swift 5 language mode** for now. Ad-hoc signing; hardened runtime on Release only (Phase 3 switches to Developer ID).
+- CI runs on GitHub's macOS runners (free: the repo is public) and publishes a DMG to the public `preview` release (the owner approved).
 
 ## ✱ Questions for the owner
 
-1. Is the label inside the bubble right, or would you rather see it next to the hovered segment?
-2. Is ⌃⌥⌘D OK as the show/hide shortcut?
-3. Still open from `CORE.md` §13: free/open-source or paid? This decides pngquant (GPL), x264/x265 and gifski, and it's needed early in Phase 1 for the PNG pipeline.
+1. **Free/open-source or paid?** ("Decide later" for now.) It decides pngquant (better PNG compression), x264/x265 and gifski.
+2. Is the label inside the bubble right, or would you rather see it next to the hovered segment?
+3. Is ⌃⌥⌘D OK as the show/hide shortcut?
+4. AVIF next needs libavif + libaom (BSD-2, plus AOM's royalty-free patent license; fine in a paid app). OK to add?
 
 ## How to build, run and test
 
@@ -107,29 +107,29 @@ brew install xcodegen
 xcodegen generate && open Droptimize.xcodeproj
 ```
 
-Then Run (⌘R) or Test (⌘U). From the command line:
+`xcodegen generate` first runs `scripts/build-deps.sh`, which downloads and builds libwebp into `Vendor/` (about a minute the first time, then a no-op). Then Run (⌘R) or Test (⌘U). From the command line:
 
 ```bash
 xcodegen generate && xcodebuild test -project Droptimize.xcodeproj -scheme Droptimize -destination 'platform=macOS'
 ```
 
-**Without Xcode** (how the owner runs it): download the DMG from https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg, open it, and drag Droptimize into Applications. Run `xattr -cr /Applications/Droptimize.app` (it's ad-hoc signed, so Gatekeeper blocks it until Phase 3 notarization), then open it. It needs macOS 14+. There's no window or Dock icon: look for the drop icon in the menu bar and the bubble on the right edge of the screen. The DMG also contains `READ ME FIRST.txt` (from `scripts/dmg-readme.txt`; keep it current when the try-it steps change).
+**Without Xcode** (how the owner runs it): download the DMG from https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg, open it, and drag Droptimize into Applications. Run `xattr -cr /Applications/Droptimize.app` (it's ad-hoc signed, so Gatekeeper blocks it until Phase 3 notarization), then open it. It needs macOS 14+. There's no window or Dock icon: look for the drop icon in the menu bar and the bubble on the right edge of the screen. The DMG also contains `READ ME FIRST.txt` (from `scripts/dmg-readme.txt`; keep it current when the steps or features change).
 
-**How the preview is published:** the `publish` job in `.github/workflows/build.yml` runs after every green push (not for PRs). It deletes the `preview` pre-release and its tag, then recreates them at the pushed commit with the new DMG, so the download link never changes. It publishes from **any** branch, so the preview is always the most recent green push. Each run's DMG is also kept as the `Droptimize-dmg` artifact for 14 days.
+**How the preview is published:** the `publish` job in `.github/workflows/build.yml` runs after every green push (not for PRs). It deletes the `preview` pre-release and its tag, then recreates them at the pushed commit with the new DMG, so the download link never changes. It publishes from **any** branch, so the preview is always the most recent green push. Each run's DMG is also kept as the `Droptimize-dmg` artifact for 14 days. Release notes are written inline in the workflow; keep them current too.
 
-**Checking code without a Mac** (Linux containers, like the one used to write Phase 0): AppKit and SwiftUI can't compile on Linux. Download a Swift toolchain (about 900 MB; Swift 6.1.2 for Ubuntu 24.04 is at `https://download.swift.org/swift-6.1.2-release/ubuntu2404/swift-6.1.2-RELEASE/swift-6.1.2-RELEASE-ubuntu24.04.tar.gz`), extract it, put its `usr/bin` on `PATH`, then run:
+**Checking code without a Mac** (Linux containers, like the one used so far): AppKit and SwiftUI can't compile on Linux. Download a Swift toolchain (about 900 MB; Swift 6.1.2 for Ubuntu 24.04 is at `https://download.swift.org/swift-6.1.2-release/ubuntu2404/swift-6.1.2-RELEASE/swift-6.1.2-RELEASE-ubuntu24.04.tar.gz`), extract it, put its `usr/bin` on `PATH`, then run:
 
 ```bash
 ./scripts/check-linux.sh
 ```
 
-It parses every Swift file and runs the portable tests. When you add Foundation-only code with tests, add it to the lists at the top of the script. Then push and read CI for the real compile.
+It parses every Swift file, builds libwebp for Linux (needs `cc` and zlib headers, both present in the usual containers), and runs the portable tests, including the real encoders. When you add Foundation-only code with tests, add it to the lists at the top of the script. Then push and read CI for the real compile.
 
 ## Map of the code
 
 | File | What it does |
 |---|---|
-| `project.yml` | XcodeGen spec (app and test targets, macOS 14, LSUIElement). The `.xcodeproj` is generated and git-ignored. |
+| `project.yml` | XcodeGen spec (app and test targets, macOS 14, LSUIElement, C module paths, runs `build-deps.sh` first). The `.xcodeproj` is generated and git-ignored. |
 | `App/DroptimizeApp.swift` | `@main`: starts `NSApplication` with the delegate. |
 | `App/AppDelegate.swift` | Creates the bubble, menu bar and hot key (skipped under unit tests). |
 | `App/MenuBar.swift` | Status item and menu, Recent list, the shortcut constants. |
@@ -143,17 +143,28 @@ It parses every Swift file and runs the portable tests. When you add Foundation-
 | `Bubble/BubbleHostView.swift` | The panel's content view: **all events** (drag destination, drag source for the card, hover, click, move). |
 | `Bubble/BubbleController.swift` | The state machine (idle → menu → working → done or message), panel sizing, position, jobs, dismiss timers. |
 | `Bubble/BubbleModel.swift` | `ObservableObject` the views draw from, plus `DoneInfo` and `Ripple`. |
-| `Bubble/BubbleView.swift` | SwiftUI drawing: bubble, glyphs, progress ring, card, message pill, ripple, shake. |
+| `Bubble/BubbleView.swift` | SwiftUI drawing: bubble, glyphs, progress ring and spinner, card, message pill, ripple, shake. |
 | `Bubble/RadialMenu.swift` | SwiftUI segments with fan-out and stagger. |
 | `Bubble/Thumbnails.swift` | QuickLook thumbnails for the card. |
+| `Image/RGBAImage.swift` | Portable pixel buffer (sRGB, straight alpha) with opacity and color-count checks; `EncoderTuning` (all encoder settings). |
+| `Image/ImageFormat.swift` | Portable list of readable formats and their extensions. |
+| `Image/Decode.swift` | macOS: ImageIO decode, orientation, sRGB, vImage resize, unpremultiply; `ImageFormat(typeIdentifier:)`; `RGBAImage.makeCGImage()`. |
+| `Image/Encoders/WebP.swift` | Portable: libwebp lossy and lossless. |
+| `Image/Encoders/PNG.swift` | Portable: our lossless PNG optimizer (zlib). |
+| `Image/Encoders/ImageIOEncoder.swift` | macOS: JPEG, HEIC and plain PNG via ImageIO. |
 | `Pipeline/Action.swift` | `Action` (titles, SF Symbols, VoiceOver labels), `MediaKind`, `ActionMenu`. |
 | `Pipeline/MediaKind+Files.swift` | Image/video detection from a URL via UTType. |
-| `Pipeline/Job.swift` | `Job`, `JobProgress`, `JobResult`, `JobError` (the user-facing lines), and the `JobRunner` protocol. |
-| `Pipeline/FakeJobRunner.swift` | Phase 0 stand-in. Delete in Phase 1. |
-| `Tests/` | XCTest. `LayoutTests`, `DockPositionTests`, `SpringTests` and `ActionTests` are portable (they also run on Linux). `MacTests` needs AppKit. |
-| `scripts/check-linux.sh` | Parse and portable tests without a Mac. |
-| `.github/workflows/build.yml` | macOS CI: generate, build, test (warnings fail), universal Release build, DMG; then publishes the DMG to the `preview` release. |
+| `Pipeline/Job.swift` | `Job`, `JobProgress`, `JobResult`, `JobError` (every user-facing error line), and the `JobRunner` protocol. |
+| `Pipeline/ImagePlan.swift` | Portable: action + source format → encoder, extension, suffix, scale; "coming soon" errors. |
+| `Pipeline/Output.swift` | Portable: `OutputNaming`, `SizeGuard` (Rule 3), `OutputWriter` (never overwrites; Downloads fallback). |
+| `Pipeline/ImageJobRunner.swift` | macOS: `ImageOptimizer` (one file, start to finish) and `ImageJobRunner` (parallel batches, clipboard). |
+| `Pipeline/Clipboard.swift` | macOS: file URLs plus a PNG picture on the pasteboard. |
+| `Modules/module.modulemap` | Lets Swift import libwebp (`CWebP`) and zlib (`CZlib`, where the SDK has no `zlib` module). |
+| `scripts/build-deps.sh` | Builds pinned libwebp into `Vendor/` (universal static lib on macOS, host build on Linux). |
+| `scripts/check-linux.sh` | Parse, build libwebp, and run the portable tests without a Mac. |
 | `scripts/dmg-readme.txt` | The "READ ME FIRST" note inside the DMG. |
+| `.github/workflows/build.yml` | macOS CI: deps (cached), generate, build, test (warnings fail), universal Release build, DMG; then publishes the DMG to the `preview` release. |
+| `Tests/` | XCTest. Portable (also run on Linux): `LayoutTests`, `DockPositionTests`, `SpringTests`, `ActionTests`, `OutputTests`, `EncoderTests`, `Support/TestPNGReader` (test-only PNG reader plus test images). macOS only: `MacTests`, `PipelineMacTests`. |
 
 ## How the bubble works (so you don't have to rediscover it)
 
@@ -162,3 +173,7 @@ It parses every Swift file and runs the portable tests. When you add Foundation-
 - **Coordinates.** The controller works in screen coordinates (`center` is the bubble's center on screen) and reads the pointer with `NSEvent.mouseLocation`. Geometry offsets use y-up; SwiftUI offsets negate `dy`.
 - **Phases.** `BubbleModel.Phase` decides the panel content: `.idle` and `.working` → bubble only, `.menu` → arc, `.done` and `.message` → accessory beside the bubble.
 - **Drag in vs drag out.** The host view ignores drags it started itself (`isOwnDrag`), and as a drag source it only allows `.copy` outside the app.
+
+## How an image is processed
+
+`BubbleController.drop` → `ImageJobRunner.run` (parallel, off the main thread) → per file `ImageOptimizer.process`: `ImagePlan.scale(for:)` (fails fast for unbuilt actions) → `ImageDecoder.decode` (orientation, sRGB, optional half size) → `ImagePlan.make` (encoder, extension, suffix) → encode → `SizeGuard` → `OutputWriter` → back on the main actor: `Clipboard.put`, then the done card with a QuickLook thumbnail of the first output.

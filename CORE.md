@@ -23,8 +23,8 @@ Working name: **Droptimize** (also considered: Blip, Ripple, Halo, PixDrop). If 
 
 | Area | State | Notes |
 |---|---|---|
-| Phase 0: app shell, bubble, radial menu (dummy actions) | Code complete; needs hands-on tuning on a Mac | Builds and passes tests in CI; DMG on the `preview` release. Feel and window behaviour not yet tried by a person; see HANDOFF.md |
-| Phase 1: image pipeline | Not started | |
+| Phase 0: app shell, bubble, radial menu (dummy actions) | Code complete; needs hands-on tuning on a Mac | Builds and passes tests in CI; DMG on the `preview` release. Feel not yet tuned by a person; see HANDOFF.md |
+| Phase 1: image pipeline | Step 1 done (WebP, Compress, Half size, naming, size guard, clipboard) | libwebp; own lossless PNG optimizer; ImageIO for JPEG/HEIC until jpegli. Steps 2–4 next (AVIF + Auto, auto-tune, Remove BG) |
 | Phase 1.5: benchmark, polish, launch clip | Not started | |
 | Phase 2: video pipeline | Not started | |
 | Phase 3: signing, notarization, distribution | Not started | |
@@ -155,10 +155,10 @@ Use the same open-source engines the best tools use. Quality comes from them plu
 
 | Format | Engine | Notes |
 |---|---|---|
-| JPEG | **jpegli** (from libjxl), fallback MozJPEG | Progressive; 4:2:0 chroma for photos, 4:4:4 for graphics and text |
+| JPEG | **jpegli** (from libjxl), fallback MozJPEG | Progressive; 4:2:0 chroma for photos, 4:4:4 for graphics and text. **Now:** ImageIO (progressive, quality 0.8) as a stand-in |
 | WebP | **libwebp** | Lossy for photos; for graphics try lossless and lossy, keep the smaller |
 | AVIF | **libavif + libaom** | 8-bit for compatibility; encoder speed ~6 for interactive use (*tune*); 4:4:4 for graphics |
-| PNG | **pngquant** (lossy palette) → **oxipng** (lossless) | Skip pngquant when it can't hit the quality target; license note in §8 |
+| PNG | **pngquant** (lossy palette) → **oxipng** (lossless) | Skip pngquant when it can't hit the quality target; license note in §8. **Now:** our own lossless optimizer (`Image/Encoders/PNG.swift`: palette/gray/RGB reduction, adaptive filters, zlib 9) until free vs paid is decided |
 
 ### 6.4 Auto-tune (how we beat fixed presets)
 
@@ -239,7 +239,7 @@ Decide **free/open-source vs paid closed-source** early: it decides which librar
 |---|---|---|---|
 | jpegli / libjxl | JPEG encode, SSIMULACRA 2 | BSD-3 | Yes |
 | MozJPEG | JPEG fallback | BSD-style (IJG) | Yes |
-| libwebp | WebP | BSD-3 | Yes |
+| libwebp | WebP | BSD-3 | Yes. **In use** (1.6.0, approved 2026-10-30) |
 | libavif + libaom | AVIF | BSD-2 (+ AOM patent license) | Yes |
 | oxipng | Lossless PNG | MIT | Yes |
 | pngquant / libimagequant | Lossy PNG | GPLv3 or commercial | **Only with a commercial license** |
@@ -251,12 +251,13 @@ Decide **free/open-source vs paid closed-source** early: it decides which librar
 | gifski | High-quality GIF | AGPL or commercial | **Only with a commercial license** |
 | Sparkle | Auto-updates (Phase 3) | MIT | Yes |
 | Apple frameworks (ImageIO, Vision, AVFoundation, VideoToolbox, vImage) | Built in | Apple | Yes |
+| zlib (system) | PNG compression | zlib license | Yes (ships with macOS) |
 
 **Paid-app-safe default:** Apple encoders for video, oxipng-only PNG (or a permissively licensed quantizer), FFmpeg built as LGPL.
 
 ### Building native dependencies
 
-- `scripts/build-deps.sh` builds pinned versions as static libraries for arm64 and x86_64, merges them with `lipo`, and puts them in `Vendor/`. It must work from a clean machine.
+- `scripts/build-deps.sh` builds pinned versions (checked by SHA-256) as static libraries for arm64 and x86_64, merges them with `lipo`, and puts them in `Vendor/`. It must work from a clean machine. `Vendor/` is generated, not committed: `xcodegen generate` runs the script first, and CI caches it. On Linux it does a host build so the encoders can be tested there. Swift reaches the C libraries through `Modules/module.modulemap`.
 - Images: link the C libraries directly. Auto-tune encodes several times per image, so launching a process per encode is too slow.
 - Video: FFmpeg can be a bundled binary called via `Process` (common practice), signed with the app.
 - Homebrew is fine for experiments, but the shipped app never depends on the user having Homebrew.
@@ -331,6 +332,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-10-30: Phase 1 step 1: real WebP (libwebp 1.6.0; lossy, plus lossless for graphics), Compress (own lossless PNG optimizer; ImageIO JPEG/HEIC), Half size (vImage), normalize (orientation, sRGB, metadata dropped), naming (`-min`, `-half`, `-2`…), size guard, clipboard (file + picture), parallel batches. Replaced the fake runner and the Option-drop test failure. Auto = WebP until classification; AVIF, Remove BG and video say "coming soon". Owner approved libwebp; free vs paid still open.
 - 2026-10-30: CI now builds a DMG and publishes it to a `preview` pre-release on every green push, so the owner can try builds without Xcode: https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg (owner approved making it public). Not notarized until Phase 3, so the first launch needs `xattr -cr` or Open Anyway.
 - 2026-10-30: Phase 0 code complete on branch `claude/fervent-thompson-2620yn`: menu bar app, non-activating floating bubble, edge snapping with a display-synced spring and per-display memory, radial menu with stagger, haptics and Reduce Motion, fake 1s job, done card (drag out or click to reveal), error pill with shake, ⌃⌥⌘D show/hide, unit tests, Linux check script, macOS CI. Builds and passes tests in CI; not yet tried by a person.
 - 2026-10-30: Interaction decisions while building Phase 0 (§4): dock to left/right edges only; segments on a 160° arc facing into the screen instead of a full ring (a docked bubble would put half a ring off-screen); hovered label shown inside the bubble; segments picked by angle; results and messages shown beside the bubble. Swift 5 language mode for now, ad-hoc signing until Phase 3.
