@@ -121,9 +121,16 @@ final class ImagePlanTests: XCTestCase {
         XCTAssertEqual(try ImagePlan.make(action: .removeBackground, source: .png, sourceExtension: "png").suffix, "-nobg")
     }
 
+    func testAVIF() throws {
+        XCTAssertEqual(try ImagePlan.make(action: .avif, source: .png, sourceExtension: "png"),
+                       ImagePlan(encoding: .avif, fileExtension: "avif", suffix: nil, scale: 1))
+        XCTAssertEqual(try ImagePlan.make(action: .compress, source: .avif, sourceExtension: "avif"),
+                       ImagePlan(encoding: .avif, fileExtension: "avif", suffix: "-min", scale: 1))
+    }
+
     func testUnbuiltActionsSaySo() {
-        XCTAssertThrowsError(try ImagePlan.make(action: .avif, source: .png, sourceExtension: "png")) {
-            XCTAssertEqual($0 as? JobError, .notYet("AVIF is coming soon."))
+        XCTAssertThrowsError(try ImagePlan.make(action: .gif, source: .png, sourceExtension: "png")) {
+            XCTAssertEqual($0 as? JobError, .notYet("Video is coming soon."))
         }
         XCTAssertThrowsError(try ImagePlan.scale(for: .mp4))
         XCTAssertThrowsError(try ImagePlan.make(action: .compress, source: .gif, sourceExtension: "gif"))

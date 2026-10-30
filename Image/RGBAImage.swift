@@ -75,6 +75,12 @@ enum EncoderTuning {
     static let jpegQuality: Double = 0.8
     /// ImageIO HEIC quality, 0–1.                                                 (tune)
     static let heicQuality: Double = 0.75
+    /// libavif quality, 0–100. AVIF at 60 looks about like WebP at 80.             (tune)
+    static let avifQuality = 60
+    /// libaom speed, 0 (slowest, smallest) – 10. CORE.md §6.3 suggests ~6.         (tune)
+    static let avifSpeed = 6
+    /// Faster speed while searching for a target size (each step is an encode).
+    static let avifSearchSpeed = 8
     /// With this many distinct colors or fewer, an image is treated as a graphic.  (tune)
     static let graphicColorLimit = 4096
     /// How many pixels the color count looks at.
@@ -87,6 +93,7 @@ enum EncoderTuning {
     static let jpegQualities: ClosedRange<Double> = 0.1...0.95
     static let heicQualities: ClosedRange<Double> = 0.1...0.9
     static let webpQualities: ClosedRange<Double> = 5...95
+    static let avifQualities: ClosedRange<Double> = 10...90
     /// Bisection steps per search (each one is an encode).                         (tune)
     static let searchSteps = 6
     /// When the lowest quality is still too big, shrink by this much and try again.  (tune)

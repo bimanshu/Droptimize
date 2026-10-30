@@ -2,8 +2,8 @@
 # What can be checked without a Mac (for agents working in Linux containers):
 #   1. every Swift file parses;
 #   2. the portable code passes its unit tests: layout, spring, dock position, action menus,
-#      output naming, the size guard, and the PNG and WebP encoders (libwebp is built for the
-#      host by scripts/build-deps.sh; zlib comes from the system).
+#      output naming, the size guard, and the PNG, WebP and AVIF encoders (libwebp, libaom and
+#      libavif are built for the host by scripts/build-deps.sh; zlib comes from the system).
 # This is NOT a build: AppKit/SwiftUI code is only type-checked by Xcode or by CI
 # (.github/workflows/build.yml). Needs a Swift toolchain on PATH; see HANDOFF.md.
 set -euo pipefail
@@ -27,6 +27,7 @@ PORTABLE_SOURCES=(
   Image/Compositor.swift
   Image/Encoders/PNG.swift
   Image/Encoders/WebP.swift
+  Image/Encoders/AVIF.swift
 )
 PORTABLE_TESTS=(
   Tests/LayoutTests.swift
@@ -36,6 +37,7 @@ PORTABLE_TESTS=(
   Tests/OutputTests.swift
   Tests/EncoderTests.swift
   Tests/OptionTests.swift
+  Tests/AVIFTests.swift
   Tests/Support/TestPNGReader.swift
 )
 
@@ -45,7 +47,7 @@ echo "→ Parsing every Swift file"
 find App Bubble Pipeline Image Tests -name '*.swift' -print0 | xargs -0 swiftc -parse
 echo "  ok"
 
-echo "→ Building libwebp for this machine"
+echo "→ Building libwebp, libaom and libavif for this machine (a no-op once built)"
 ./scripts/build-deps.sh
 repo="$(pwd)"
 
@@ -80,7 +82,7 @@ let package = Package(
 EOF
 # The C modules (Modules/module.modulemap) and libwebp, for every target including the
 # generated test runner, so they're passed on the command line rather than per target.
-flags=(-Xswiftc -I -Xswiftc "$repo/Modules" -Xlinker -L"$repo/Vendor/libwebp/lib")
+flags=(-Xswiftc -I -Xswiftc "$repo/Modules" -Xlinker -L"$repo/Vendor/libwebp/lib" -Xlinker -L"$repo/Vendor/libavif/lib")
 if (cd "$work" && swift test "${flags[@]}" >"$work/test.log" 2>&1); then
   grep -E "Executed [0-9]+ tests" "$work/test.log" | tail -1
   echo "  ok"

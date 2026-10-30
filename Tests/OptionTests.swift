@@ -205,6 +205,11 @@ final class SizeSearchTests: XCTestCase {
         XCTAssertEqual(encoder.calls, [0.95])
     }
 
+    func testReportsTheWinningQuality() throws {
+        let result = try XCTUnwrap(SizeSearch.bestFitAndQuality(limit: 500, qualities: 0.1...0.95, encode: FakeEncoder().encode))
+        XCTAssertEqual(Double(result.data.count), result.quality * 1000, accuracy: 1)
+    }
+
     func testGivesUpWhenEvenTheLowestIsTooBig() {
         XCTAssertNil(SizeSearch.bestFit(limit: 50, qualities: 0.1...0.95, encode: FakeEncoder().encode))
     }

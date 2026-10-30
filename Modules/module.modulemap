@@ -10,6 +10,16 @@ module CWebP [system] {
     export *
 }
 
+// libavif + libaom, built into Vendor/ by scripts/build-deps.sh (CORE.md §8). Static, so libavif
+// must come before libaom on the link line.
+module CAvif [system] {
+    header "../Vendor/libavif/include/avif/avif.h"
+    link "avif"
+    link "aom"
+    link "m"
+    export *
+}
+
 // The system zlib, for the PNG encoder. Only used where the SDK has no `zlib` module of its own.
 module CZlib [system] {
     header "zlib-shim.h"

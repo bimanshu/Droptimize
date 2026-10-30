@@ -7,17 +7,23 @@ enum SizeSearch {
     /// Encodes at most `steps + 2` times.
     static func bestFit(limit: Int, qualities: ClosedRange<Double>, steps: Int = EncoderTuning.searchSteps,
                         encode: (Double) throws -> Data) rethrows -> Data? {
+        try bestFitAndQuality(limit: limit, qualities: qualities, steps: steps, encode: encode)?.data
+    }
+
+    /// Like `bestFit`, also returning the quality that produced it.
+    static func bestFitAndQuality(limit: Int, qualities: ClosedRange<Double>, steps: Int = EncoderTuning.searchSteps,
+                                  encode: (Double) throws -> Data) rethrows -> (data: Data, quality: Double)? {
         let highest = try encode(qualities.upperBound)
-        if highest.count <= limit { return highest }
-        var best = try encode(qualities.lowerBound)
-        guard best.count <= limit else { return nil }
+        if highest.count <= limit { return (highest, qualities.upperBound) }
+        var best = (data: try encode(qualities.lowerBound), quality: qualities.lowerBound)
+        guard best.data.count <= limit else { return nil }
         var low = qualities.lowerBound
         var high = qualities.upperBound
         for _ in 0..<steps {
             let middle = (low + high) / 2
             let data = try encode(middle)
             if data.count <= limit {
-                best = data
+                best = (data, middle)
                 low = middle
             } else {
                 high = middle

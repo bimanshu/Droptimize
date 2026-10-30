@@ -3,7 +3,7 @@ import Foundation
 /// What an action turns an image into (CORE.md §6.5): which encoder, which extension and suffix, and the scale.
 struct ImagePlan: Equatable {
     enum Encoding: Equatable {
-        case webp, png, jpeg, heic
+        case webp, png, jpeg, heic, avif
     }
 
     var encoding: Encoding
@@ -19,9 +19,8 @@ struct ImagePlan: Equatable {
     /// Fails for actions that aren't built yet, before any work is done.
     static func scale(for action: Action) throws -> Double {
         switch action {
-        case .auto, .webp, .compress, .removeBackground: return 1
+        case .auto, .webp, .avif, .compress, .removeBackground: return 1
         case .halfSize: return 0.5
-        case .avif: throw JobError.notYet("AVIF is coming soon.")
         case .mp4, .webm, .gif, .scale1080p, .mute: throw JobError.notYet("Video is coming soon.")
         }
     }
@@ -56,6 +55,9 @@ struct ImagePlan: Equatable {
             // Auto picks between formats once it can classify images (Phase 1 step 2); until then, WebP.
             return ImagePlan(encoding: .webp, fileExtension: "webp",
                              suffix: source == .webp ? compressSuffix : nil, scale: scale)
+        case .avif:
+            return ImagePlan(encoding: .avif, fileExtension: "avif",
+                             suffix: source == .avif ? compressSuffix : nil, scale: scale)
         case .halfSize:
             let encoding = try sameFormatEncoding(for: source)
             let keepsFormat = encoding == sameFormatEncoding(ofExactly: source)
@@ -74,7 +76,7 @@ struct ImagePlan: Equatable {
         case .webp: return .webp
         case .heic: return .heic
         case .gif: throw JobError.notYet("GIFs can't be compressed yet.")
-        case .avif: throw JobError.notYet("AVIF is coming soon.")
+        case .avif: return .avif
         }
     }
 
@@ -84,6 +86,7 @@ struct ImagePlan: Equatable {
         case .png: return .png
         case .webp: return .webp
         case .heic: return .heic
+        case .avif: return .avif
         default: return nil
         }
     }
@@ -94,6 +97,7 @@ struct ImagePlan: Equatable {
         case .png: return "png"
         case .jpeg: return "jpg"
         case .heic: return "heic"
+        case .avif: return "avif"
         }
     }
 }

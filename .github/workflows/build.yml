@@ -16,7 +16,7 @@ concurrency:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -25,10 +25,14 @@ jobs:
           xcodebuild -version
           swift --version
 
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Install tools
+        # nasm: libaom's fast x86 code for the Intel slice. cmake builds libaom and libavif.
+        run: |
+          brew install xcodegen nasm
+          command -v cmake || brew install cmake
 
-      # libwebp is rebuilt only when scripts/build-deps.sh changes (it pins the version).
+      # libwebp, libaom and libavif are rebuilt only when scripts/build-deps.sh changes (it pins
+      # the versions). The first build after a change takes several minutes.
       - name: Cache native dependencies
         uses: actions/cache@v4
         with:
@@ -143,7 +147,7 @@ jobs:
           **Latest build of Droptimize. Replaced automatically on every successful push.**
 
           Built from \`${GITHUB_REF_NAME}\` at ${GITHUB_SHA::7}, build ${{ github.run_number }}, $(date -u '+%Y-%m-%d %H:%M UTC').
-          Early preview. Working: **WebP**, **Compress** (JPEG, PNG, WebP, HEIC; hover it for target sizes 100 KB–2 MB or a custom size), **Half size** and **Remove BG** (hover it for no background, white, black or any hex color). The center (Auto) does WebP for now. Results are saved next to the original (never changed) and copied to the clipboard. AVIF and video are coming soon.
+          Early preview. Working: **WebP**, **AVIF**, **Compress** (JPEG, PNG, WebP, HEIC, AVIF; hover it for target sizes 100 KB–2 MB or a custom size), **Half size** and **Remove BG** (hover it for no background, white, black or any hex color). The center (Auto) does WebP for now. Results are saved next to the original (never changed) and copied to the clipboard. Video is coming soon.
 
           ### Install or update (one command)
           Open **Terminal**, paste this and press Return. It downloads the latest build, replaces the old one and opens it:

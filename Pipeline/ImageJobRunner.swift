@@ -51,6 +51,8 @@ enum ImageOptimizer {
             return try ImageIOEncoder.encode(image, as: .jpeg, quality: EncoderTuning.jpegQuality)
         case .heic:
             return try ImageIOEncoder.encode(image, as: .heic, quality: EncoderTuning.heicQuality)
+        case .avif:
+            return try AVIFEncoder.encode(image, quality: EncoderTuning.avifQuality)
         }
     }
 
@@ -77,6 +79,14 @@ enum ImageOptimizer {
             return try SizeSearch.bestFit(limit: limit, qualities: EncoderTuning.webpQualities) {
                 try WebPEncoder.encode(image, quality: Float($0))
             }
+        case .avif:
+            // Search at a faster speed (each step is an encode), then re-encode the winner at the
+            // normal speed, which usually comes out smaller still. Keep whichever fits.
+            guard let fast = try SizeSearch.bestFitAndQuality(limit: limit, qualities: EncoderTuning.avifQualities, encode: {
+                try AVIFEncoder.encode(image, quality: Int($0.rounded()), speed: EncoderTuning.avifSearchSpeed)
+            }) else { return nil }
+            let final = try AVIFEncoder.encode(image, quality: Int(fast.quality.rounded()))
+            return final.count <= limit ? final : fast.data
         }
     }
 

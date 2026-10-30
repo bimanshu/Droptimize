@@ -130,6 +130,28 @@ final class PipelineMacTests: XCTestCase {
         XCTAssertNotNil(outcome.picture, "a single file also goes on the clipboard as a picture")
     }
 
+    func testAVIFConvertsAndMacOSReadsIt() throws {
+        let input = try write(TestImages.gradient(width: 300, height: 200, alpha: true), "art.png")
+        let outcome = try ImageOptimizer.process(input, action: .avif, wantsPicture: false)
+        XCTAssertEqual(outcome.output.lastPathComponent, "art.avif")
+        XCTAssertLessThan(outcome.outputBytes, outcome.inputBytes)
+        let decoded = try ImageDecoder.decode(outcome.output)
+        XCTAssertEqual(decoded.format, .avif)
+        XCTAssertEqual(decoded.image.width, 300)
+        XCTAssertEqual(decoded.image.height, 200)
+        XCTAssertFalse(decoded.image.isOpaque, "transparency survives")
+    }
+
+    func testCompressAVIFToATargetSize() throws {
+        let input = folder.appendingPathComponent("hero.avif")
+        let original = try AVIFEncoder.encode(TestImages.noise(width: 300, height: 300), quality: 90)
+        try original.write(to: input)
+        let limit = original.count / 2
+        let outcome = try ImageOptimizer.process(input, action: .compress, option: .maxBytes(limit), wantsPicture: false)
+        XCTAssertEqual(outcome.output.pathExtension, "avif")
+        XCTAssertLessThanOrEqual(outcome.outputBytes, limit)
+    }
+
     func testCompressJPEG() throws {
         let input = try write(TestImages.gradient(width: 400, height: 300), "camera.jpg", as: .jpeg, quality: 1)
         let outcome = try ImageOptimizer.process(input, action: .compress, wantsPicture: false)
@@ -166,7 +188,7 @@ final class PipelineMacTests: XCTestCase {
 
     func testUnbuiltActionsWriteNothing() throws {
         let input = try write(flatGraphic, "x.png")
-        XCTAssertThrowsError(try ImageOptimizer.process(input, action: .avif, wantsPicture: false))
+        XCTAssertThrowsError(try ImageOptimizer.process(input, action: .mp4, wantsPicture: false))
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: folder.path), ["x.png"])
     }
 
