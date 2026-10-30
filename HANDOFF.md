@@ -9,11 +9,11 @@
 |---|---|
 | Last updated | 2026-10-30 |
 | Branch | `claude/fervent-thompson-2620yn` (the only branch so far; no `main` yet, nothing merged, no PR) |
-| Phase | **1: WebP, AVIF, Compress (incl. target sizes), Half size and Remove BG (with background choices) work.** Option bubbles fan out of Compress and Remove BG. The feel hasn't been tuned by a person yet. |
+| Phase | **1: WebP, AVIF, Compress (incl. target sizes), Half size and Remove BG (with background choices) work. 2: video works with AVFoundation only** (Convert MP4 · HEVC · GIF, Compress to 10–100 MB, Resize, Mute, Auto). The feel and real-world video haven't been tried by a person yet. |
 | CI | [Build workflow](https://github.com/bimanshu/Droptimize/actions/workflows/build.yml): green at `42d2849` (Xcode 16.4, macOS 15 runner): **135/135 tests** (105 of them also on Linux), 0 warnings (warnings fail the build), universal libwebp/libaom/libavif and app, install script tested, preview published. The app is now ~8.5 MB (DMG), mostly libaom. The first deps build after a `build-deps.sh` change takes ~3 minutes in CI; otherwise it's cached |
 | Install / update | One Terminal command: **`curl -fsSL https://github.com/bimanshu/Droptimize/releases/download/preview/install.sh \| bash`** (or the [DMG](https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg)). Both come from the [preview release](https://github.com/bimanshu/Droptimize/releases/tag/preview), which CI replaces on every green push. |
 | Owner | Doesn't build with Xcode. Updates with the one-line command above (asked for this instead of re-downloading DMGs). Not technical about Terminal: give exact click-by-click steps. |
-| Next | **IN PROGRESS (2026-10-30, owner said "do the recommended stuff, don't ask"): video (Phase 2) with AVFoundation only. See Next steps 0.** |
+| Next | Owner tries images and video on real files (Next steps 2). Video was built while the owner was away ("do the recommended stuff, don't ask"), so tell them what's new. |
 
 ## ✱ Where things stand
 
@@ -29,7 +29,17 @@
 - **Clipboard**: every output as a file URL, plus the first as PNG picture data when there's a single file under 30 MP.
 - **Batches** run in parallel (performance cores, at most 4). Progress counts files; a single file shows a spinner.
 - **AVIF** (Convert → AVIF; added 2026-10-30, owner approved libaom + libavif): libaom 3.15.2 + libavif 1.4.2, 8-bit, tagged sRGB (CICP 1/13/6, full range), 4:4:4 for graphics and 4:2:0 for photos, alpha lossless, no alpha plane when opaque, quality 60 at speed 6 (`EncoderTuning`). The AVIF button converts; Compress and Half size keep AVIF sources as AVIF. Compress-to-size searches at speed 8, then re-encodes the winner at speed 6 and keeps whichever fits. macOS decodes AVIF natively (ImageIO), so libaom's decoder is only used by tests.
-- **Every video action** answers "Video is coming soon."
+
+**Video (Phase 2, built 2026-10-30 while the owner was away, AVFoundation only, no new dependencies):** MOV, MP4 and M4V get their own menu, mirroring the image one: **Convert** → MP4 · HEVC · GIF · **Compress** → 10 MB · 25 MB · 50 MB · 100 MB · Custom · **Resize** → 1080p · 720p · 480p · **Mute**, with **Auto** in the center.
+
+- **Auto** (and Compress without a size): H.264 MP4 (Compress keeps MOV/MP4/M4V) at ~0.08 bits per pixel per frame, never above 70% of the source's video bitrate, AAC 128 kbps, size guard on (`-min` when the name would clash).
+- **Convert → MP4** remuxes (copies the streams, instant and lossless) when they're already H.264/HEVC + AAC, otherwise encodes H.264. **HEVC** encodes at ~0.05 bpp → `-hevc.mp4` (says "This Mac can't encode HEVC video." where there's no encoder). **GIF**: ImageIO, 15 fps, ≤ 800 px, the first 30 seconds (the card says so), looping. Conversions are exempt from Rule 3.
+- **Compress to a size**: video bitrate = size × 8 × 0.92 ÷ duration − audio. When that's too low for the frame (< 0.03 bpp), it drops to the largest standard size that suits it (1080p … 360p). If the encoder overshoots, it retries: a lower bitrate first, then fewer pixels (`VideoTuning.shortSide(below:pixelShare:)`), up to 4 encodes in all, then "Couldn't get it under 25 MB." The card says "Scaled to 480p to fit". Named `clip-25mb.mov`. "Already under 25 MB." if it is.
+- **Resize**: the short side to 1080/720/480, aspect kept, even sizes, never upscales ("Already 720p or smaller."). Named `-720p`.
+- **Mute**: passthrough copy without the audio track (`-muted`), exempt from Rule 3. "This video has no sound to remove." if there's none.
+- **Engine** (`Video/VideoOptimizer.swift`): `AVAssetReader` (decoded 4:2:0) → `AVAssetWriter` (VideoToolbox H.264 High / HEVC, keyframe every 2 s, rotation kept via the track transform, index at the front for the web); passthrough `AVAssetExportSession` for remux and mute. Writes to a temp file, then `OutputWriter.move` puts it next to the original. Sizes are read with `FileManager` (URL resource values are cached and would go stale between retries).
+- **Runner**: a batch with any video runs one file at a time; progress moves per frame (`ProgressReporter.within`, 1% steps), retries keep the ring moving forward, and cancel stops the encode. The output file goes on the clipboard as a file URL, like images.
+- **Deferred:** WebM and FFmpeg "max quality" + VMAF auto-tune need FFmpeg (LGPL) or libvpx + libwebm (BSD-3), which needs the owner's OK (Rule 7, `CORE.md` §13). HDR sources aren't tone-mapped yet (see *Risks*). The GIF has no palette pass.
 
 **History (owner asked for it in the app, 2026-10-30):** menu bar → **History…** (⌘Y in the menu) opens a normal window (`App/HistoryWindow.swift`; it activates the app, since you asked to look at it). Every file made, newest first: thumbnail, output name, action · option ("Compress · Under 500 KB"), relative date, change ("−84%" in green, "+12%" grey) and before → after sizes, with a total "saved" figure at the top. Double-click or 🔍 shows it in Finder; drag a row into any app; the context menu has Open, Copy, Show Original and Remove; "Clear History…" asks first and never touches files. Files that were moved or deleted are dimmed. Stored as JSON in `~/Library/Application Support/Droptimize/history.json`, kept on the Mac only (Rule 4), at most 500 entries (`HistoryLog.limit`). The menu bar's Recent list now comes from it. Model: `Pipeline/History.swift` (portable, tested on Linux); `JobResult.items` carries each original with its result.
 
@@ -44,21 +54,20 @@
 
 **Verified:**
 
-- `scripts/check-linux.sh`: every file parses; **62 portable tests pass on Linux**, including exact PNG round trips (checked by a test-only PNG reader that verifies CRCs and undoes filters itself), exact lossless WebP, lossy WebP closeness, alpha kept, naming, size guard, writer, plans.
-- CI on macOS: see the Snapshot. The macOS tests (`Tests/PipelineMacTests.swift`) cover EXIF rotation, P3→sRGB conversion, transparency, half size, ImageIO reading our PNG/WebP exactly, real files end to end, Rule 2 (original untouched), Rule 3 (nothing written when it can't get smaller), clashes, and batch plus clipboard.
+- `scripts/check-linux.sh`: every file parses; **117 portable tests pass on Linux** (including the video plans and bitrate maths in `Tests/VideoPlanTests.swift`), including exact PNG round trips (checked by a test-only PNG reader that verifies CRCs and undoes filters itself), exact lossless WebP, lossy WebP closeness, alpha kept, naming, size guard, writer, plans.
+- CI on macOS: see the Snapshot. The macOS tests (`Tests/PipelineMacTests.swift`) cover EXIF rotation, P3→sRGB conversion, transparency, half size, ImageIO reading our PNG/WebP exactly, real files end to end, Rule 2 (original untouched), Rule 3 (nothing written when it can't get smaller), clashes, and batch plus clipboard. `Tests/VideoMacTests.swift` makes synthetic videos (720p noise, the worst case for an encoder, plus an AAC tone) and covers remux, Auto, Resize, never upscaling, compress to a size, Mute (with and without sound), GIF, HEVC (skipped without an encoder) and progress within a video.
 
-**Not verified (needs a person on a Mac):** the feel, including reaching the option bubbles mid-drag; the window behaviour (see *Risks*); typing into the Custom panel while another app is in front; **Remove BG quality on real photos** (CI ran Vision on a synthetic image, which it may not treat as a subject; the tests accept either outcome); how the clipboard pastes into Figma, Slack, Chrome, Notes and Messages (CORE.md §6.6); and real-world savings on a variety of images.
+**Not verified (needs a person on a Mac):** the feel, including reaching the option bubbles mid-drag; the window behaviour (see *Risks*); typing into the Custom panel while another app is in front; **Remove BG quality on real photos** (CI ran Vision on a synthetic image, which it may not treat as a subject; the tests accept either outcome); how the clipboard pastes into Figma, Slack, Chrome, Notes and Messages (CORE.md §6.6); and real-world savings on a variety of images. **Video on real footage**: iPhone clips (HDR, portrait rotation), screen recordings, long 4K files (speed, cancel), and how the results play in Safari, Chrome, Slack and Discord.
 
 ## ✱ Next steps (in order)
-
-0. **IN PROGRESS: video, AVFoundation only (no new dependencies).** Video menu mirrors images: **Convert** → MP4 (remux when already H.264/HEVC + AAC, else H.264) · HEVC · GIF (ImageIO, 15 fps, ≤ 800 px, first 30 s); **Compress** → 10 MB · 25 MB · 50 MB · 100 MB · Custom (bitrate from size ÷ duration; drops to 720p/480p if the bitrate is too low, and says so); **Resize** → 1080p · 720p · 480p (short side, never upscale, even sizes); **Mute** (passthrough without audio); center **Auto** = H.264 MP4 at ~0.08 bits/pixel/frame, never above 70% of the source bitrate, size guard on. Files: `Video/VideoPlan.swift` (portable plan and bitrate maths, tested on Linux), `Video/VideoOptimizer.swift` (AVAssetReader → AVAssetWriter, passthrough export, GIF), routed from `ImageJobRunner` (one video at a time, progress per frame), `OutputWriter.move` for big files, `Tests/VideoMacTests.swift` (synthetic videos). WebM and FFmpeg "max quality" + VMAF are **deferred**: they need FFmpeg (LGPL) or libvpx + libwebm, which needs the owner's OK (Rule 7).
 
 1. **Make sure CI is green** on the branch. If it's red, open the run, read the failing step's log and fix it. Use `mcp__github__get_job_logs` with `failed_only: true` if you don't have a browser.
 2. **Owner tries the preview DMG** (the Snapshot link). History: on 2026-10-30 they said they couldn't run it on their Mac (reason never confirmed); they were given step-by-step DMG instructions, saw the Phase 0 build's pretend actions, asked for real functionality, and approved libwebp. Ask what they saw with real files, and fix what they report. Run through the *Manual test checklist* below as far as they're willing; tune `Bubble/Motion.swift` from their feedback.
 3. **Phase 1 step 2** (`CORE.md` §11), still to do: the **Auto classification** (photo → lossy WebP; graphic → lossless WebP vs PNG, smaller wins; replace `RGBAImage.looksLikeGraphic`), and the fuller PNG pipeline once **free vs paid** is decided (pngquant is GPL).
 4. **JobQueue** (`CORE.md` §5): drops while a job runs are still ignored (`BubbleController.dragEntered` returns false while working). Make new drops queue, and move cancellation into the queue.
 5. Phase 1 step 3: SSIMULACRA 2 auto-tune (replaces the fixed values in `EncoderTuning`). (Step 4, Remove BG, is done.)
-6. Smaller items: accept file promises (`NSFilePromiseReceiver`) so drags from Photos, Safari and Mail work; post a notification for jobs over ~10s; a Settings window (`CORE.md` §10).
+6. **Video follow-ups:** check HDR iPhone clips (Risk 9); a palette pass for GIF (ImageIO's GIF is basic; gifski is AGPL, FFmpeg's `palettegen` needs FFmpeg); ask the owner about WebM (FFmpeg or libvpx + libwebm) and then VMAF auto-tune (`CORE.md` §7.3); a notification when a long video finishes.
+7. Smaller items: accept file promises (`NSFilePromiseReceiver`) so drags from Photos, Safari and Mail work; post a notification for jobs over ~10s; a Settings window (`CORE.md` §10).
 
 ## ✱ Risks to check first on a real Mac
 
@@ -69,14 +78,16 @@
 5. **JPEG and HEIC through ImageIO** embed an sRGB ICC profile (~3 KB), which matters on small JPEGs. jpegli replaces this.
 6. **Option bubbles mid-drag.** Moving outward from Compress to a size bubble is a longer reach. If it feels fiddly, tune `Motion.optionRingDistance`, `optionDiameter` and the boundary in `SubmenuLayout.innerBoundary`.
 7. **Custom panel focus.** It relies on a `.nonactivatingPanel` becoming key while another app stays active. If typing doesn't reach it, the fallback is `NSApp.activate()` while it's open (which breaks Rule 1 briefly).
-8. File promises aren't handled yet (see step 6). Haptics only fire on Force Touch trackpads.
+8. File promises aren't handled yet (see step 7). Haptics only fire on Force Touch trackpads.
+9. **HDR video.** iPhones record HDR (HLG / Dolby Vision, 10-bit HEVC). Re-encodes decode to 8-bit 4:2:0 without asking for a color space, so an H.264 result may look washed out or dim. If it does, set `AVVideoColorPropertiesKey` (BT.709) on the reader output and the writer in `VideoOptimizer.transcode` so Apple tone-maps it, and keep HDR for HEVC (`CORE.md` §7.4). Remux and Mute copy the streams, so they're unaffected.
+10. **Encoder overshoot.** On busy footage VideoToolbox can come out far over the asked bitrate (the noise test video comes out ~3× over). Compress-to-size retries; Auto relies on the size guard. If real clips often miss, tune `VideoTuning`.
 
 ## Manual test checklist
 
 1. Launch: no Dock icon, a drop icon in the menu bar, and the bubble on the right edge, vertically centered, at about 60% opacity.
 2. Hover: full opacity and a slight grow.
 3. Drag the bubble toward the left: it springs to the left edge. Quit and relaunch: it's still there.
-4. Drag a PNG from Finder over it: the bubble grows and 5 segments fan out with a stagger. Hover each: it highlights, its label shows in the bubble, and there's a haptic tick.
+4. Drag a PNG from Finder over it: the bubble grows and 4 segments fan out with a stagger. Hover each: it highlights, its label shows in the bubble, and there's a haptic tick.
 5. Hover **Convert** and drop on **WebP**: ripple, spinner, checkmark, and a card with the real saving and a thumbnail. `photo.webp` appears next to the original. Paste in Finder (the file) and in Notes (the picture).
 6. **Compress** a screenshot PNG → `-min.png`; a camera JPEG → `-min.jpg`. **Half size** → `-half` at half the width and height.
 7. Compress the `-min.png` again: shake and "Already as small as it gets.", and no new file.
@@ -84,14 +95,15 @@
 9. Drop 10 images at once on Compress: the count goes up, then "10 files" on the card.
 10. Hover **Compress**: six small bubbles fan out. Drop on **500K** with a big photo → `photo-500kb.jpg` under 500 KB. Drop on **…** → a size panel; type 300, KB, Return.
 11. Hover **Remove BG**: None · White · Black · … Drop a portrait on **None** → `-nobg.png` with a transparent background. Drop on **…** → a color panel; try a hex, a swatch and the eyedropper. Next time, that color is its own bubble.
-12. **Convert → AVIF** on a photo → `photo.avif`, usually smaller than the WebP. **Convert → JPG** on a transparent PNG → white background and a note. **Convert → PNG** on a WebP → a PNG even if it's bigger. Quick Look shows it. A `.mov`: the video menu, then "Video is coming soon."
-13. Drag a `.txt` over it: "Can't open this file type yet." while over, gone on exit.
-14. While a big batch works: hovering shows ×, and a click cancels.
-15. Type in TextEdit and drop on the bubble mid-sentence: TextEdit keeps focus.
-16. Menu bar → **History…**: every file you made, newest first. Double-click one (Finder), drag one into Slack, right-click → Copy. Clear History asks first.
-17. Switch Spaces and enter a full-screen app: the bubble is still there. ⌃⌥⌘D hides and shows it.
-18. Turn on Reduce Motion (System Settings → Accessibility → Display): fades only. Check light and dark mode.
-19. With two displays: move the bubble to the second one, relaunch, and it's still there.
+12. **Convert → AVIF** on a photo → `photo.avif`, usually smaller than the WebP. **Convert → JPG** on a transparent PNG → white background and a note. **Convert → PNG** on a WebP → a PNG even if it's bigger. Quick Look shows it.
+13. **Video:** drag a `.mov` screen recording over the bubble: Convert · Compress · Resize · Mute. Drop on the center → a smaller `.mp4`, the ring filling as it goes. **Convert → MP4** on an iPhone clip is instant. **Compress → 10 MB** on a big clip → `-10mb.mov` under 10 MB (maybe "Scaled to 720p to fit"). **Resize → 720p**, **Mute**, **Convert → GIF** (plays in Quick Look, loops). Click the bubble mid-encode to cancel. Check portrait clips stay upright and HDR clips don't look washed out.
+14. Drag a `.txt` over it: "Can't open this file type yet." while over, gone on exit.
+15. While a big batch works: hovering shows ×, and a click cancels.
+16. Type in TextEdit and drop on the bubble mid-sentence: TextEdit keeps focus.
+17. Menu bar → **History…**: every file you made, newest first. Double-click one (Finder), drag one into Slack, right-click → Copy. Clear History asks first.
+18. Switch Spaces and enter a full-screen app: the bubble is still there. ⌃⌥⌘D hides and shows it.
+19. Turn on Reduce Motion (System Settings → Accessibility → Display): fades only. Check light and dark mode.
+20. With two displays: move the bubble to the second one, relaunch, and it's still there.
 
 ## ✱ Decisions made so far (also in `CORE.md` §14)
 
@@ -109,6 +121,7 @@
 - Fixed encoder settings in `EncoderTuning` (`Image/RGBAImage.swift`) until auto-tune: WebP q80/method 4, JPEG 0.8, HEIC 0.75.
 - If the original's folder is read-only, results go to **Downloads**.
 - **Swift 5 language mode** for now. Ad-hoc signing; hardened runtime on Release only (Phase 3 switches to Developer ID).
+- **Video uses AVFoundation only** for now (no new dependencies): the video menu mirrors images (Convert · Compress · Resize · Mute, Auto in the center). Compress's sizes are common upload limits (10, 25, 50, 100 MB). Video conversions and Mute are exempt from Rule 3, like image conversions. WebM waits for the owner's OK on FFmpeg or libvpx. Made while the owner was away ("do the recommended stuff"); revisit anything they dislike.
 - CI runs on GitHub's macOS runners (free: the repo is public) and publishes a DMG, a zip and `install.sh` to the public `preview` release (the owner approved). Updates are a Terminal one-liner for now; an in-app "Check for Updates" arrives with Sparkle (Phase 3), since the app itself makes no network calls (Rule 4).
 
 ## ✱ Questions for the owner
@@ -116,6 +129,7 @@
 1. **Free/open-source or paid?** ("Decide later" for now.) It decides pngquant (better PNG compression), x264/x265 and gifski.
 2. Is the label inside the bubble right, or would you rather see it next to the hovered segment?
 3. Is ⌃⌥⌘D OK as the show/hide shortcut?
+4. **WebM for video?** It needs FFmpeg (LGPL, linked dynamically) or libvpx + libwebm (BSD-3), adding several MB. MP4 already plays everywhere, so it's only worth it if you want WebM files specifically.
 
 ## How to build, run and test
 
@@ -186,9 +200,11 @@ It parses every Swift file, builds libwebp, libaom and libavif for Linux (needs 
 | `Pipeline/ImagePlan.swift` | Portable: action + option + source format → encoder, extension, suffix, scale; "coming soon" errors. |
 | `Pipeline/ActionOptions.swift` | Portable: `ActionOption`, `MenuOption`, each action's option bubbles, `OptionMemory` (last size and color). |
 | `Pipeline/Output.swift` | Portable: `OutputNaming`, `SizeGuard` (Rule 3), `OutputWriter` (never overwrites; Downloads fallback). |
-| `Pipeline/ImageJobRunner.swift` | macOS: `ImageOptimizer` (one file: plain, compress-to-fit, Remove BG) and `ImageJobRunner` (parallel batches, clipboard, notes). |
+| `Pipeline/ImageJobRunner.swift` | macOS: `ImageOptimizer` (one file: plain, compress-to-fit, Remove BG) and `ImageJobRunner` (parallel batches, one at a time with videos, which go to `VideoOptimizer`; progress within a file; clipboard, notes). |
 | `Pipeline/Clipboard.swift` | macOS: file URLs plus a PNG picture on the pasteboard. |
 | `Pipeline/History.swift` | Portable: `HistoryEntry`, `HistoryLog` (newest first, 500 max, Recent, totals), `HistoryFile` (JSON in Application Support), `ActionOption.title`. |
+| `Video/VideoPlan.swift` | Portable: `VideoFormat`, `VideoPlan` (action + option → work, extension, suffix, size guard) and `VideoTuning` (every video setting and the bitrate/size maths). |
+| `Video/VideoOptimizer.swift` | macOS: one video → a new file: passthrough remux/mute, AVAssetReader → AVAssetWriter encode with compress-to-size retries, GIF; `VideoSource` (probe). |
 | `App/HistoryWindow.swift` | macOS: `HistoryStore` (saves on every change), the History window and its rows. |
 | `Modules/module.modulemap` | Lets Swift import libwebp (`CWebP`), libavif + libaom (`CAvif`) and zlib (`CZlib`, where the SDK has no `zlib` module). |
 | `scripts/build-deps.sh` | Builds pinned libwebp, libaom and libavif into `Vendor/` (universal static libs on macOS, host builds on Linux). Needs cmake, and nasm for a fast Intel slice. |
@@ -196,7 +212,7 @@ It parses every Swift file, builds libwebp, libaom and libavif for Linux (needs 
 | `scripts/install.sh` | One-command install/update from the preview release (published as a release asset; tested in CI). |
 | `scripts/dmg-readme.txt` | The "READ ME FIRST" note inside the DMG. |
 | `.github/workflows/build.yml` | macOS CI: deps (cached), generate, build, test (warnings fail), universal Release build, DMG and zip, install-script test; then publishes DMG, zip and `install.sh` to the `preview` release. |
-| `Tests/` | XCTest. Portable (also run on Linux): `LayoutTests`, `DockPositionTests`, `SpringTests`, `ActionTests`, `OutputTests`, `EncoderTests`, `OptionTests`, `AVIFTests`, `HistoryTests`, `Support/TestPNGReader` (test-only PNG reader plus test images). macOS only: `MacTests`, `PipelineMacTests`, `OptionMacTests`. |
+| `Tests/` | XCTest. Portable (also run on Linux): `LayoutTests`, `DockPositionTests`, `SpringTests`, `ActionTests`, `OutputTests`, `EncoderTests`, `OptionTests`, `AVIFTests`, `HistoryTests`, `VideoPlanTests`, `Support/TestPNGReader` (test-only PNG reader plus test images). macOS only: `MacTests`, `PipelineMacTests`, `OptionMacTests`, `VideoMacTests` (synthetic videos). |
 
 ## How the bubble works (so you don't have to rediscover it)
 
@@ -208,4 +224,9 @@ It parses every Swift file, builds libwebp, libaom and libavif for Linux (needs 
 
 ## How an image is processed
 
-`BubbleController.drop` → `ImageJobRunner.run` (parallel, off the main thread) → per file `ImageOptimizer.process`: `ImagePlan.scale(for:)` (fails fast for unbuilt actions) → `ImageDecoder.decode` (orientation, sRGB, optional half size) → `ImagePlan.make` (encoder, extension, suffix) → encode → `SizeGuard` → `OutputWriter` → back on the main actor: `Clipboard.put`, then the done card with a QuickLook thumbnail of the first output.
+`BubbleController.drop` → `ImageJobRunner.run` (parallel, off the main thread) → per file `ImageOptimizer.process`: `ImageDecoder.decode` (orientation, sRGB, optional half size) → `ImagePlan.make` (encoder, extension, suffix) → encode → `SizeGuard` → `OutputWriter` → back on the main actor: `Clipboard.put`, then the done card with a QuickLook thumbnail of the first output.
+
+
+## How a video is processed
+
+`ImageJobRunner.run` sees a video (`MediaKind`) → `VideoOptimizer.process`: `VideoPlan.make` (work, extension, suffix, target, size guard) → "already under/at most" checks → `VideoSource.load` (tracks, size, fps, codecs, bitrate) → remux, mute, encode (with retries for a target size) or GIF into a temp file → target and `SizeGuard` checks → `OutputWriter.move` next to the original → the same clipboard, card and History as images.

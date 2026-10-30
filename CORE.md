@@ -26,7 +26,7 @@ Working name: **Droptimize** (also considered: Blip, Ripple, Halo, PixDrop). If 
 | Phase 0: app shell, bubble, radial menu (dummy actions) | Code complete; needs hands-on tuning on a Mac | Builds and passes tests in CI; DMG on the `preview` release. Feel not yet tuned by a person; see HANDOFF.md |
 | Phase 1: image pipeline | Steps 1 and 4 done, step 2 half done (WebP, AVIF, Compress incl. target sizes, Half size, Remove BG with backgrounds, naming, size guard, clipboard) | libwebp; libaom + libavif; own lossless PNG optimizer; ImageIO for JPEG/HEIC until jpegli; Vision for Remove BG. Next: Auto classification and the full PNG pipeline (step 2), auto-tune (step 3) |
 | Phase 1.5: benchmark, polish, launch clip | Not started | |
-| Phase 2: video pipeline | Not started | |
+| Phase 2: video pipeline | Steps 1–4 done with AVFoundation only (remux, H.264/HEVC, compress to a size, resize, mute, GIF) | No new dependencies. Next: WebM and FFmpeg "max quality" + VMAF, which need the owner's OK on FFmpeg or libvpx (§13) |
 | Phase 3: signing, notarization, distribution | Not started | |
 
 ---
@@ -47,7 +47,7 @@ The tools that inspired this all kill a detour. CleanShot X keeps the screenshot
 
 1. **Never leave the user's context.** No windows to manage in the core flow. Drop → result. Images go to the clipboard; videos appear as a draggable thumbnail on the bubble. Both are also saved next to the original.
 2. **Never touch the original.** Always write a new file. Never overwrite; on a name clash append `-2`, `-3`.
-3. **Never hand back a bigger file.** If the output is larger than the input (or saves less than ~1%, *tune*), keep the original and say "Already as small as it gets." Exceptions, agreed with the owner: **Convert** into another format, and **Remove BG**. They do what was asked even when the result is bigger.
+3. **Never hand back a bigger file.** If the output is larger than the input (or saves less than ~1%, *tune*), keep the original and say "Already as small as it gets." Exceptions, agreed with the owner: **Convert** into another format, and **Remove BG**. They do what was asked even when the result is bigger. The video equivalents (Convert to MP4, HEVC or GIF, and **Mute**) follow the same reasoning.
 4. **Everything on-device.** No network calls, no accounts, no analytics in v1. Works offline, costs nothing per use. Privacy is a selling point.
 5. **The bubble never stutters.** Decoding, encoding and analysis all run off the main thread. The UI reacts to a drag within one frame.
 6. **Quality is measured, not guessed.** "Looks the same" means a perceptual metric score (§6.4, §7.3), not a fixed quality number.
@@ -76,9 +76,9 @@ The tools that inspired this all kill a detour. CleanShot X keeps the screenshot
 - **Option bubbles:** some segments have a second ring of smaller bubbles (max 6) that fan out beyond them while hovered. Dropping on the segment itself does its default; dropping on an option picks it. Options are centered on their segment but kept within 85° of straight into the screen. **Compress:** 100 KB · 250 KB · 500 KB · 1 MB · 2 MB · Custom. **Remove BG:** None (transparent) · White · Black · last custom color · Custom. You can't type mid-drag, so **Custom** opens a small panel beside the bubble after the drop (a size in KB/MB, or a hex color with swatches and an eyedropper). It takes the keyboard without activating the app.
 
 Image segments, top to bottom: **Convert · Compress · Half size · Remove BG** (center: **Auto**), leaving one slot free. Convert's option bubbles: **WebP · AVIF · JPG · PNG · HEIC** (only formats that web pages and uploads take; no general-purpose conversion).
-Video segments (Phase 2): **MP4 · WebM · GIF · 1080p · Mute** (center: **Auto**).
+Video segments, top to bottom: **Convert · Compress · Resize · Mute** (center: **Auto**, a smaller H.264 MP4), mirroring the image menu. Convert's option bubbles: **MP4 · HEVC · GIF** (WebM waits on §13). Compress: **10 MB · 25 MB · 50 MB · 100 MB · Custom** (common upload limits). Resize: **1080p · 720p · 480p** (the short side).
 
-- Mixed drops (images and videos): show only actions that apply to both (Auto, Compress).
+- Mixed drops (images and videos): show only actions that apply to both (Auto, Compress, without option bubbles).
 - Several files: one batch, same action for all.
 
 ### 4.3 Working → done
@@ -226,6 +226,8 @@ The same idea as §6.4, using Netflix's **VMAF** metric: encode a few short samp
 - Audio when kept: AAC ~128–160 kbps in MP4, Opus in WebM.
 - HDR sources: keep HDR in HEVC; tone-map to SDR for H.264, WebM and GIF.
 
+**Built so far (AVFoundation only, `Video/`):** Auto = H.264 MP4 at ~0.08 bits per pixel per frame, never above 70% of the source's bitrate, size guard on. Convert → MP4 remuxes when the streams are already H.264/HEVC + AAC, else encodes H.264; HEVC encodes at ~0.05 bpp. Compress to a size takes the bitrate from size ÷ duration (8% headroom, AAC 128 kbps), drops to the largest standard size (1080p, 720p, 480p, 360p) that bitrate suits when it is too low for the frame, and retries when the encoder overshoots (lower bitrate, then fewer pixels); the card says "Scaled to 480p to fit". Resize never upscales and keeps even sizes. Mute is a passthrough copy without the audio track. GIF is ImageIO at 15 fps, ≤ 800 px, the first 30 seconds (no palette pass yet). Settings in `VideoTuning` (*tune*) until VMAF.
+
 ### 7.5 UX differences from images
 
 Video takes time (a 2-minute 4K clip can take a minute or more). Show real progress, keep working in the background, allow cancel, notify when done, and present the result as a draggable thumbnail, since videos don't paste usefully from the clipboard.
@@ -328,11 +330,13 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 - Hovered label inside the bubble (current) or next to the segment?
 - Show/hide shortcut: ⌃⌥⌘D for now (⌥⌘D is macOS's Dock toggle). Make it configurable in Settings?
 - How to ship oxipng (Rust, no C API): a bundled binary via `Process`, or a different lossless PNG optimizer with a C library?
+- WebM and video "max quality": FFmpeg (LGPL build, dynamic linking) or libvpx + libwebm (BSD-3)? Needs the owner's OK (Rule 7). Ties into free vs paid for x264/x265.
 
 ---
 
 ## 14. Changelog
 
+- 2026-10-30: Video (Phase 2 steps 1–4) with AVFoundation only, no new dependencies (owner said "do the recommended stuff, don't ask"). The video menu mirrors images: Convert (MP4 · HEVC · GIF), Compress (10/25/50/100 MB · Custom), Resize (1080p · 720p · 480p), Mute; Auto = smaller H.264 MP4. Remux when possible, real per-frame progress, cancel, one video at a time. Video conversions and Mute are exempt from Rule 3 like image conversions. WebM, FFmpeg max quality and VMAF deferred until the owner approves FFmpeg or libvpx.
 - 2026-10-30: History window (owner asked for it in the app): menu bar → History… lists every file made with sizes and the saving, with reveal, drag out, copy and clear. Stored in Application Support, local only. The publish step now swaps release files in place; the owner had hit a 404 during the old delete-and-recreate gap.
 - 2026-10-30: Menu restructured (owner approved): Convert (→ WebP · AVIF · JPG · PNG · HEIC) replaces the separate WebP and AVIF buttons, freeing a slot. Conversions to another format are exempt from Rule 3. Owner asked "conversions or only optimizations?": decided on conversions only into web/upload formats, always optimized.
 - 2026-10-30: AVIF works: libaom 3.15.2 + libavif 1.4.2 (owner approved), built by `scripts/build-deps.sh` with CMake (libavif pinned by commit). The AVIF button converts; Compress, Half size and compress-to-size handle AVIF sources. Video is the only "coming soon" left.

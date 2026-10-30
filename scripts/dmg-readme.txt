@@ -25,7 +25,17 @@ To use it: drag an image from Finder onto the bubble, move over a button, and le
   Remove BG  cuts out the subject. Its smaller bubbles choose what goes behind:
              none (see-through), white, black, or ... for any hex color.
 The new file is saved next to the original (which is never changed) and copied to your
-clipboard. Video is coming soon.
+clipboard.
+
+Videos (MOV, MP4, M4V) get their own buttons:
+  Convert    MP4 (instant when the video is already H.264), HEVC, or GIF (a looping
+             GIF of up to the first 30 seconds).
+  Compress   smaller, same type. Its bubbles pick a size: 10, 25, 50 or 100 MB, or ...
+             for your own. Very small sizes lower the resolution, and it says so.
+  Resize     1080p, 720p or 480p. Never makes a video bigger than it is.
+  Mute       removes the sound, without re-encoding.
+  The center (Auto) makes a smaller MP4. Videos take a while: the ring shows progress,
+  and clicking the bubble cancels.
 
 The first time it saves into Desktop, Documents or Downloads, macOS asks whether
 Droptimize may access that folder. Click Allow. (Each new preview build may ask again.)
