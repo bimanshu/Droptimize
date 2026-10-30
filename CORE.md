@@ -24,7 +24,7 @@ Working name: **Droptimize** (also considered: Blip, Ripple, Halo, PixDrop). If 
 | Area | State | Notes |
 |---|---|---|
 | Phase 0: app shell, bubble, radial menu (dummy actions) | Code complete; needs hands-on tuning on a Mac | Builds and passes tests in CI; DMG on the `preview` release. Feel not yet tuned by a person; see HANDOFF.md |
-| Phase 1: image pipeline | Steps 1 and 4 done (WebP, Compress incl. target sizes, Half size, Remove BG with backgrounds, naming, size guard, clipboard) | libwebp; own lossless PNG optimizer; ImageIO for JPEG/HEIC until jpegli; Vision for Remove BG. Next: step 2 (AVIF + Auto), step 3 (auto-tune) |
+| Phase 1: image pipeline | Steps 1 and 4 done, step 2 half done (WebP, AVIF, Compress incl. target sizes, Half size, Remove BG with backgrounds, naming, size guard, clipboard) | libwebp; libaom + libavif; own lossless PNG optimizer; ImageIO for JPEG/HEIC until jpegli; Vision for Remove BG. Next: Auto classification and the full PNG pipeline (step 2), auto-tune (step 3) |
 | Phase 1.5: benchmark, polish, launch clip | Not started | |
 | Phase 2: video pipeline | Not started | |
 | Phase 3: signing, notarization, distribution | Not started | |
@@ -158,7 +158,7 @@ Use the same open-source engines the best tools use. Quality comes from them plu
 |---|---|---|
 | JPEG | **jpegli** (from libjxl), fallback MozJPEG | Progressive; 4:2:0 chroma for photos, 4:4:4 for graphics and text. **Now:** ImageIO (progressive, quality 0.8) as a stand-in |
 | WebP | **libwebp** | Lossy for photos; for graphics try lossless and lossy, keep the smaller |
-| AVIF | **libavif + libaom** | 8-bit for compatibility; encoder speed ~6 for interactive use (*tune*); 4:4:4 for graphics |
+| AVIF | **libavif + libaom** | 8-bit for compatibility; encoder speed ~6 for interactive use (*tune*); 4:4:4 for graphics. **In use** (quality 60, speed 6; alpha lossless) |
 | PNG | **pngquant** (lossy palette) → **oxipng** (lossless) | Skip pngquant when it can't hit the quality target; license note in §8. **Now:** our own lossless optimizer (`Image/Encoders/PNG.swift`: palette/gray/RGB reduction, adaptive filters, zlib 9) until free vs paid is decided |
 
 ### 6.4 Auto-tune (how we beat fixed presets)
@@ -241,7 +241,7 @@ Decide **free/open-source vs paid closed-source** early: it decides which librar
 | jpegli / libjxl | JPEG encode, SSIMULACRA 2 | BSD-3 | Yes |
 | MozJPEG | JPEG fallback | BSD-style (IJG) | Yes |
 | libwebp | WebP | BSD-3 | Yes. **In use** (1.6.0, approved 2026-10-30) |
-| libavif + libaom | AVIF | BSD-2 (+ AOM patent license) | Yes |
+| libavif + libaom | AVIF | BSD-2 (+ AOM patent license) | Yes. **In use** (libavif 1.4.2, libaom 3.15.2, approved 2026-10-30) |
 | oxipng | Lossless PNG | MIT | Yes |
 | pngquant / libimagequant | Lossy PNG | GPLv3 or commercial | **Only with a commercial license** |
 | FFmpeg | Video plumbing | LGPL (GPL if built with x264/x265) | Yes as an LGPL build |
@@ -333,6 +333,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-10-30: AVIF works: libaom 3.15.2 + libavif 1.4.2 (owner approved), built by `scripts/build-deps.sh` with CMake (libavif pinned by commit). The AVIF button converts; Compress, Half size and compress-to-size handle AVIF sources. Video is the only "coming soon" left.
 - 2026-10-30: Option bubbles (owner's design): hovering Compress fans out target sizes (100 KB–2 MB, Custom); hovering Remove BG fans out backgrounds (None, White, Black, last color, Custom hex). Built Remove BG with Vision (Phase 1 step 4 brought forward) and compress-to-size (quality bisection, resize only as a last resort). Custom values are asked for in a non-activating panel after the drop. Remove BG is exempt from Rule 3. The bubble now keeps ~180 pt from the screen's top and bottom so the outer ring fits.
 - 2026-10-30: One-command install/update for the owner: `curl -fsSL https://github.com/bimanshu/Droptimize/releases/download/preview/install.sh | bash` (`scripts/install.sh`, published with each preview and tested in CI). The app itself still makes no network calls; in-app updates wait for Sparkle (Phase 3).
 - 2026-10-30: Phase 1 step 1: real WebP (libwebp 1.6.0; lossy, plus lossless for graphics), Compress (own lossless PNG optimizer; ImageIO JPEG/HEIC), Half size (vImage), normalize (orientation, sRGB, metadata dropped), naming (`-min`, `-half`, `-2`…), size guard, clipboard (file + picture), parallel batches. Replaced the fake runner and the Option-drop test failure. Auto = WebP until classification; AVIF, Remove BG and video say "coming soon". Owner approved libwebp; free vs paid still open.

@@ -9,11 +9,11 @@
 |---|---|
 | Last updated | 2026-10-30 |
 | Branch | `claude/fervent-thompson-2620yn` (the only branch so far; no `main` yet, nothing merged, no PR) |
-| Phase | **1: WebP, Compress (incl. target sizes), Half size and Remove BG (with background choices) work.** Option bubbles fan out of Compress and Remove BG. The feel hasn't been tuned by a person yet. |
+| Phase | **1: WebP, AVIF, Compress (incl. target sizes), Half size and Remove BG (with background choices) work.** Option bubbles fan out of Compress and Remove BG. The feel hasn't been tuned by a person yet. |
 | CI | [Build workflow](https://github.com/bimanshu/Droptimize/actions/workflows/build.yml): green at `3dd9f7f` (Xcode 16.4, macOS 15 runner): **112/112 tests** (87 of them also on Linux), 0 warnings (warnings fail the build), universal libwebp and app, install script tested, preview published |
 | Install / update | One Terminal command: **`curl -fsSL https://github.com/bimanshu/Droptimize/releases/download/preview/install.sh \| bash`** (or the [DMG](https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg)). Both come from the [preview release](https://github.com/bimanshu/Droptimize/releases/tag/preview), which CI replaces on every green push. |
 | Owner | Doesn't build with Xcode. Updates with the one-line command above (asked for this instead of re-downloading DMGs). Not technical about Terminal: give exact click-by-click steps. |
-| Next | Owner tries the option bubbles and Remove BG (update command above) → fix what they report → AVIF (awaiting license OK) and Auto classification |
+| Next | Owner tries AVIF, the option bubbles and Remove BG (update command above) → fix what they report → Auto classification (Phase 1 step 2) |
 
 ## ✱ Where things stand
 
@@ -28,7 +28,8 @@
 - **Output**: a new file next to the original: `photo.webp`, `photo-min.png`, `photo-half.png`, then `-2`, `-3`… Never overwrites (`.withoutOverwriting`). Falls back to Downloads if the folder is read-only. **Never bigger than the input** (≥ 1% saving or "Already as small as it gets.").
 - **Clipboard**: every output as a file URL, plus the first as PNG picture data when there's a single file under 30 MP.
 - **Batches** run in parallel (performance cores, at most 4). Progress counts files; a single file shows a spinner.
-- **AVIF and every video action** answer "… is coming soon."
+- **AVIF** (added 2026-10-30, owner approved libaom + libavif): libaom 3.15.2 + libavif 1.4.2, 8-bit, tagged sRGB (CICP 1/13/6, full range), 4:4:4 for graphics and 4:2:0 for photos, alpha lossless, no alpha plane when opaque, quality 60 at speed 6 (`EncoderTuning`). The AVIF button converts; Compress and Half size keep AVIF sources as AVIF. Compress-to-size searches at speed 8, then re-encodes the winner at speed 6 and keeps whichever fits. macOS decodes AVIF natively (ImageIO), so libaom's decoder is only used by tests.
+- **Every video action** answers "Video is coming soon."
 
 **Option bubbles (the owner's design, 2026-10-30):** hovering a segment that has options fans out a second ring of smaller bubbles beyond it; dropping on the segment itself still does its default.
 
@@ -48,7 +49,7 @@
 
 1. **Make sure CI is green** on the branch. If it's red, open the run, read the failing step's log and fix it. Use `mcp__github__get_job_logs` with `failed_only: true` if you don't have a browser.
 2. **Owner tries the preview DMG** (the Snapshot link). History: on 2026-10-30 they said they couldn't run it on their Mac (reason never confirmed); they were given step-by-step DMG instructions, saw the Phase 0 build's pretend actions, asked for real functionality, and approved libwebp. Ask what they saw with real files, and fix what they report. Run through the *Manual test checklist* below as far as they're willing; tune `Bubble/Motion.swift` from their feedback.
-3. **Phase 1 step 2** (`CORE.md` §11), still to do: **AVIF** (libavif + libaom, BSD-2 + AOM patent license; state the license and ask the owner before adding it, per Rule 7), the **Auto classification** (photo → lossy WebP; graphic → lossless WebP vs PNG, smaller wins; replace `RGBAImage.looksLikeGraphic`), and the fuller PNG pipeline once **free vs paid** is decided (pngquant is GPL).
+3. **Phase 1 step 2** (`CORE.md` §11), still to do: the **Auto classification** (photo → lossy WebP; graphic → lossless WebP vs PNG, smaller wins; replace `RGBAImage.looksLikeGraphic`), and the fuller PNG pipeline once **free vs paid** is decided (pngquant is GPL).
 4. **JobQueue** (`CORE.md` §5): drops while a job runs are still ignored (`BubbleController.dragEntered` returns false while working). Make new drops queue, and move cancellation into the queue.
 5. Phase 1 step 3: SSIMULACRA 2 auto-tune (replaces the fixed values in `EncoderTuning`). (Step 4, Remove BG, is done.)
 6. Smaller items: accept file promises (`NSFilePromiseReceiver`) so drags from Photos, Safari and Mail work; post a notification for jobs over ~10s; a Settings window (`CORE.md` §10).
@@ -77,7 +78,7 @@
 9. Drop 10 images at once on Compress: the count goes up, then "10 files" on the card.
 10. Hover **Compress**: six small bubbles fan out. Drop on **500K** with a big photo → `photo-500kb.jpg` under 500 KB. Drop on **…** → a size panel; type 300, KB, Return.
 11. Hover **Remove BG**: None · White · Black · … Drop a portrait on **None** → `-nobg.png` with a transparent background. Drop on **…** → a color panel; try a hex, a swatch and the eyedropper. Next time, that color is its own bubble.
-12. AVIF: "AVIF is coming soon." A `.mov`: the video menu, then "Video is coming soon."
+12. **AVIF** on a photo → `photo.avif`, usually smaller than the WebP. Quick Look shows it. A `.mov`: the video menu, then "Video is coming soon."
 13. Drag a `.txt` over it: "Can't open this file type yet." while over, gone on exit.
 14. While a big batch works: hovering shows ×, and a click cancels.
 15. Type in TextEdit and drop on the bubble mid-sentence: TextEdit keeps focus.
@@ -92,6 +93,7 @@
 - The hovered action's **label shows inside the bubble**, because the drag image covers the segment. Segments are picked **by angle** outside the center.
 - Results and messages appear **beside the bubble**, on the side facing into the screen.
 - **libwebp 1.6.0** (BSD-3), approved by the owner. It's built from the pinned, SHA-256-checked release by `scripts/build-deps.sh`, not committed (`Vendor/` is generated).
+- **libaom 3.15.2 + libavif 1.4.2** (BSD-2, plus the AOM Patent License 1.0, royalty-free), approved by the owner. libaom comes from its checksummed release tarball; libavif is cloned at the pinned commit of tag v1.4.2 (its GitHub tarball can't be downloaded through the agent proxy, and a pinned commit is just as reliable). Built with CMake; `nasm` makes the Intel slice fast (CI installs it).
 - PNG Compress uses **our own lossless optimizer** with the system zlib, so it's license-free while free vs paid is open. JPEG and HEIC use **ImageIO** until jpegli.
 - **Auto = WebP** until classification (Phase 1 step 2). Half size uses the suffix **`-half`**.
 - **Option bubbles** (owner's choice): Compress → target file sizes 100 KB · 250 KB · 500 KB · 1 MB · 2 MB · Custom. Background choices live **inside Remove BG** (None · White · Black · last color · Custom hex), not as a separate bubble. Custom values are asked for after the drop. Sizes are decimal (1 KB = 1000 bytes). Hitting a size shrinks the image only as a last resort, and says so.
@@ -106,7 +108,6 @@
 1. **Free/open-source or paid?** ("Decide later" for now.) It decides pngquant (better PNG compression), x264/x265 and gifski.
 2. Is the label inside the bubble right, or would you rather see it next to the hovered segment?
 3. Is ⌃⌥⌘D OK as the show/hide shortcut?
-4. AVIF needs libavif + libaom (BSD-2, plus AOM's royalty-free patent license; fine in a paid app). OK to add?
 
 ## How to build, run and test
 
@@ -120,7 +121,7 @@ brew install xcodegen
 xcodegen generate && open Droptimize.xcodeproj
 ```
 
-`xcodegen generate` first runs `scripts/build-deps.sh`, which downloads and builds libwebp into `Vendor/` (about a minute the first time, then a no-op). Then Run (⌘R) or Test (⌘U). From the command line:
+`xcodegen generate` first runs `scripts/build-deps.sh`, which downloads and builds libwebp, libaom and libavif into `Vendor/` (several minutes the first time, then a no-op). It needs `brew install cmake nasm`. Then Run (⌘R) or Test (⌘U). From the command line:
 
 ```bash
 xcodegen generate && xcodebuild test -project Droptimize.xcodeproj -scheme Droptimize -destination 'platform=macOS'
@@ -136,7 +137,7 @@ xcodegen generate && xcodebuild test -project Droptimize.xcodeproj -scheme Dropt
 ./scripts/check-linux.sh
 ```
 
-It parses every Swift file, builds libwebp for Linux (needs `cc` and zlib headers, both present in the usual containers), and runs the portable tests, including the real encoders. When you add Foundation-only code with tests, add it to the lists at the top of the script. Then push and read CI for the real compile.
+It parses every Swift file, builds libwebp, libaom and libavif for Linux (needs `cc`, cmake, perl and zlib headers, all present in the usual containers; about 2 minutes the first time), and runs the portable tests, including the real encoders. When you add Foundation-only code with tests, add it to the lists at the top of the script. Then push and read CI for the real compile.
 
 ## Map of the code
 
@@ -164,6 +165,7 @@ It parses every Swift file, builds libwebp for Linux (needs `cc` and zlib header
 | `Image/ImageFormat.swift` | Portable list of readable formats and their extensions. |
 | `Image/Decode.swift` | macOS: ImageIO decode, orientation, sRGB, vImage resize, unpremultiply; `ImageFormat(typeIdentifier:)`; `RGBAImage.makeCGImage()`. |
 | `Image/Encoders/WebP.swift` | Portable: libwebp lossy and lossless. |
+| `Image/Encoders/AVIF.swift` | Portable: libavif + libaom (8-bit sRGB, 4:4:4 or 4:2:0, lossless alpha). |
 | `Image/Encoders/PNG.swift` | Portable: our lossless PNG optimizer (zlib). |
 | `Image/Encoders/ImageIOEncoder.swift` | macOS: JPEG, HEIC and plain PNG via ImageIO. |
 | `Image/RGBColor.swift` | Portable: `RGBColor` (hex in and out) and `ByteCount` (500 KB, 500K, -500kb). |
@@ -178,13 +180,13 @@ It parses every Swift file, builds libwebp for Linux (needs `cc` and zlib header
 | `Pipeline/Output.swift` | Portable: `OutputNaming`, `SizeGuard` (Rule 3), `OutputWriter` (never overwrites; Downloads fallback). |
 | `Pipeline/ImageJobRunner.swift` | macOS: `ImageOptimizer` (one file: plain, compress-to-fit, Remove BG) and `ImageJobRunner` (parallel batches, clipboard, notes). |
 | `Pipeline/Clipboard.swift` | macOS: file URLs plus a PNG picture on the pasteboard. |
-| `Modules/module.modulemap` | Lets Swift import libwebp (`CWebP`) and zlib (`CZlib`, where the SDK has no `zlib` module). |
-| `scripts/build-deps.sh` | Builds pinned libwebp into `Vendor/` (universal static lib on macOS, host build on Linux). |
+| `Modules/module.modulemap` | Lets Swift import libwebp (`CWebP`), libavif + libaom (`CAvif`) and zlib (`CZlib`, where the SDK has no `zlib` module). |
+| `scripts/build-deps.sh` | Builds pinned libwebp, libaom and libavif into `Vendor/` (universal static libs on macOS, host builds on Linux). Needs cmake, and nasm for a fast Intel slice. |
 | `scripts/check-linux.sh` | Parse, build libwebp, and run the portable tests without a Mac. |
 | `scripts/install.sh` | One-command install/update from the preview release (published as a release asset; tested in CI). |
 | `scripts/dmg-readme.txt` | The "READ ME FIRST" note inside the DMG. |
 | `.github/workflows/build.yml` | macOS CI: deps (cached), generate, build, test (warnings fail), universal Release build, DMG and zip, install-script test; then publishes DMG, zip and `install.sh` to the `preview` release. |
-| `Tests/` | XCTest. Portable (also run on Linux): `LayoutTests`, `DockPositionTests`, `SpringTests`, `ActionTests`, `OutputTests`, `EncoderTests`, `OptionTests`, `Support/TestPNGReader` (test-only PNG reader plus test images). macOS only: `MacTests`, `PipelineMacTests`, `OptionMacTests`. |
+| `Tests/` | XCTest. Portable (also run on Linux): `LayoutTests`, `DockPositionTests`, `SpringTests`, `ActionTests`, `OutputTests`, `EncoderTests`, `OptionTests`, `AVIFTests`, `Support/TestPNGReader` (test-only PNG reader plus test images). macOS only: `MacTests`, `PipelineMacTests`, `OptionMacTests`. |
 
 ## How the bubble works (so you don't have to rediscover it)
 
