@@ -5,6 +5,8 @@ options:
   deploymentTarget:
     macOS: "14.0"
   createIntermediateGroups: true
+  # Builds libwebp into Vendor/ first (a no-op once built). See scripts/build-deps.sh.
+  preGenCommand: scripts/build-deps.sh
 settings:
   base:
     SWIFT_VERSION: "5.0"
@@ -15,6 +17,9 @@ settings:
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
+    # C libraries: Modules/module.modulemap (CWebP, CZlib) and the libwebp built into Vendor/.
+    SWIFT_INCLUDE_PATHS: $(SRCROOT)/Modules
+    LIBRARY_SEARCH_PATHS: $(SRCROOT)/Vendor/libwebp/lib
   configs:
     Release:
       ENABLE_HARDENED_RUNTIME: YES
@@ -26,6 +31,7 @@ targets:
       - path: App
       - path: Bubble
       - path: Pipeline
+      - path: Image
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.droptimize.app

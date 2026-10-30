@@ -15,7 +15,14 @@ Droptimize (preview)
 
 Needs macOS 14 (Sonoma) or newer.
 
-To try it: drag an image from Finder onto the bubble, move over a segment,
-and let go. The actions are pretend in this preview; nothing is changed or created.
-Hold Option while dropping to see the error state. Hide or show the bubble with
-Control-Option-Command-D.
+To use it: drag an image from Finder onto the bubble, move over a button, and let go.
+  WebP       converts to WebP (the center, Auto, does the same for now)
+  Compress   makes it smaller in the same format (JPEG, PNG, WebP, HEIC)
+  Half size  halves the width and height, for 2x screenshots
+The new file is saved next to the original (which is never changed) and copied to your
+clipboard. AVIF, Remove BG and video are coming soon.
+
+The first time it saves into Desktop, Documents or Downloads, macOS asks whether
+Droptimize may access that folder. Click Allow. (Each new preview build may ask again.)
+
+Hide or show the bubble with Control-Option-Command-D.

@@ -9,3 +9,6 @@ build/
 
 # macOS
 .DS_Store
+
+# Built by scripts/build-deps.sh
+Vendor/

@@ -27,6 +27,9 @@ enum Motion {
     static let idlePanelSide: CGFloat = 80
     static let progressRingDiameter: CGFloat = 54
     static let progressLineWidth: CGFloat = 3
+    /// Seconds per turn of the working spinner, and how much of the ring it covers.
+    static let spinnerPeriod: Double = 0.9
+    static let spinnerArc: CGFloat = 0.28
 
     // MARK: Radial menu
 

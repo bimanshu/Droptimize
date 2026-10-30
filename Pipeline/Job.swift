@@ -31,12 +31,19 @@ enum JobError: LocalizedError, Equatable {
     case alreadySmallest
     case noSubject
     case unsupported
+    case unreadable
+    case cantSave
+    /// An action or format that isn't built yet; the message says which.
+    case notYet(String)
 
     var errorDescription: String? {
         switch self {
         case .alreadySmallest: return "Already as small as it gets."
         case .noSubject: return "Couldn't find a clear subject."
         case .unsupported: return "Can't open this file type yet."
+        case .unreadable: return "Couldn't open this image."
+        case .cantSave: return "Couldn't save the result."
+        case .notYet(let message): return message
         }
     }
 }

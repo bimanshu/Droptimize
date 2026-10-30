@@ -1,0 +1,18 @@
+// C libraries the Swift code imports. Found through SWIFT_INCLUDE_PATHS (project.yml)
+// and the -I flag in scripts/check-linux.sh.
+
+// libwebp, built into Vendor/ by scripts/build-deps.sh (CORE.md §8).
+module CWebP [system] {
+    header "../Vendor/libwebp/include/webp/encode.h"
+    header "../Vendor/libwebp/include/webp/decode.h"
+    link "webp"
+    link "m"
+    export *
+}
+
+// The system zlib, for the PNG encoder. Only used where the SDK has no `zlib` module of its own.
+module CZlib [system] {
+    header "zlib-shim.h"
+    link "z"
+    export *
+}

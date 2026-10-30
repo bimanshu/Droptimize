@@ -28,6 +28,13 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
+      # libwebp is rebuilt only when scripts/build-deps.sh changes (it pins the version).
+      - name: Cache native dependencies
+        uses: actions/cache@v4
+        with:
+          path: Vendor
+          key: deps-${{ runner.os }}-${{ hashFiles('scripts/build-deps.sh') }}
+
       - name: Generate project
         run: xcodegen generate
 
@@ -116,7 +123,7 @@ jobs:
           **Latest build of Droptimize. Replaced automatically on every successful push.**
 
           Built from \`${GITHUB_REF_NAME}\` at ${GITHUB_SHA::7}, build ${{ github.run_number }}, $(date -u '+%Y-%m-%d %H:%M UTC').
-          This is an early preview: the bubble and radial menu work, but the actions are pretend (no files are changed or created yet).
+          Early preview. Working: **WebP**, **Compress** (JPEG, PNG, WebP, HEIC) and **Half size**; the center (Auto) does WebP for now. Results are saved next to the original (never changed) and copied to the clipboard. AVIF, Remove BG and video are coming soon.
 
           ### Install
           1. Download **Droptimize.dmg** below and open it.
@@ -127,6 +134,7 @@ jobs:
              \`\`\`
              Or: open the app, click **Done**, then go to **System Settings → Privacy & Security** and click **Open Anyway**.
           4. Open Droptimize. There's no window or Dock icon: look for the drop icon in the menu bar and the bubble on the right edge of your screen.
+          5. The first time it saves into Desktop, Documents or Downloads, macOS asks for access to that folder. Click **Allow**. Each new preview build may ask again.
 
           Needs macOS 14 (Sonoma) or newer. Works on Apple Silicon and Intel Macs.
           EOF

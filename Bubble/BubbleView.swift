@@ -128,16 +128,23 @@ struct BubbleView: View {
             .accessibilityHidden(true)
     }
 
+    /// Fills as files finish; spins while there's nothing finished to show yet (one file, or the first of a batch).
     @ViewBuilder private var progressRing: some View {
         if case .working(let progress) = model.phase {
-            Circle()
-                .trim(from: 0, to: progress.fraction)
-                .stroke(Color.accentColor, style: StrokeStyle(lineWidth: Motion.progressLineWidth, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-                .frame(width: Motion.progressRingDiameter, height: Motion.progressRingDiameter)
-                .animation(Motion.hoverSpring.animation, value: progress.fraction)
-                .transition(.opacity)
-                .accessibilityHidden(true)
+            Group {
+                if progress.fraction > 0 && progress.total > 1 {
+                    Circle()
+                        .trim(from: 0, to: progress.fraction)
+                        .stroke(Color.accentColor, style: StrokeStyle(lineWidth: Motion.progressLineWidth, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .animation(Motion.hoverSpring.animation, value: progress.fraction)
+                } else {
+                    SpinnerRing(spins: !reduceMotion)
+                }
+            }
+            .frame(width: Motion.progressRingDiameter, height: Motion.progressRingDiameter)
+            .transition(.opacity)
+            .accessibilityHidden(true)
         }
     }
 
@@ -233,6 +240,23 @@ private struct MessagePill: View {
             .background(.regularMaterial, in: Capsule())
             .overlay(Capsule().strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5))
             .shadow(color: .black.opacity(0.2), radius: 8, y: 2)
+    }
+}
+
+/// An arc going round the bubble while work has no measurable progress. Still with Reduce Motion.
+private struct SpinnerRing: View {
+    let spins: Bool
+
+    var body: some View {
+        TimelineView(.animation(paused: !spins)) { context in
+            let turn = spins
+                ? context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: Motion.spinnerPeriod) / Motion.spinnerPeriod
+                : 0
+            Circle()
+                .trim(from: 0, to: Motion.spinnerArc)
+                .stroke(Color.accentColor, style: StrokeStyle(lineWidth: Motion.progressLineWidth, lineCap: .round))
+                .rotationEffect(.degrees(turn * 360 - 90))
+        }
     }
 }
 

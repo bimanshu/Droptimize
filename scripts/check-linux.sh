@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # What can be checked without a Mac (for agents working in Linux containers):
 #   1. every Swift file parses;
-#   2. the portable logic (layout, spring, dock position, action menus) passes its unit tests.
+#   2. the portable code passes its unit tests: layout, spring, dock position, action menus,
+#      output naming, the size guard, and the PNG and WebP encoders (libwebp is built for the
+#      host by scripts/build-deps.sh; zlib comes from the system).
 # This is NOT a build: AppKit/SwiftUI code is only type-checked by Xcode or by CI
 # (.github/workflows/build.yml). Needs a Swift toolchain on PATH; see HANDOFF.md.
 set -euo pipefail
@@ -15,19 +17,32 @@ PORTABLE_SOURCES=(
   Bubble/Spring.swift
   Pipeline/Action.swift
   Pipeline/Job.swift
+  Pipeline/Output.swift
+  Pipeline/ImagePlan.swift
+  Image/RGBAImage.swift
+  Image/ImageFormat.swift
+  Image/Encoders/PNG.swift
+  Image/Encoders/WebP.swift
 )
 PORTABLE_TESTS=(
   Tests/LayoutTests.swift
   Tests/DockPositionTests.swift
   Tests/SpringTests.swift
   Tests/ActionTests.swift
+  Tests/OutputTests.swift
+  Tests/EncoderTests.swift
+  Tests/Support/TestPNGReader.swift
 )
 
 command -v swiftc >/dev/null || { echo "swiftc not found. See HANDOFF.md → 'Checking code without a Mac'." >&2; exit 1; }
 
 echo "→ Parsing every Swift file"
-find App Bubble Pipeline Tests -name '*.swift' -print0 | xargs -0 swiftc -parse
+find App Bubble Pipeline Image Tests -name '*.swift' -print0 | xargs -0 swiftc -parse
 echo "  ok"
+
+echo "→ Building libwebp for this machine"
+./scripts/build-deps.sh
+repo="$(pwd)"
 
 echo "→ Running portable unit tests"
 work="$(mktemp -d)"
@@ -58,7 +73,10 @@ let package = Package(
     ]
 )
 EOF
-if (cd "$work" && swift test >"$work/test.log" 2>&1); then
+# The C modules (Modules/module.modulemap) and libwebp, for every target including the
+# generated test runner, so they're passed on the command line rather than per target.
+flags=(-Xswiftc -I -Xswiftc "$repo/Modules" -Xlinker -L"$repo/Vendor/libwebp/lib")
+if (cd "$work" && swift test "${flags[@]}" >"$work/test.log" 2>&1); then
   grep -E "Executed [0-9]+ tests" "$work/test.log" | tail -1
   echo "  ok"
 else

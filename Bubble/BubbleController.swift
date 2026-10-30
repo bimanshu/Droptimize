@@ -227,9 +227,7 @@ final class BubbleController {
             let mouse = NSEvent.mouseLocation
             addRipple(at: CGVector(dx: mouse.x - center.x, dy: mouse.y - center.y))
         }
-        // Phase 0: hold Option while dropping to try the error state.
-        let failure: JobError? = NSEvent.modifierFlags.contains(.option) ? .alreadySmallest : nil
-        start(Job(files: files, action: action), runner: FakeJobRunner(failure: failure))
+        start(Job(files: files, action: action), runner: ImageJobRunner())
         return true
     }
 
@@ -278,7 +276,7 @@ final class BubbleController {
 
     private func fail(_ error: Error) {
         jobTask = nil
-        showMessage((error as? LocalizedError)?.errorDescription ?? "Something went wrong.")
+        showMessage((error as? LocalizedError)?.errorDescription ?? "Couldn't optimize this image.")
     }
 
     private func cancelJob() {
