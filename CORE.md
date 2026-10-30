@@ -23,7 +23,7 @@ Working name: **Droptimize** (also considered: Blip, Ripple, Halo, PixDrop). If 
 
 | Area | State | Notes |
 |---|---|---|
-| Phase 0: app shell, bubble, radial menu (dummy actions) | Code complete; needs hands-on tuning on a Mac | Builds and passes tests in CI. Feel and window behaviour not yet tried by a person; see HANDOFF.md |
+| Phase 0: app shell, bubble, radial menu (dummy actions) | Code complete; needs hands-on tuning on a Mac | Builds and passes tests in CI; DMG on the `preview` release. Feel and window behaviour not yet tried by a person; see HANDOFF.md |
 | Phase 1: image pipeline | Not started | |
 | Phase 1.5: benchmark, polish, launch clip | Not started | |
 | Phase 2: video pipeline | Not started | |
@@ -331,6 +331,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-10-30: CI now builds a DMG and publishes it to a `preview` pre-release on every green push, so the owner can try builds without Xcode: https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg (owner approved making it public). Not notarized until Phase 3, so the first launch needs `xattr -cr` or Open Anyway.
 - 2026-10-30: Phase 0 code complete on branch `claude/fervent-thompson-2620yn`: menu bar app, non-activating floating bubble, edge snapping with a display-synced spring and per-display memory, radial menu with stagger, haptics and Reduce Motion, fake 1s job, done card (drag out or click to reveal), error pill with shake, ⌃⌥⌘D show/hide, unit tests, Linux check script, macOS CI. Builds and passes tests in CI; not yet tried by a person.
 - 2026-10-30: Interaction decisions while building Phase 0 (§4): dock to left/right edges only; segments on a 160° arc facing into the screen instead of a full ring (a docked bubble would put half a ring off-screen); hovered label shown inside the bubble; segments picked by angle; results and messages shown beside the bubble. Swift 5 language mode for now, ad-hoc signing until Phase 3.
 - 2026-10-30: Added `HANDOFF.md` (where work stands, next steps) and `CLAUDE.md` (agent start/end routine).
