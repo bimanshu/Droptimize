@@ -220,13 +220,13 @@ The same idea as §6.4, using Netflix's **VMAF** metric: encode a few short samp
 
 - **Auto:** MP4 (H.264 for maximum compatibility; HEVC as a setting). Remux if possible, otherwise encode, auto-tuned.
 - **MP4 / WebM:** convert.
-- **GIF:** two-pass palette (FFmpeg `palettegen` + `paletteuse`), capped at ~15–20fps and ~800px wide (*tune*). Many platforms convert uploaded GIFs to video anyway, so the done state can suggest MP4 as the smaller option. gifski makes better GIFs but is AGPL (§8).
+- **GIF:** two-pass palette (one palette for the clip, then dithered frames that only redraw what changed), up to 30 fps in even steps of the source and ~800px (*tune*). Many platforms convert uploaded GIFs to video anyway, so the done state can suggest MP4 as the smaller option. gifski makes better GIFs but is AGPL (§8).
 - **1080p / 720p:** scale down preserving aspect ratio, even dimensions, never upscale.
 - **Mute:** drop the audio track (for website hero videos).
 - Audio when kept: AAC ~128–160 kbps in MP4, Opus in WebM.
 - HDR sources: keep HDR in HEVC; tone-map to SDR for H.264, WebM and GIF.
 
-**Built so far (AVFoundation only, `Video/`):** Auto = H.264 MP4 at ~0.08 bits per pixel per frame, never above 70% of the source's bitrate, size guard on. Convert → MP4 remuxes when the streams are already H.264/HEVC + AAC, else encodes H.264; HEVC encodes at ~0.05 bpp. Compress to a size takes the bitrate from size ÷ duration (8% headroom, AAC 128 kbps), drops to the largest standard size (1080p, 720p, 480p, 360p) that bitrate suits when it is too low for the frame, and retries when the encoder overshoots (lower bitrate, then fewer pixels); the card says "Scaled to 480p to fit". Resize never upscales and keeps even sizes. Mute is a passthrough copy without the audio track. GIF is ImageIO at 15 fps, ≤ 800 px, the first 30 seconds (no palette pass yet). Settings in `VideoTuning` (*tune*) until VMAF.
+**Built so far (AVFoundation only, `Video/`):** Auto = H.264 MP4 at ~0.08 bits per pixel per frame, never above 70% of the source's bitrate, size guard on. Convert → MP4 remuxes when the streams are already H.264/HEVC + AAC, else encodes H.264; HEVC encodes at ~0.05 bpp. Compress to a size takes the bitrate from size ÷ duration (8% headroom, AAC 128 kbps), drops to the largest standard size (1080p, 720p, 480p, 360p) that bitrate suits when it is too low for the frame, and retries when the encoder overshoots (lower bitrate, then fewer pixels); the card says "Scaled to 480p to fit". Resize never upscales and keeps even sizes. Mute is a passthrough copy without the audio track. GIF is our own encoder (`Video/GIFEncoder.swift`: one palette per clip by median cut + k-means, Floyd–Steinberg dithering, only changed pixels redrawn, real frame timing), from every frame up to 30 fps, Lanczos-scaled to ≤ 800 px and color-managed to sRGB, the first 30 seconds. Settings in `VideoTuning` (*tune*) until VMAF.
 
 ### 7.5 UX differences from images
 
@@ -336,6 +336,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-10-31: GIF rebuilt after the owner found ImageIO's output "very bad" (bands, colors breaking, lag): our own GIF encoder (no dependencies) with one palette per clip, dithering, redraw-only-what-changed frames and true timing, fed every frame up to 30 fps (evenly), upright and color-managed by Core Image.
 - 2026-10-31: New logo (owner's pick of four concepts): "Shrink", nested circles getting smaller with a solid dot, in place of the drop. Used for the bubble glyph, the menu bar icon and a new app icon (dark tile, mint dot). Geometry in `Bubble/Logo.swift`; icon source `scripts/app-icon.svg`.
 - 2026-10-30: Video (Phase 2 steps 1–4) with AVFoundation only, no new dependencies (owner said "do the recommended stuff, don't ask"). The video menu mirrors images: Convert (MP4 · HEVC · GIF), Compress (10/25/50/100 MB · Custom), Resize (1080p · 720p · 480p), Mute; Auto = smaller H.264 MP4. Remux when possible, real per-frame progress, cancel, one video at a time. Video conversions and Mute are exempt from Rule 3 like image conversions. WebM, FFmpeg max quality and VMAF deferred until the owner approves FFmpeg or libvpx.
 - 2026-10-30: History window (owner asked for it in the app): menu bar → History… lists every file made with sizes and the saving, with reveal, drag out, copy and clear. Stored in Application Support, local only. The publish step now swaps release files in place; the owner had hit a 404 during the old delete-and-recreate gap.

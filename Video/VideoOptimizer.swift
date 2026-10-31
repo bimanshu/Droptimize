@@ -1,10 +1,11 @@
 import AVFoundation
+import CoreImage
+import CoreImage.CIFilterBuiltins
 import Foundation
 import ImageIO
-import UniformTypeIdentifiers
 
-/// Turns one video into a new file next to it (CORE.md §7), with Apple's encoders only: passthrough
-/// remux, H.264/HEVC through VideoToolbox, GIF through ImageIO. No new dependencies.
+/// Turns one video into a new file next to it (CORE.md §7), with no new dependencies: passthrough
+/// remux, H.264/HEVC through VideoToolbox, GIF through our own encoder (`GIFWriter`).
 enum VideoOptimizer {
     /// `progress` gets 0…1 as the work goes (from any thread).
     static func process(_ input: URL, action: Action, option: ActionOption?,
@@ -277,37 +278,134 @@ enum VideoOptimizer {
 
     // MARK: GIF
 
-    /// A looping GIF at `VideoTuning.gifFrameRate`, at most `gifMaxSide` px and `gifMaxSeconds` long
-    /// (CORE.md §7.4). Many sites turn GIFs into video anyway; MP4 is usually far smaller.
+    /// A looping GIF (CORE.md §7.4) through our own encoder (`GIFWriter`): evenly spaced frames up to
+    /// `gifMaxFrameRate`, at most `gifMaxSide` px and `gifMaxSeconds` long. Two passes over the
+    /// video: the first picks one palette for the whole clip, the second dithers and writes.
+    /// Many sites turn GIFs into video anyway; MP4 is usually far smaller.
     private static func makeGIF(_ asset: AVAsset, source: VideoSource, to url: URL,
                                 progress: @escaping @Sendable (Double) -> Void) async throws -> String? {
         let seconds = min(source.seconds, VideoTuning.gifMaxSeconds)
-        let fps = VideoTuning.gifFrameRate
-        let frames = max(1, Int(seconds * fps))
-        let generator = AVAssetImageGenerator(asset: asset)
-        generator.appliesPreferredTrackTransform = true
-        generator.maximumSize = CGSize(width: VideoTuning.gifMaxSide, height: VideoTuning.gifMaxSide)
-        let tolerance = CMTime(seconds: 0.5 / fps, preferredTimescale: 600)
-        generator.requestedTimeToleranceBefore = tolerance
-        generator.requestedTimeToleranceAfter = tolerance
+        let frames = GIFFrameReader(asset: asset, source: source, seconds: seconds)
+        let paletteShare = VideoTuning.gifPaletteShare
+        func done(_ time: Double) -> Double { seconds > 0 ? min(1, max(0, time / seconds)) : 0 }
 
-        guard let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.gif.identifier as CFString, frames, nil)
-        else { throw JobError.cantSave }
-        CGImageDestinationSetProperties(destination, [
-            kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFLoopCount: 0],
-        ] as CFDictionary)
-        let frameProperties = [
-            kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFDelayTime: 1 / fps, kCGImagePropertyGIFUnclampedDelayTime: 1 / fps],
-        ] as CFDictionary
-        for index in 0..<frames {
-            try Task.checkCancellation()
-            let time = CMTime(seconds: Double(index) / fps, preferredTimescale: 600)
-            let image = try await generator.image(at: time).image
-            CGImageDestinationAddImage(destination, image, frameProperties)
-            progress(Double(index + 1) / Double(frames))
+        var histogram = GIFPalette.Histogram()
+        try frames.read { frame, time in
+            histogram.add(rgba: frame, step: 2)
+            progress(paletteShare * done(time))
         }
-        guard CGImageDestinationFinalize(destination) else { throw JobError.cantSave }
+        let writer = GIFWriter(width: frames.width, height: frames.height, palette: GIFPalette.make(from: histogram))
+        // Each frame is written when the next arrives, which says how long it stays up.
+        var previous: (frame: [UInt8], time: Double)?
+        try frames.read { frame, time in
+            if let previous {
+                writer.add(rgba: previous.frame, centiseconds: VideoTuning.gifCentiseconds(from: previous.time, to: time))
+            }
+            previous = (frame, time)
+            progress(paletteShare + (1 - paletteShare) * done(time))
+        }
+        guard let last = previous else { throw JobError.unreadableVideo }
+        writer.add(rgba: last.frame,
+                   centiseconds: VideoTuning.gifCentiseconds(from: last.time, to: max(seconds, last.time + frames.interval / 2)))
+        do {
+            try writer.finish().write(to: url)
+        } catch {
+            throw JobError.cantSave
+        }
         return source.seconds > VideoTuning.gifMaxSeconds ? "First \(Int(VideoTuning.gifMaxSeconds)) seconds" : nil
+    }
+}
+
+/// Decodes the frames a GIF keeps: evenly spaced (`VideoTuning.gifFrameStep`), turned upright,
+/// scaled to `VideoTuning.gifSize` with Lanczos and color-managed into sRGB by Core Image.
+struct GIFFrameReader {
+    let asset: AVAsset
+    let source: VideoSource
+    let seconds: Double
+    let width: Int
+    let height: Int
+    /// Seconds between kept frames.
+    let interval: Double
+    private let orientation: CGImagePropertyOrientation
+
+    init(asset: AVAsset, source: VideoSource, seconds: Double) {
+        self.asset = asset
+        self.source = source
+        self.seconds = seconds
+        orientation = Self.orientation(of: source.transform)
+        let sideways = orientation == .left || orientation == .right
+        let size = VideoTuning.gifSize(width: sideways ? source.height : source.width,
+                                       height: sideways ? source.width : source.height)
+        width = size.width
+        height = size.height
+        interval = Double(VideoTuning.gifFrameStep(sourceFPS: source.fps)) / source.fps
+    }
+
+    /// Calls `body` with each kept frame (RGBA, `width` × `height`) and its time in seconds.
+    func read(_ body: ([UInt8], Double) throws -> Void) throws {
+        let reader = try AVAssetReader(asset: asset)
+        reader.timeRange = CMTimeRange(start: .zero, duration: CMTime(seconds: seconds, preferredTimescale: 600))
+        let output = AVAssetReaderTrackOutput(track: source.videoTrack, outputSettings: [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+        ])
+        output.alwaysCopiesSampleData = false
+        guard reader.canAdd(output) else { throw JobError.unreadableVideo }
+        reader.add(output)
+        guard reader.startReading() else { throw reader.error ?? JobError.unreadableVideo }
+        defer { if reader.status == .reading { reader.cancelReading() } }
+
+        let context = CIContext(options: [.cacheIntermediates: false])
+        guard let sRGB = CGColorSpace(name: CGColorSpace.sRGB) else { throw JobError.unreadableVideo }
+        var lastSlot = -1
+        while let sample = output.copyNextSampleBuffer() {
+            try Task.checkCancellation()
+            guard let pixels = CMSampleBufferGetImageBuffer(sample) else { continue }
+            let time = CMSampleBufferGetPresentationTimeStamp(sample).seconds
+            guard time.isFinite, time < seconds else { continue }
+            // The first frame in each slot of `interval`: even steps, even for variable frame rates.
+            let slot = Int((time / interval + 1e-6).rounded(.down))
+            guard slot > lastSlot else { continue }
+            lastSlot = slot
+            try body(render(pixels, context: context, colorSpace: sRGB), time)
+        }
+        if reader.status == .failed { throw reader.error ?? JobError.unreadableVideo }
+    }
+
+    private func render(_ pixels: CVPixelBuffer, context: CIContext, colorSpace: CGColorSpace) throws -> [UInt8] {
+        var image = CIImage(cvPixelBuffer: pixels).oriented(orientation)
+        image = image.transformed(by: CGAffineTransform(translationX: -image.extent.minX, y: -image.extent.minY))
+        let scaleY = Double(height) / image.extent.height
+        let filter = CIFilter.lanczosScaleTransform()
+        filter.inputImage = image.clampedToExtent()            // no see-through edges
+        filter.scale = Float(scaleY)
+        filter.aspectRatio = Float((Double(width) / image.extent.width) / scaleY)
+        let bounds = CGRect(x: 0, y: 0, width: width, height: height)
+        guard let scaled = filter.outputImage?.cropped(to: bounds),
+              let cgImage = context.createCGImage(scaled, from: bounds, format: .RGBA8, colorSpace: colorSpace)
+        else { throw JobError.unreadableVideo }
+
+        // Drawn into a plain sRGB bitmap: rows top to bottom, opaque.
+        var frame = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn = frame.withUnsafeMutableBytes { bytes -> Bool in
+            guard let bitmap = CGContext(data: bytes.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                                         bytesPerRow: width * 4, space: colorSpace,
+                                         bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return false }
+            bitmap.draw(cgImage, in: bounds)
+            return true
+        }
+        guard drawn else { throw JobError.unreadableVideo }
+        return frame
+    }
+
+    /// Phones store video sideways and say how to turn it in the track's transform.
+    static func orientation(of transform: CGAffineTransform) -> CGImagePropertyOrientation {
+        switch (transform.a.rounded(), transform.b.rounded(), transform.c.rounded(), transform.d.rounded()) {
+        case (0, 1, -1, 0): return .right           // portrait, as iPhones record it
+        case (0, -1, 1, 0): return .left
+        case (-1, 0, 0, -1): return .down
+        default: return .up
+        }
     }
 }
 

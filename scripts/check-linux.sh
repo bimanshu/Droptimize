@@ -30,6 +30,7 @@ PORTABLE_SOURCES=(
   Image/Encoders/WebP.swift
   Image/Encoders/AVIF.swift
   Video/VideoPlan.swift
+  Video/GIFEncoder.swift
 )
 PORTABLE_TESTS=(
   Tests/LayoutTests.swift
@@ -42,7 +43,9 @@ PORTABLE_TESTS=(
   Tests/AVIFTests.swift
   Tests/HistoryTests.swift
   Tests/VideoPlanTests.swift
+  Tests/GIFTests.swift
   Tests/Support/TestPNGReader.swift
+  Tests/Support/TestGIFReader.swift
 )
 
 command -v swiftc >/dev/null || { echo "swiftc not found. See HANDOFF.md → 'Checking code without a Mac'." >&2; exit 1; }

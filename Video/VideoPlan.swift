@@ -116,10 +116,22 @@ enum VideoTuning {
     static let targetSizes = [10_000_000, 25_000_000, 50_000_000, 100_000_000]
     static let resizeSides = [1080, 720, 480]
     static let defaultCustomSize = 25_000_000
-    /// GIF (CORE.md §7.4: ~15–20 fps, ~800 px wide).                                       (tune)
-    static let gifFrameRate = 15.0
+    /// GIF (CORE.md §7.4). Every frame up to this rate, then every 2nd, 3rd… source frame, so motion
+    /// stays even (30 fps → 30, 60 → 30, 24 → 24).                                         (tune)
+    static let gifMaxFrameRate = 30.0
     static let gifMaxSide = 800
     static let gifMaxSeconds = 30.0
+    /// Squared RGB distance under which a pixel counts as unchanged since it was drawn: it keeps its
+    /// color, so still areas don't shimmer. Higher: smaller files, but slow fades step.      (tune)
+    static let gifChangeThreshold = 100
+    /// How much of each pixel's color error Floyd–Steinberg passes on, and the most it carries.
+    static let gifDitherStrength = 0.85
+    static let gifDitherErrorLimit = 48.0
+    static let gifPaletteRefinements = 2
+    /// The share of the progress ring the palette pass fills (it only decodes and counts).
+    static let gifPaletteShare = 0.25
+    /// Browsers slow anything faster than 2/100 s down to 1/10 s.
+    static let gifMinCentiseconds = 2
 
     /// A good-looking bitrate for this size and frame rate.
     static func bitrate(width: Int, height: Int, fps: Double, codec: VideoPlan.Codec) -> Int {
@@ -164,6 +176,24 @@ enum VideoTuning {
     static func shortSide(below shortSide: Int, pixelShare: Double) -> Int? {
         let smaller = standardShortSides.filter { $0 < shortSide }
         return smaller.first { pow(Double($0) / Double(shortSide), 2) <= pixelShare } ?? smaller.last
+    }
+
+    /// Keep every `n`th source frame: the smallest step that brings the rate to `gifMaxFrameRate`.
+    static func gifFrameStep(sourceFPS: Double) -> Int {
+        guard sourceFPS > 0 else { return 1 }
+        return max(1, Int((sourceFPS / gifMaxFrameRate - 0.01).rounded(.up)))
+    }
+
+    /// The GIF's size: the upright video scaled so its longer side is at most `gifMaxSide`.
+    static func gifSize(width: Int, height: Int) -> (width: Int, height: Int) {
+        let scale = min(1, Double(gifMaxSide) / Double(max(width, height, 1)))
+        return (max(1, Int((Double(width) * scale).rounded())), max(1, Int((Double(height) * scale).rounded())))
+    }
+
+    /// How long a frame shown from `start` to `stop` seconds stays up, in hundredths of a second.
+    /// Rounds the running time rather than each frame, so the total stays true (30 fps → 3, 3, 4…).
+    static func gifCentiseconds(from start: Double, to stop: Double) -> Int {
+        max(0, Int((stop * 100).rounded()) - Int((start * 100).rounded()))
     }
 
     private static func clamp(_ bitrate: Int) -> Int { min(max(bitrate, minBitrate), maxBitrate) }
