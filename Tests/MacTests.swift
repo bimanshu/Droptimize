@@ -21,12 +21,45 @@ final class MediaKindTests: XCTestCase {
 final class SymbolTests: XCTestCase {
     func testEverySymbolExists() {
         var names = Action.allCases.map(\.symbol)
-        names += ["drop.fill", "drop.circle", "checkmark", "exclamationmark", "xmark", "ellipsis"]
+        names += ["checkmark", "exclamationmark", "xmark", "ellipsis"]
         for option in Action.allCases.flatMap({ $0.options(lastColor: nil) }) {
             if case .symbol(let name) = option.label { names.append(name) }
         }
         for name in names {
             XCTAssertNotNil(NSImage(systemSymbolName: name, accessibilityDescription: nil), "missing SF Symbol \(name)")
+        }
+    }
+}
+
+final class LogoTests: XCTestCase {
+    func testMenuBarImageIsATemplateOfTheMark() throws {
+        let image = Logo.menuBarImage()
+        XCTAssertTrue(image.isTemplate, "so the menu bar tints it for light and dark")
+        XCTAssertEqual(image.size, NSSize(width: Motion.menuBarLogoSize, height: Motion.menuBarLogoSize))
+
+        let side = 48
+        let rep = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: side, pixelsHigh: side,
+                                                 bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                                 colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        image.draw(in: NSRect(x: 0, y: 0, width: side, height: side))
+        NSGraphicsContext.restoreGraphicsState()
+
+        func alpha(_ x: CGFloat, _ y: CGFloat) -> CGFloat {      // grid units, y down
+            let scale = CGFloat(side) / Logo.grid
+            return rep.colorAt(x: Int(x * scale), y: Int(y * scale))?.alphaComponent ?? 0
+        }
+        XCTAssertGreaterThan(alpha(Logo.dot.x, Logo.dot.y), 0.9, "the solid dot, bottom left")
+        XCTAssertGreaterThan(alpha(12, 2.5), 0.9, "the outer ring's top")
+        XCTAssertLessThan(alpha(12, 12), 0.1, "the middle is open")
+        XCTAssertLessThan(alpha(23.5, 23.5), 0.1, "nothing outside the ring")
+    }
+
+    func testTheMarkStaysOnItsGrid() {
+        for disc in Logo.rings + [Logo.dot] {
+            let rect = disc.rect(1).insetBy(dx: -Logo.stroke / 2, dy: -Logo.stroke / 2)
+            XCTAssertTrue(CGRect(x: 0, y: 0, width: Logo.grid, height: Logo.grid).contains(rect), "\(disc)")
         }
     }
 }

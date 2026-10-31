@@ -22,7 +22,7 @@ final class MenuBar: NSObject, NSMenuDelegate {
         self.historyWindow = HistoryWindowController(store: history)
         super.init()
 
-        statusItem.button?.image = NSImage(systemSymbolName: "drop.circle", accessibilityDescription: "Droptimize")
+        statusItem.button?.image = Logo.menuBarImage()
 
         let menu = NSMenu()
         menu.delegate = self

@@ -7,7 +7,7 @@
 
 | | |
 |---|---|
-| Last updated | 2026-10-30 |
+| Last updated | 2026-10-31 |
 | Branch | `claude/fervent-thompson-2620yn` (the only branch so far; no `main` yet, nothing merged, no PR) |
 | Phase | **1: WebP, AVIF, Compress (incl. target sizes), Half size and Remove BG (with background choices) work. 2: video works with AVFoundation only** (Convert MP4 · HEVC · GIF, Compress to 10–100 MB, Resize, Mute, Auto). The feel and real-world video haven't been tried by a person yet. |
 | CI | [Build workflow](https://github.com/bimanshu/Droptimize/actions/workflows/build.yml): green at `4a66c86` (Xcode 16.4, macOS 15 runner): **157/157 tests** (117 of them also on Linux; 10 video tests on synthetic clips), 0 warnings (warnings fail the build), universal libwebp/libaom/libavif and app, install script tested, preview published with video. The DMG is ~8.4 MB, mostly libaom (video adds nothing: AVFoundation is part of macOS). The first deps build after a `build-deps.sh` change takes ~3 minutes in CI; otherwise it's cached |
@@ -84,7 +84,7 @@
 
 ## Manual test checklist
 
-1. Launch: no Dock icon, a drop icon in the menu bar, and the bubble on the right edge, vertically centered, at about 60% opacity.
+1. Launch: no Dock icon, the logo (nested circles) in the menu bar and on the bubble; the app icon in Finder and Applications, and the bubble on the right edge, vertically centered, at about 60% opacity.
 2. Hover: full opacity and a slight grow.
 3. Drag the bubble toward the left: it springs to the left edge. Quit and relaunch: it's still there.
 4. Drag a PNG from Finder over it: the bubble grows and 4 segments fan out with a stagger. Hover each: it highlights, its label shows in the bubble, and there's a haptic tick.
@@ -107,6 +107,7 @@
 
 ## ✱ Decisions made so far (also in `CORE.md` §14)
 
+- **Logo** (owner's pick, 2026-10-31, replacing the drop, which they called "the most sloppy logo ever"): "Shrink", a circle, a smaller circle inside it, and a solid dot, all touching at the bottom left: the same thing, smaller and smaller, echoing the bubble. One geometry in `Bubble/Logo.swift` (24-unit grid) draws the bubble glyph (`LogoMark`) and the menu bar template image. The app icon (the app had none before) is the mark in white on a dark tile with a mint dot (#3DDC97 → #22C47E), from `scripts/app-icon.svg`. The other concepts shown: Scale down, Squeeze, Compact.
 - The bubble docks to the **left or right** edge only. The top has the menu bar and the bottom usually the Dock.
 - The menu is a **160° arc facing into the screen**, segments top to bottom, instead of a full ring. The ring grows for 6 segments so neighbours never touch.
 - The hovered action's **label shows inside the bubble**, because the drag image covers the segment. Segments are picked **by angle** outside the center.
@@ -149,7 +150,7 @@ xcodegen generate && open Droptimize.xcodeproj
 xcodegen generate && xcodebuild test -project Droptimize.xcodeproj -scheme Droptimize -destination 'platform=macOS'
 ```
 
-**Without Xcode** (how the owner runs it): in Terminal, run `curl -fsSL https://github.com/bimanshu/Droptimize/releases/download/preview/install.sh | bash`. `scripts/install.sh` checks for macOS 14+, downloads `Droptimize.zip` from the preview release, verifies the signature, quits the running copy, swaps the app in `/Applications` (or `~/Applications` if that isn't writable) and opens it. curl downloads aren't quarantined, so no Gatekeeper step. CI runs it on every build (fresh install, then update) before publishing. The same works for a first install. By hand instead: download the DMG from https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg, open it, and drag Droptimize into Applications. Run `xattr -cr /Applications/Droptimize.app` (it's ad-hoc signed, so Gatekeeper blocks it until Phase 3 notarization), then open it. It needs macOS 14+. There's no window or Dock icon: look for the drop icon in the menu bar and the bubble on the right edge of the screen. The DMG also contains `READ ME FIRST.txt` (from `scripts/dmg-readme.txt`; keep it current when the steps or features change).
+**Without Xcode** (how the owner runs it): in Terminal, run `curl -fsSL https://github.com/bimanshu/Droptimize/releases/download/preview/install.sh | bash`. `scripts/install.sh` checks for macOS 14+, downloads `Droptimize.zip` from the preview release, verifies the signature, quits the running copy, swaps the app in `/Applications` (or `~/Applications` if that isn't writable) and opens it. curl downloads aren't quarantined, so no Gatekeeper step. CI runs it on every build (fresh install, then update) before publishing. The same works for a first install. By hand instead: download the DMG from https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg, open it, and drag Droptimize into Applications. Run `xattr -cr /Applications/Droptimize.app` (it's ad-hoc signed, so Gatekeeper blocks it until Phase 3 notarization), then open it. It needs macOS 14+. There's no window or Dock icon: look for the logo (nested circles) in the menu bar and the bubble on the right edge of the screen. The DMG also contains `READ ME FIRST.txt` (from `scripts/dmg-readme.txt`; keep it current when the steps or features change).
 
 **How the preview is published:** the `publish` job in `.github/workflows/build.yml` runs after every green push (not for PRs). It swaps the files of the `preview` pre-release in place (`gh release upload --clobber`, install.sh first), moves the `preview` tag to the pushed commit, and updates the notes, so the links never change. (It used to delete and recreate the release. On 2026-10-30 the owner hit "The requested URL returned error" running the install command during one of those ~15-second gaps; `install.sh` now also retries its download.) It publishes from **any** branch, so the preview is always the most recent green push. Each run's DMG is also kept as the `Droptimize-dmg` artifact for 14 days. Release notes are written inline in the workflow; keep them current too.
 
@@ -181,6 +182,8 @@ It parses every Swift file, builds libwebp, libaom and libavif for Linux (needs 
 | `Bubble/BubbleModel.swift` | `ObservableObject` the views draw from, plus `DoneInfo` and `Ripple`. |
 | `Bubble/BubbleView.swift` | SwiftUI drawing: bubble, glyphs, progress ring and spinner, card, message pill, ripple, shake. |
 | `Bubble/RadialMenu.swift` | SwiftUI segments with fan-out and stagger. |
+| `Bubble/Logo.swift` | The logo's geometry (`Logo`), its SwiftUI view (`LogoMark`, the bubble glyph) and the menu bar template image. |
+| `App/Assets.xcassets` | The app icon, PNGs rendered from `scripts/app-icon.svg` by `scripts/make-app-icon.js` (Node + Playwright, a dev tool only). |
 | `Bubble/Thumbnails.swift` | QuickLook thumbnails for the card. |
 | `Bubble/InputPanel.swift` | The post-drop panel for Custom: size (KB/MB) or color (hex, swatches, eyedropper); key without activating; `Color(rgb:)`. |
 | `Image/RGBAImage.swift` | Portable pixel buffer (sRGB, straight alpha) with opacity and color-count checks; `EncoderTuning` (all encoder settings). |

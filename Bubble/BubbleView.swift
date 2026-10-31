@@ -47,8 +47,7 @@ struct BubbleView: View {
     @ViewBuilder private var glyph: some View {
         switch model.phase {
         case .idle:
-            Image(systemName: "drop.fill")
-                .font(.system(size: 17, weight: .semibold))
+            LogoMark()
                 .foregroundStyle(.secondary)
         case .menu:
             if let title = model.target.flatMap(model.menu.title(for:)) {
@@ -59,8 +58,7 @@ struct BubbleView: View {
                     .minimumScaleFactor(0.6)
                     .padding(.horizontal, 4)
             } else {
-                Image(systemName: "drop.fill")
-                    .font(.system(size: 17, weight: .semibold))
+                LogoMark()
                     .foregroundStyle(Color.accentColor)
             }
         case .asking:
@@ -77,8 +75,7 @@ struct BubbleView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             } else {
-                Image(systemName: "drop.fill")
-                    .font(.system(size: 17, weight: .semibold))
+                LogoMark()
                     .foregroundStyle(.tertiary)
             }
         case .done:

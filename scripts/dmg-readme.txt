@@ -10,7 +10,7 @@ Droptimize (preview)
    Or: open the app, click Done, then go to System Settings > Privacy & Security
    and click Open Anyway.
 
-3. Open Droptimize. It has no window and no Dock icon. Look for the drop icon
+3. Open Droptimize. It has no window and no Dock icon. Look for the circles icon
    in the menu bar and the bubble on the right edge of your screen.
 
 Needs macOS 14 (Sonoma) or newer.
@@ -40,7 +40,7 @@ Videos (MOV, MP4, M4V) get their own buttons:
 The first time it saves into Desktop, Documents or Downloads, macOS asks whether
 Droptimize may access that folder. Click Allow. (Each new preview build may ask again.)
 
-Everything you make is listed in History (click the drop icon in the menu bar).
+Everything you make is listed in History (click the circles icon in the menu bar).
 Hide or show the bubble with Control-Option-Command-D.
 
 To update later, you don't need this disk image. Paste this into Terminal:

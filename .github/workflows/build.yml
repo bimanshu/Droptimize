@@ -163,7 +163,7 @@ jobs:
              xattr -cr /Applications/Droptimize.app
              \`\`\`
              Or: open the app, click **Done**, then go to **System Settings → Privacy & Security** and click **Open Anyway**.
-          4. Open Droptimize. There's no window or Dock icon: look for the drop icon in the menu bar and the bubble on the right edge of your screen.
+          4. Open Droptimize. There's no window or Dock icon: look for the circles icon (three nested circles) in the menu bar and the bubble on the right edge of your screen.
           5. The first time it saves into Desktop, Documents or Downloads, macOS asks for access to that folder. Click **Allow**. Each new preview build may ask again.
 
           Needs macOS 14 (Sonoma) or newer. Works on Apple Silicon and Intel Macs.

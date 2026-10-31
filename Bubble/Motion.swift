@@ -21,6 +21,9 @@ enum Motion {
     /// How much the bubble grows while a drag is over it.
     static let bubbleAwakeScale: CGFloat = 1.2
     static let bubbleShadowRadius: CGFloat = 8
+    /// The mark inside the bubble, and in the menu bar (`Logo`).               (tune)
+    static let logoSize: CGFloat = 22
+    static let menuBarLogoSize: CGFloat = 18
     /// Gap between the bubble and the screen edge it docks to.
     static let edgeInset: CGFloat = 12
     /// The panel while idle or working: room for hover growth, the shadow and the progress ring.
