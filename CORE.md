@@ -48,7 +48,7 @@ The tools that inspired this all kill a detour. CleanShot X keeps the screenshot
 1. **Never leave the user's context.** No windows to manage in the core flow. Drop → result. Images go to the clipboard; videos appear as a draggable thumbnail on the bubble. Both are also saved next to the original.
 2. **Never touch the original.** Always write a new file. Never overwrite; on a name clash append `-2`, `-3`.
 3. **Never hand back a bigger file.** If the output is larger than the input (or saves less than ~1%, *tune*), keep the original and say "Already as small as it gets." Exceptions, agreed with the owner: **Convert** into another format, and **Remove BG**. They do what was asked even when the result is bigger. The video equivalents (Convert to MP4, HEVC or GIF, and **Mute**) follow the same reasoning.
-4. **Everything on-device.** No network calls, no accounts, no analytics in v1. Works offline, costs nothing per use. Privacy is a selling point.
+4. **Everything on-device.** No network calls, no accounts, no analytics in v1. Works offline, costs nothing per use. Privacy is a selling point. The one exception (owner approved, 2026-11-01): checking a Pro license key with Lemon Squeezy (§8.1). It sends the key and the Mac's name, never files or anything about them, and the free plan works fully offline.
 5. **The bubble never stutters.** Decoding, encoding and analysis all run off the main thread. The UI reacts to a drag within one frame.
 6. **Quality is measured, not guessed.** "Looks the same" means a perceptual metric score (§6.4, §7.3), not a fixed quality number.
 7. **License-check every dependency before adding it** (§8). Ask the user before adding anything GPL or AGPL.
@@ -236,7 +236,7 @@ Video takes time (a 2-minute 4K clip can take a minute or more). Show real progr
 
 ## 8. Dependencies and licensing
 
-Decide **free/open-source vs paid closed-source** early: it decides which libraries are allowed. This table is a starting point, not legal advice. Verify each license (and patent terms for video codecs) before shipping a paid build.
+**Decided 2026-11-01: freemium, closed source** (§8.1), so GPL and AGPL libraries are out unless commercially licensed. This table is a starting point, not legal advice. Verify each license (and patent terms for video codecs) before shipping a paid build.
 
 | Library | Purpose | License (verify) | Fine in a closed-source paid app? |
 |---|---|---|---|
@@ -257,6 +257,12 @@ Decide **free/open-source vs paid closed-source** early: it decides which librar
 | zlib (system) | PNG compression | zlib license | Yes (ships with macOS) |
 
 **Paid-app-safe default:** Apple encoders for video, oxipng-only PNG (or a permissively licensed quantizer), FFmpeg built as LGPL.
+
+### 8.1 Plans and pricing (owner's decision, 2026-11-01)
+
+- **Free:** 3 files a day, any action (images and video alike), counted per file that comes out, reset at local midnight. A drop with more files than are left runs what's left and says so on the card; with none left, the bubble says "No free files left today. Click for Pro." while you drag over it.
+- **Pro:** unlimited. **$5 a month** or **$50 once** (lifetime).
+- **Sold directly through Lemon Squeezy** (merchant of record: cards, tax, refunds; ~5% + 50¢ a sale), not the Mac App Store. The buyer gets a license key by email and pastes it into the Pro window (menu bar → Upgrade to Pro…). The app activates it, checks it about daily (monthly) or weekly (lifetime), and keeps Pro for 14 days offline (lifetime: always). Code: `Store/` (portable), `App/Pro.swift`. The store's IDs and checkout links go in `StoreConfig`; until they're set, nothing is for sale and nothing is limited.
 
 ### Building native dependencies
 
@@ -323,10 +329,10 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 ## 13. Open decisions
 
 - Final name (working: Droptimize).
-- Free/open-source vs paid (decides pngquant, x264/x265, gifski).
 - Auto's default format: WebP (current) or AVIF.
 - Whether "wake on any drag" (§4.1) is worth a permission prompt.
-- Direct download only, or the Mac App Store later.
+- Direct download only (current, with Lemon Squeezy), or also the Mac App Store later?
+- How many Macs per Pro key (set in Lemon Squeezy; 3 suggested)?
 - Hovered label inside the bubble (current) or next to the segment?
 - Show/hide shortcut: ⌃⌥⌘D for now (⌥⌘D is macOS's Dock toggle). Make it configurable in Settings?
 - How to ship oxipng (Rust, no C API): a bundled binary via `Process`, or a different lossless PNG optimizer with a C library?
@@ -336,6 +342,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-01: Freemium (owner's decision): free = 3 files a day, any action; Pro = $5/month or $50 lifetime, sold through Lemon Squeezy with license keys. Built the daily count, the Pro window (menu bar → Upgrade to Pro…), the "no free files left" message (click it for Pro) and the license check, the one network call (Rule 4 amended). Off until the store's IDs are in `StoreConfig`. Free vs paid is settled: closed source, so no GPL/AGPL libraries.
 - 2026-10-31: GIF rebuilt after the owner found ImageIO's output "very bad" (bands, colors breaking, lag): our own GIF encoder (no dependencies) with one palette per clip, dithering, redraw-only-what-changed frames and true timing, fed every frame up to 30 fps (evenly), upright and color-managed by Core Image.
 - 2026-10-31: New logo (owner's pick of four concepts): "Shrink", nested circles getting smaller with a solid dot, in place of the drop. Used for the bubble glyph, the menu bar icon and a new app icon (dark tile, mint dot). Geometry in `Bubble/Logo.swift`; icon source `scripts/app-icon.svg`.
 - 2026-10-30: Video (Phase 2 steps 1–4) with AVFoundation only, no new dependencies (owner said "do the recommended stuff, don't ask"). The video menu mirrors images: Convert (MP4 · HEVC · GIF), Compress (10/25/50/100 MB · Custom), Resize (1080p · 720p · 480p), Mute; Auto = smaller H.264 MP4. Remux when possible, real per-frame progress, cancel, one video at a time. Video conversions and Mute are exempt from Rule 3 like image conversions. WebM, FFmpeg max quality and VMAF deferred until the owner approves FFmpeg or libvpx.

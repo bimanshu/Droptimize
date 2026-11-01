@@ -65,7 +65,7 @@ final class HistoryWindowController {
 }
 
 /// ⌘W closes it (a menu bar app has no File menu to do that).
-private final class ClosableWindow: NSWindow {
+final class ClosableWindow: NSWindow {
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
            event.charactersIgnoringModifiers == "w" {

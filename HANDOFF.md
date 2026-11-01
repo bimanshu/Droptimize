@@ -7,13 +7,13 @@
 
 | | |
 |---|---|
-| Last updated | 2026-10-31 |
+| Last updated | 2026-11-01 |
 | Branch | `claude/fervent-thompson-2620yn` (the only branch so far; no `main` yet, nothing merged, no PR) |
-| Phase | **1: WebP, AVIF, Compress (incl. target sizes), Half size and Remove BG (with background choices) work. 2: video works with AVFoundation only** (Convert MP4 · HEVC · GIF, Compress to 10–100 MB, Resize, Mute, Auto). The feel and real-world video haven't been tried by a person yet. |
+| Phase | **1: WebP, AVIF, Compress (incl. target sizes), Half size and Remove BG (with background choices) work. 2: video works with AVFoundation only** (Convert MP4 · HEVC · GIF, Compress to 10–100 MB, Resize, Mute, Auto). **Freemium built** (free 3 files a day; Pro $5/month or $50 lifetime via Lemon Squeezy), switched off until the store exists. The feel and real-world video haven't been tried by a person yet. |
 | CI | [Build workflow](https://github.com/bimanshu/Droptimize/actions/workflows/build.yml): green at `5aefd05` (Xcode 16.4, macOS 15 runner): **166/166 tests** (123 of them also on Linux; 11 video tests on synthetic clips, including GIF timing, colors and portrait rotation; 6 GIF encoder tests; 2 for the logo), 0 warnings (warnings fail the build), universal libwebp/libaom/libavif and app, install script tested, preview published with the new GIF encoder. The DMG is ~8.6 MB, mostly libaom (video adds nothing: AVFoundation is part of macOS). The first deps build after a `build-deps.sh` change takes ~3 minutes in CI; otherwise it's cached |
 | Install / update | One Terminal command: **`curl -fsSL https://github.com/bimanshu/Droptimize/releases/download/preview/install.sh \| bash`** (or the [DMG](https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg)). Both come from the [preview release](https://github.com/bimanshu/Droptimize/releases/tag/preview), which CI replaces on every green push. |
 | Owner | Doesn't build with Xcode. Updates with the one-line command above (asked for this instead of re-downloading DMGs). Not technical about Terminal: give exact click-by-click steps. |
-| Next | Owner tries images and video on real files (Next steps 2). Video was built while the owner was away ("do the recommended stuff, don't ask"), so tell them what's new. |
+| Next | Owner sets up Lemon Squeezy and sends the store ID, product IDs and checkout links (Next steps 1), which switch Pro and the free limit on. Owner tries images, video and the new GIFs on real files (Next steps 2). |
 
 ## ✱ Where things stand
 
@@ -41,6 +41,13 @@
 - **Runner**: a batch with any video runs one file at a time; progress moves per frame (`ProgressReporter.within`, 1% steps), retries keep the ring moving forward, and cancel stops the encode. The output file goes on the clipboard as a file URL, like images.
 - **Deferred:** WebM and FFmpeg "max quality" + VMAF auto-tune need FFmpeg (LGPL) or libvpx + libwebm (BSD-3), which needs the owner's OK (Rule 7, `CORE.md` §13). HDR sources aren't tone-mapped for MP4 yet (see *Risks*; GIFs go through Core Image's color management).
 
+**Free plan and Pro (owner's decision, 2026-11-01; `CORE.md` §8.1):** free = **3 files a day**, any action, counted per output file, reset at local midnight; Pro = unlimited, **$5/month or $50 lifetime**, sold through **Lemon Squeezy** (license keys).
+
+- **Counting** (`Store/Allowance.swift`, portable): `ProStore.grant(n)` caps a drop to what's left; `record(outputs)` counts what came out (failures don't count). A drop with more files than are left runs the first ones and the card says "Free plan: 2 of 5. Pro does all"; the last free file says "That was today's last free file". With none left, dragging over the bubble shows "No free files left today. Click for Pro." (it stays a moment after the drag leaves; clicking opens the Pro window). Stored in UserDefaults (`pro.allowance`), so a determined user can reset it; fine for a $5 utility.
+- **Pro window** (`App/Pro.swift`, menu bar → **Upgrade to Pro…**, or "Droptimize Pro…" before it's on sale): benefits, **$5 a month** and **$50 once** buttons (open the Lemon Squeezy checkout in the browser), and a field for the license key from the purchase email. With Pro: plan, masked key, email, Manage Subscription (monthly), Deactivate on This Mac. The menu shows "Free plan: 2 of 3 files left today" or "Droptimize Pro" at the top.
+- **License** (`Store/License.swift`, portable; network in `ProStore`): Lemon Squeezy's public License API: `activate` (key + the Mac's name → instance ID), `validate` (daily for monthly, weekly for lifetime, at launch and every 6 h), `deactivate`. Only keys from our store and our two products are accepted (others are given straight back). A definite "no" (expired, refunded, disabled) ends Pro; network trouble, 429 or 5xx change nothing, and monthly Pro keeps working 14 days offline. Rule 4 amended for this one call; it never sends anything about files.
+- **Off until configured:** `StoreConfig` (top of `Store/License.swift`) holds the store ID, the two product IDs and the two checkout links, all `nil` now. Until they're all filled in, `isSelling` is false: the buy buttons are disabled, the window says Pro goes on sale soon, and **nothing is limited** (so preview builds stay unlimited for testing).
+
 **History (owner asked for it in the app, 2026-10-30):** menu bar → **History…** (⌘Y in the menu) opens a normal window (`App/HistoryWindow.swift`; it activates the app, since you asked to look at it). Every file made, newest first: thumbnail, output name, action · option ("Compress · Under 500 KB"), relative date, change ("−84%" in green, "+12%" grey) and before → after sizes, with a total "saved" figure at the top. Double-click or 🔍 shows it in Finder; drag a row into any app; the context menu has Open, Copy, Show Original and Remove; "Clear History…" asks first and never touches files. Files that were moved or deleted are dimmed. Stored as JSON in `~/Library/Application Support/Droptimize/history.json`, kept on the Mac only (Rule 4), at most 500 entries (`HistoryLog.limit`). The menu bar's Recent list now comes from it. Model: `Pipeline/History.swift` (portable, tested on Linux); `JobResult.items` carries each original with its result.
 
 **Image menu (restructured 2026-10-30, owner approved):** **Convert** → WebP · AVIF · JPG · PNG · HEIC · **Compress** → sizes · **Half size** · **Remove BG** → backgrounds, with **Auto** in the center. One slot is free for later (Resize presets or Crop). Dropping on Convert itself = WebP, like Auto. Converting to another format is **exempt from Rule 3** (the owner agreed: WebP → PNG is often bigger), and Convert to the source's own format counts as a recompress (`-min`, size guard applies). JPG output flattens transparency onto white and says so on the card.
@@ -61,9 +68,10 @@
 
 ## ✱ Next steps (in order)
 
-1. **Make sure CI is green** on the branch. If it's red, open the run, read the failing step's log and fix it. Use `mcp__github__get_job_logs` with `failed_only: true` if you don't have a browser.
+0. **Make sure CI is green** on the branch. If it's red, open the run, read the failing step's log and fix it. Use `mcp__github__get_job_logs` with `failed_only: true` if you don't have a browser.
+1. **Selling Pro: the owner sets up Lemon Squeezy** (they create the account; nothing to code until they send the IDs). Steps to give them: sign up at lemonsqueezy.com and create a store (it asks for identity and payout details before it can take real payments; test mode works before that). Create two products, each with **"Generate license keys"** on and an activation limit (3 Macs suggested): **Droptimize Pro Monthly**, a subscription at $5/month, and **Droptimize Pro Lifetime**, a single payment of $50. Then send: the store ID (Settings → Stores), both product IDs, and both checkout links (each product's Share button). Put them in `StoreConfig`, buy each in **test mode** to check activation, the monthly key expiring after a cancelled test subscription, and Deactivate, then push. That switches the free limit on in the next preview.
 2. **Owner tries the preview DMG** (the Snapshot link). History: on 2026-10-30 they said they couldn't run it on their Mac (reason never confirmed); they were given step-by-step DMG instructions, saw the Phase 0 build's pretend actions, asked for real functionality, and approved libwebp. Ask what they saw with real files, and fix what they report. Run through the *Manual test checklist* below as far as they're willing; tune `Bubble/Motion.swift` from their feedback.
-3. **Phase 1 step 2** (`CORE.md` §11), still to do: the **Auto classification** (photo → lossy WebP; graphic → lossless WebP vs PNG, smaller wins; replace `RGBAImage.looksLikeGraphic`), and the fuller PNG pipeline once **free vs paid** is decided (pngquant is GPL).
+3. **Phase 1 step 2** (`CORE.md` §11), still to do: the **Auto classification** (photo → lossy WebP; graphic → lossless WebP vs PNG, smaller wins; replace `RGBAImage.looksLikeGraphic`), and the fuller PNG pipeline (pngquant is GPL, so a paid app needs its commercial license or a permissive quantizer; ask before buying one).
 4. **JobQueue** (`CORE.md` §5): drops while a job runs are still ignored (`BubbleController.dragEntered` returns false while working). Make new drops queue, and move cancellation into the queue.
 5. Phase 1 step 3: SSIMULACRA 2 auto-tune (replaces the fixed values in `EncoderTuning`). (Step 4, Remove BG, is done.)
 6. **Video follow-ups:** check HDR iPhone clips (Risk 9); ask the owner how the new GIFs look (tune `VideoTuning.gif*`: frame rate, size, change threshold, dither strength); ask the owner about WebM (FFmpeg or libvpx + libwebm) and then VMAF auto-tune (`CORE.md` §7.3); a notification when a long video finishes.
@@ -101,9 +109,10 @@
 15. While a big batch works: hovering shows ×, and a click cancels.
 16. Type in TextEdit and drop on the bubble mid-sentence: TextEdit keeps focus.
 17. Menu bar → **History…**: every file you made, newest first. Double-click one (Finder), drag one into Slack, right-click → Copy. Clear History asks first.
-18. Switch Spaces and enter a full-screen app: the bubble is still there. ⌃⌥⌘D hides and shows it.
-19. Turn on Reduce Motion (System Settings → Accessibility → Display): fades only. Check light and dark mode.
-20. With two displays: move the bubble to the second one, relaunch, and it's still there.
+18. Menu bar → **Droptimize Pro…**: the Pro window (buy buttons disabled until it's on sale). Once `StoreConfig` is filled in: the menu says "Free plan: 3 of 3 files left today"; make 3 files, then drag a 4th over the bubble: "No free files left today. Click for Pro."; click it. Buy in Lemon Squeezy test mode, paste the key, Activate: Pro, unlimited.
+19. Switch Spaces and enter a full-screen app: the bubble is still there. ⌃⌥⌘D hides and shows it.
+20. Turn on Reduce Motion (System Settings → Accessibility → Display): fades only. Check light and dark mode.
+21. With two displays: move the bubble to the second one, relaunch, and it's still there.
 
 ## ✱ Decisions made so far (also in `CORE.md` §14)
 
@@ -114,7 +123,7 @@
 - Results and messages appear **beside the bubble**, on the side facing into the screen.
 - **libwebp 1.6.0** (BSD-3), approved by the owner. It's built from the pinned, SHA-256-checked release by `scripts/build-deps.sh`, not committed (`Vendor/` is generated).
 - **libaom 3.15.2 + libavif 1.4.2** (BSD-2, plus the AOM Patent License 1.0, royalty-free), approved by the owner. libaom comes from its checksummed release tarball; libavif is cloned at the pinned commit of tag v1.4.2 (its GitHub tarball can't be downloaded through the agent proxy, and a pinned commit is just as reliable). Built with CMake; `nasm` makes the Intel slice fast (CI installs it).
-- PNG Compress uses **our own lossless optimizer** with the system zlib, so it's license-free while free vs paid is open. JPEG and HEIC use **ImageIO** until jpegli.
+- PNG Compress uses **our own lossless optimizer** with the system zlib, so it's license-free (the app is closed source and paid, so GPL tools are out). JPEG and HEIC use **ImageIO** until jpegli.
 - **Auto = WebP** until classification (Phase 1 step 2). Half size uses the suffix **`-half`**.
 - **Option bubbles** (owner's choice): Compress → target file sizes 100 KB · 250 KB · 500 KB · 1 MB · 2 MB · Custom. Background choices live **inside Remove BG** (None · White · Black · last color · Custom hex), not as a separate bubble. Custom values are asked for after the drop. Sizes are decimal (1 KB = 1000 bytes). Hitting a size shrinks the image only as a last resort, and says so.
 - **Remove BG is exempt from Rule 3** (never bigger): it changes content rather than optimizing. Always PNG.
@@ -123,11 +132,12 @@
 - If the original's folder is read-only, results go to **Downloads**.
 - **Swift 5 language mode** for now. Ad-hoc signing; hardened runtime on Release only (Phase 3 switches to Developer ID).
 - **Video uses AVFoundation only** for now (no new dependencies): the video menu mirrors images (Convert · Compress · Resize · Mute, Auto in the center). Compress's sizes are common upload limits (10, 25, 50, 100 MB). Video conversions and Mute are exempt from Rule 3, like image conversions. WebM waits for the owner's OK on FFmpeg or libvpx. Made while the owner was away ("do the recommended stuff"); revisit anything they dislike.
+- **Freemium** (owner, 2026-11-01): free 3 files a day, any action, per file; Pro $5/month or $50 lifetime through Lemon Squeezy license keys (direct, not the Mac App Store, whose sandbox would fight saving next to the original). Closed source, so GPL/AGPL libraries are out. The license check is the only network call.
 - CI runs on GitHub's macOS runners (free: the repo is public) and publishes a DMG, a zip and `install.sh` to the public `preview` release (the owner approved). Updates are a Terminal one-liner for now; an in-app "Check for Updates" arrives with Sparkle (Phase 3), since the app itself makes no network calls (Rule 4).
 
 ## ✱ Questions for the owner
 
-1. **Free/open-source or paid?** ("Decide later" for now.) It decides pngquant (better PNG compression), x264/x265 and gifski.
+1. **Set up Lemon Squeezy** and send the IDs (Next steps 1). How many Macs should one Pro key cover (3 suggested)?
 2. Is the label inside the bubble right, or would you rather see it next to the hovered segment?
 3. Is ⌃⌥⌘D OK as the show/hide shortcut?
 4. **WebM for video?** It needs FFmpeg (LGPL, linked dynamically) or libvpx + libwebm (BSD-3), adding several MB. MP4 already plays everywhere, so it's only worth it if you want WebM files specifically.
@@ -209,6 +219,9 @@ It parses every Swift file, builds libwebp, libaom and libavif for Linux (needs 
 | `Video/VideoPlan.swift` | Portable: `VideoFormat`, `VideoPlan` (action + option → work, extension, suffix, size guard) and `VideoTuning` (every video setting and the bitrate/size maths). |
 | `Video/VideoOptimizer.swift` | macOS: one video → a new file: passthrough remux/mute, AVAssetReader → AVAssetWriter encode with compress-to-size retries, GIF; `VideoSource` (probe); `GIFFrameReader` (even frames, upright, scaled, sRGB via Core Image). |
 | `Video/GIFEncoder.swift` | Portable: `GIFPalette` (histogram, exact colors or median cut + k-means), `GIFWriter` (dithering, redraw only what changed, timing), `LZWEncoder`. |
+| `Store/Allowance.swift` | Portable: `FreeAllowance`, the free plan's 3 files a day. |
+| `Store/License.swift` | Portable: `StoreConfig` (Lemon Squeezy IDs and links, nil until the store exists), `License`, `LemonSqueezy` (requests and answers). |
+| `App/Pro.swift` | macOS: `ProStore` (count, license, network), the Pro window. |
 | `App/HistoryWindow.swift` | macOS: `HistoryStore` (saves on every change), the History window and its rows. |
 | `Modules/module.modulemap` | Lets Swift import libwebp (`CWebP`), libavif + libaom (`CAvif`) and zlib (`CZlib`, where the SDK has no `zlib` module). |
 | `scripts/build-deps.sh` | Builds pinned libwebp, libaom and libavif into `Vendor/` (universal static libs on macOS, host builds on Linux). Needs cmake, and nasm for a fast Intel slice. |
@@ -216,7 +229,7 @@ It parses every Swift file, builds libwebp, libaom and libavif for Linux (needs 
 | `scripts/install.sh` | One-command install/update from the preview release (published as a release asset; tested in CI). |
 | `scripts/dmg-readme.txt` | The "READ ME FIRST" note inside the DMG. |
 | `.github/workflows/build.yml` | macOS CI: deps (cached), generate, build, test (warnings fail), universal Release build, DMG and zip, install-script test; then publishes DMG, zip and `install.sh` to the `preview` release. |
-| `Tests/` | XCTest. Portable (also run on Linux): `LayoutTests`, `DockPositionTests`, `SpringTests`, `ActionTests`, `OutputTests`, `EncoderTests`, `OptionTests`, `AVIFTests`, `HistoryTests`, `VideoPlanTests`, `GIFTests`, `Support/TestPNGReader`, `Support/TestGIFReader` (a GIF decoder written from the spec, independent of the encoder) (test-only PNG reader plus test images). macOS only: `MacTests`, `PipelineMacTests`, `OptionMacTests`, `VideoMacTests` (synthetic videos). |
+| `Tests/` | XCTest. Portable (also run on Linux): `LayoutTests`, `DockPositionTests`, `SpringTests`, `ActionTests`, `OutputTests`, `EncoderTests`, `OptionTests`, `AVIFTests`, `HistoryTests`, `VideoPlanTests`, `GIFTests`, `StoreTests`, `Support/TestPNGReader`, `Support/TestGIFReader` (a GIF decoder written from the spec, independent of the encoder) (test-only PNG reader plus test images). macOS only: `MacTests`, `PipelineMacTests`, `OptionMacTests`, `VideoMacTests` (synthetic videos). |
 
 ## How the bubble works (so you don't have to rediscover it)
 

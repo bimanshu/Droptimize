@@ -22,6 +22,7 @@ final class SymbolTests: XCTestCase {
     func testEverySymbolExists() {
         var names = Action.allCases.map(\.symbol)
         names += ["checkmark", "exclamationmark", "xmark", "ellipsis"]
+        names += ["infinity", "photo.on.rectangle.angled", "square.stack.3d.up"]           // the Pro window
         for option in Action.allCases.flatMap({ $0.options(lastColor: nil) }) {
             if case .symbol(let name) = option.label { names.append(name) }
         }
@@ -82,5 +83,40 @@ final class HistoryStoreTests: XCTestCase {
         XCTAssertEqual(HistoryStore(url: url).log.entries.map(\.summary), ["Convert · To JPG"])
         store.clear()
         XCTAssertTrue(HistoryStore(url: url).log.entries.isEmpty)
+    }
+}
+
+final class ProStoreTests: XCTestCase {
+    private var defaults: UserDefaults!
+    private var suite = ""
+
+    override func setUp() {
+        suite = "ProStoreTests-\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suite)
+    }
+
+    override func tearDown() {
+        defaults.removePersistentDomain(forName: suite)
+    }
+
+    @MainActor
+    func testFreePlanCountsFilesPerDayAndRemembersThem() {
+        var now = Date(timeIntervalSince1970: 1_800_000_000)
+        let store = ProStore(defaults: defaults, selling: true, now: { now })
+        XCTAssertTrue(store.isLimited)
+        XCTAssertEqual(store.grant(5), 3)
+        store.record(3)
+        XCTAssertEqual(store.grant(1), 0)
+        XCTAssertEqual(ProStore(defaults: defaults, selling: true, now: { now }).grant(1), 0, "survives a relaunch")
+        now = now.addingTimeInterval(24 * 3600)
+        XCTAssertEqual(store.grant(5), 3, "a new day")
+    }
+
+    @MainActor
+    func testUnlimitedUntilProIsOnSale() {
+        let store = ProStore(defaults: defaults, selling: false)
+        XCTAssertFalse(store.isLimited)
+        store.record(10)
+        XCTAssertEqual(store.grant(50), 50)
     }
 }

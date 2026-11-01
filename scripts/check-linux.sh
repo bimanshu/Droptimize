@@ -31,6 +31,8 @@ PORTABLE_SOURCES=(
   Image/Encoders/AVIF.swift
   Video/VideoPlan.swift
   Video/GIFEncoder.swift
+  Store/Allowance.swift
+  Store/License.swift
 )
 PORTABLE_TESTS=(
   Tests/LayoutTests.swift
@@ -44,6 +46,7 @@ PORTABLE_TESTS=(
   Tests/HistoryTests.swift
   Tests/VideoPlanTests.swift
   Tests/GIFTests.swift
+  Tests/StoreTests.swift
   Tests/Support/TestPNGReader.swift
   Tests/Support/TestGIFReader.swift
 )
@@ -51,7 +54,7 @@ PORTABLE_TESTS=(
 command -v swiftc >/dev/null || { echo "swiftc not found. See HANDOFF.md → 'Checking code without a Mac'." >&2; exit 1; }
 
 echo "→ Parsing every Swift file"
-find App Bubble Pipeline Image Video Tests -name '*.swift' -print0 | xargs -0 swiftc -parse
+find App Bubble Pipeline Image Video Store Tests -name '*.swift' -print0 | xargs -0 swiftc -parse
 echo "  ok"
 
 echo "→ Building libwebp, libaom and libavif for this machine (a no-op once built)"

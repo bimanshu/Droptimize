@@ -12,20 +12,34 @@ final class MenuBar: NSObject, NSMenuDelegate {
     private let bubble: BubbleController
     private let history: HistoryStore
     private let historyWindow: HistoryWindowController
+    private let pro: ProStore
+    private let proWindow: ProWindowController
+    private let planItem = NSMenuItem()
+    private let proItem = NSMenuItem()
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let toggleItem = NSMenuItem()
     private let recentMenu = NSMenu(title: "Recent")
 
-    init(bubble: BubbleController, history: HistoryStore) {
+    init(bubble: BubbleController, history: HistoryStore, pro: ProStore) {
         self.bubble = bubble
         self.history = history
         self.historyWindow = HistoryWindowController(store: history)
+        self.pro = pro
+        self.proWindow = ProWindowController(store: pro)
         super.init()
 
         statusItem.button?.image = Logo.menuBarImage()
 
         let menu = NSMenu()
         menu.delegate = self
+
+        // "Free plan: 2 of 3 files left today" or "Droptimize Pro"; hidden until Pro is on sale.
+        planItem.isEnabled = false
+        menu.addItem(planItem)
+        proItem.action = #selector(showProWindow)
+        proItem.target = self
+        menu.addItem(proItem)
+        menu.addItem(.separator())
 
         toggleItem.action = #selector(toggleBubble)
         toggleItem.target = self
@@ -52,6 +66,14 @@ final class MenuBar: NSObject, NSMenuDelegate {
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         toggleItem.title = bubble.isVisible ? "Hide Bubble" : "Show Bubble"
+        planItem.isHidden = !pro.isSelling
+        if pro.isPro {
+            planItem.title = "Droptimize Pro"
+            proItem.title = "Pro License…"
+        } else {
+            planItem.title = "Free plan: \(pro.remainingToday) of \(FreeAllowance.perDay) files left today"
+            proItem.title = pro.isSelling ? "Upgrade to Pro…" : "Droptimize Pro…"
+        }
 
         recentMenu.removeAllItems()
         let recents = history.log.recentOutputs()
@@ -71,6 +93,14 @@ final class MenuBar: NSObject, NSMenuDelegate {
 
     @objc private func showHistory() {
         historyWindow.show()
+    }
+
+    @objc private func showProWindow() {
+        showPro()
+    }
+
+    func showPro() {
+        proWindow.show()
     }
 
     @objc private func toggleBubble() {

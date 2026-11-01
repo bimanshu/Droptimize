@@ -6,6 +6,9 @@ import AppKit
 final class BubbleController {
     let model = BubbleModel()
     private let history: HistoryStore
+    private let pro: ProStore
+    /// Opens the Pro window (the menu bar owns it).
+    var onShowPro: (() -> Void)?
 
     private let panel = BubblePanel()
     private let host: BubbleHostView
@@ -27,11 +30,16 @@ final class BubbleController {
     private var runningOption: ActionOption?
     /// True while an unsupported drag is over the bubble and we're saying so.
     private var isRejectingDrag = false
+    /// The message on show is about the free plan; clicking it opens the Pro window.
+    private var isOfferingPro = false
+    /// "Free: 3 of 5…" when the free plan cut a drop short, for the done card.
+    private var limitNote: String?
 
     private var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
-    init(history: HistoryStore) {
+    init(history: HistoryStore, pro: ProStore) {
         self.history = history
+        self.pro = pro
         host = BubbleHostView(model: model)
         mover = PanelMover(view: host)
         host.controller = self
@@ -172,7 +180,9 @@ final class BubbleController {
         case .done where region != .elsewhere:
             revealResult()
         case .message:
+            let opensPro = isOfferingPro
             returnToIdle()
+            if opensPro { onShowPro?() }
         default:
             break
         }
@@ -190,6 +200,12 @@ final class BubbleController {
                 isRejectingDrag = true
                 showMessage(JobError.unsupported.errorDescription ?? "", autoDismiss: false)
             }
+            return false
+        }
+        // Out of free files today: say so at once rather than after the drop.
+        guard pro.grant(1) > 0 else {
+            isRejectingDrag = true
+            offerPro()
             return false
         }
         dismissTask?.cancel()
@@ -225,12 +241,22 @@ final class BubbleController {
     }
 
     func dragExited() {
-        if model.isMenuOpen || isRejectingDrag { returnToIdle() }
+        endDrag()
     }
 
     /// The drag ended somewhere, dropped or not; fold anything it opened.
     func dragSessionEnded() {
-        if model.isMenuOpen || isRejectingDrag { returnToIdle() }
+        endDrag()
+    }
+
+    private func endDrag() {
+        if isRejectingDrag && isOfferingPro {
+            // Leave the free-plan message up a moment, so it can be clicked.
+            isRejectingDrag = false
+            scheduleDismiss(after: Motion.messageDuration)
+        } else if model.isMenuOpen || isRejectingDrag {
+            returnToIdle()
+        }
     }
 
     func drop(_ urls: [URL]) -> Bool {
@@ -238,11 +264,19 @@ final class BubbleController {
             returnToIdle()
             return false
         }
-        let files = urls.filter { MediaKind(url: $0) != nil }
+        var files = urls.filter { MediaKind(url: $0) != nil }
         guard !files.isEmpty else {
             returnToIdle()
             return false
         }
+        // The free plan runs what's left of today's files and says so on the card.
+        let allowed = pro.grant(files.count)
+        guard allowed > 0 else {
+            offerPro()
+            return false
+        }
+        limitNote = allowed < files.count ? "Free plan: \(allowed) of \(files.count). Pro does all" : nil
+        files = Array(files.prefix(allowed))
         if !reduceMotion {
             let mouse = NSEvent.mouseLocation
             addRipple(at: CGVector(dx: mouse.x - center.x, dy: mouse.y - center.y))
@@ -315,13 +349,17 @@ final class BubbleController {
     private func finish(_ result: JobResult) {
         jobTask = nil
         lastResult = result
+        pro.record(result.outputs.count)
+        let lastFree = pro.isLimited && pro.grant(1) == 0 ? "That was today's last free file" : nil
         history.record(result.items.map { item in
             HistoryEntry(action: runningAction?.title ?? "", detail: runningOption?.title,
                          input: item.input, output: item.output, inputBytes: item.inputBytes, outputBytes: item.outputBytes)
         })
         // Removing a background isn't about size, so the card says "Done" rather than a saving.
         let saving = runningAction == .removeBackground ? 0 : result.saving
-        let info = DoneInfo(saving: saving, count: result.outputs.count, thumbnail: nil, detail: result.note)
+        let info = DoneInfo(saving: saving, count: result.outputs.count, thumbnail: nil,
+                            detail: limitNote ?? result.note ?? lastFree)
+        limitNote = nil
         model.phase = .done(info)
         updatePanelFrame()
         scheduleDismiss(after: Motion.doneDuration)
@@ -350,6 +388,7 @@ final class BubbleController {
     // MARK: Done and messages
 
     private func showMessage(_ text: String, autoDismiss: Bool = true) {
+        isOfferingPro = false
         model.phase = .message(text)
         model.shakes += 1
         updatePanelFrame()
@@ -370,9 +409,16 @@ final class BubbleController {
         }
     }
 
+    /// Today's free files are used up: say so; a click opens the Pro window.
+    private func offerPro() {
+        showMessage("No free files left today. Click for Pro.", autoDismiss: !isRejectingDrag)
+        isOfferingPro = true
+    }
+
     private func returnToIdle() {
         dismissTask?.cancel()
         isRejectingDrag = false
+        isOfferingPro = false
         model.target = nil
         model.submenu = nil
         model.phase = .idle
