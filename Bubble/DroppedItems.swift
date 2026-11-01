@@ -26,7 +26,7 @@ struct DroppedItems {
 
     /// The pasteboard types the bubble listens for.
     static var draggedTypes: [NSPasteboard.PasteboardType] {
-        [.fileURL] + NSFilePromiseReceiver.readableDraggedTypes.map(NSPasteboard.PasteboardType.init)
+        [.fileURL] + NSFilePromiseReceiver.readableDraggedTypes.map { NSPasteboard.PasteboardType($0) }
             + pictureTypes.map { NSPasteboard.PasteboardType($0.identifier) }
     }
 
