@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Unit tests run inside the app; keep the bubble and menu bar out of their way.
         guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
 
+        ReceivedFiles.clear()                              // copies left from the last run
         let history = HistoryStore()
         let pro = ProStore()
         let bubble = BubbleController(history: history, pro: pro)

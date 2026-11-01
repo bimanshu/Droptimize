@@ -34,6 +34,8 @@ final class BubbleController {
     private var isOfferingPro = false
     /// "Free: 3 of 5…" when the free plan cut a drop short, for the done card.
     private var limitNote: String?
+    /// The drop came from another app (Photos, Mail, a browser), so results went to Downloads.
+    private var receivedFromApp = false
 
     private var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
@@ -190,13 +192,13 @@ final class BubbleController {
 
     // MARK: Dropping files on the bubble
 
-    /// A drag carrying `urls` came over the bubble. Returns whether we can take any of them.
-    func dragEntered(_ urls: [URL]) -> Bool {
+    /// A drag came over the bubble, from Finder or any other app. Returns whether we can take any
+    /// of what it carries.
+    func dragEntered(_ items: DroppedItems) -> Bool {
         if case .working = model.phase { return false }     // one job at a time until the JobQueue (Phase 1)
         if inputs.isShowing { inputs.cancel() }               // a new drag wins over an unanswered question
-        let kinds = Set(urls.compactMap(MediaKind.init(url:)))
-        guard let menu = ActionMenu(kinds: kinds, lastColor: memory.lastColor) else {
-            if !urls.isEmpty {
+        guard let menu = ActionMenu(kinds: items.kinds, lastColor: memory.lastColor) else {
+            if items.hasItems {
                 isRejectingDrag = true
                 showMessage(JobError.unsupported.errorDescription ?? "", autoDismiss: false)
             }
@@ -259,35 +261,54 @@ final class BubbleController {
         }
     }
 
-    func drop(_ urls: [URL]) -> Bool {
+    func drop(_ items: DroppedItems) -> Bool {
         guard model.isMenuOpen, let target = model.target, let action = model.menu.action(for: target) else {
             returnToIdle()
             return false
         }
-        var files = urls.filter { MediaKind(url: $0) != nil }
-        guard !files.isEmpty else {
+        guard items.count > 0 else {
             returnToIdle()
             return false
         }
         // The free plan runs what's left of today's files and says so on the card.
-        let allowed = pro.grant(files.count)
+        let allowed = pro.grant(items.count)
         guard allowed > 0 else {
             offerPro()
             return false
         }
-        limitNote = allowed < files.count ? "Free plan: \(allowed) of \(files.count). Pro does all" : nil
-        files = Array(files.prefix(allowed))
+        limitNote = allowed < items.count ? "Free plan: \(allowed) of \(items.count). Pro does all" : nil
         if !reduceMotion {
             let mouse = NSEvent.mouseLocation
             addRipple(at: CGVector(dx: mouse.x - center.x, dy: mouse.y - center.y))
         }
         let option = model.menu.option(for: target)?.option
+        receivedFromApp = !items.isReady
+        if items.isReady {
+            go(with: Array(items.files.prefix(allowed)), action: action, option: option)
+            return true
+        }
+        // Another app is writing the files (Photos may fetch them from iCloud): spin meanwhile.
+        // A click cancels, as with any job.
+        dismissTask?.cancel()
+        model.target = nil
+        model.submenu = nil
+        model.phase = .working(JobProgress(completed: 0, total: allowed, fraction: 0))
+        updatePanelFrame()
+        jobTask = Task { [weak self] in
+            let files = (try? await items.files(limit: allowed)) ?? []
+            guard let self, !Task.isCancelled else { return }
+            guard !files.isEmpty else { return self.fail(JobError.notReceived) }
+            self.go(with: files, action: action, option: option)
+        }
+        return true
+    }
+
+    private func go(with files: [URL], action: Action, option: ActionOption?) {
         if option == .custom {
             ask(for: action, files: files)
         } else {
             start(Job(files: files, action: action, option: option), runner: ImageJobRunner())
         }
-        return true
     }
 
     /// Dropped on a Custom option: ask for the size or color beside the bubble, then run.
@@ -358,8 +379,9 @@ final class BubbleController {
         // Removing a background isn't about size, so the card says "Done" rather than a saving.
         let saving = runningAction == .removeBackground ? 0 : result.saving
         let info = DoneInfo(saving: saving, count: result.outputs.count, thumbnail: nil,
-                            detail: limitNote ?? result.note ?? lastFree)
+                            detail: limitNote ?? result.note ?? (receivedFromApp ? "Saved to Downloads" : nil) ?? lastFree)
         limitNote = nil
+        receivedFromApp = false
         model.phase = .done(info)
         updatePanelFrame()
         scheduleDismiss(after: Motion.doneDuration)

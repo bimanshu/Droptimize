@@ -120,3 +120,67 @@ final class ProStoreTests: XCTestCase {
         XCTAssertEqual(store.grant(50), 50)
     }
 }
+
+@MainActor
+final class DroppedItemsTests: XCTestCase {
+    private var pasteboard: NSPasteboard!
+
+    override func setUp() async throws {
+        pasteboard = NSPasteboard(name: NSPasteboard.Name("DroppedItemsTests-\(UUID().uuidString)"))
+        pasteboard.clearContents()
+    }
+
+    override func tearDown() async throws {
+        pasteboard.releaseGlobally()
+        ReceivedFiles.clear()
+    }
+
+    private func png() throws -> Data {
+        let rep = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 4, pixelsHigh: 4, bitsPerSample: 8,
+                                                 samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                                 colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+        return try XCTUnwrap(rep.representation(using: .png, properties: [:]))
+    }
+
+    func testAPictureFromABrowserBecomesAFileNamedAfterIt() async throws {
+        let data = try png()
+        let item = NSPasteboardItem()
+        item.setData(data, forType: .png)
+        item.setString("https://example.com/photos/sunset.png?w=800", forType: .URL)
+        pasteboard.writeObjects([item])
+
+        let peek = DroppedItems(pasteboard, withData: false)
+        XCTAssertEqual(peek.kinds, [.image], "the image menu, before anything is read")
+        XCTAssertEqual(peek.count, 1)
+        XCTAssertFalse(peek.isReady)
+
+        let files = try await DroppedItems(pasteboard, withData: true).files(limit: 3)
+        XCTAssertEqual(files.map(\.lastPathComponent), ["sunset.png"])
+        XCTAssertTrue(ReceivedFiles.contains(files[0]), "so its result goes to Downloads")
+        XCTAssertEqual(try Data(contentsOf: files[0]), data)
+    }
+
+    func testFinderFilesAreUsedWhereTheyAre() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("DroppedItemsTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let photo = folder.appendingPathComponent("a.png"), notes = folder.appendingPathComponent("b.txt")
+        try png().write(to: photo)
+        try Data("hi".utf8).write(to: notes)
+        pasteboard.writeObjects([photo as NSURL, notes as NSURL])
+
+        let items = DroppedItems(pasteboard, withData: true)
+        XCTAssertTrue(items.isReady)
+        XCTAssertEqual(items.kinds, [.image])
+        let files = try await items.files(limit: 3)
+        XCTAssertEqual(files.map { $0.resolvingSymlinksInPath().path }, [photo.resolvingSymlinksInPath().path],
+                       "the text file is left out")
+    }
+
+    func testTextIsNothingToDrop() {
+        pasteboard.setString("just words", forType: .string)
+        let items = DroppedItems(pasteboard, withData: false)
+        XCTAssertFalse(items.hasItems)
+        XCTAssertTrue(items.kinds.isEmpty)
+    }
+}

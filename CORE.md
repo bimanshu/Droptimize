@@ -78,6 +78,7 @@ The tools that inspired this all kill a detour. CleanShot X keeps the screenshot
 Image segments, top to bottom: **Convert · Compress · Half size · Remove BG** (center: **Auto**), leaving one slot free. Convert's option bubbles: **WebP · AVIF · JPG · PNG · HEIC** (only formats that web pages and uploads take; no general-purpose conversion).
 Video segments, top to bottom: **Convert · Compress · Resize · Mute** (center: **Auto**, a smaller H.264 MP4), mirroring the image menu. Convert's option bubbles: **MP4 · HEVC · GIF** (WebM waits on §13). Compress: **10 MB · 25 MB · 50 MB · 100 MB · Custom** (common upload limits). Resize: **1080p · 720p · 480p** (the short side).
 
+- Drops come from anywhere: Finder files, files other apps promise on drop (Photos, Mail, browsers) and plain picture data. Results of files that only existed in another app go to Downloads.
 - Mixed drops (images and videos): show only actions that apply to both (Auto, Compress, without option bubbles).
 - Several files: one batch, same action for all.
 
@@ -342,6 +343,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-01: Drag from any app (owner asked): Photos, Mail and Messages attachments, Safari and other browsers' images, via file promises or picture data. Their results go to Downloads; the bubble spins while another app hands the files over.
 - 2026-11-01: Freemium (owner's decision): free = 3 files a day, any action; Pro = $5/month or $50 lifetime, sold through Lemon Squeezy with license keys. Built the daily count, the Pro window (menu bar → Upgrade to Pro…), the "no free files left" message (click it for Pro) and the license check, the one network call (Rule 4 amended). Off until the store's IDs are in `StoreConfig`. Free vs paid is settled: closed source, so no GPL/AGPL libraries.
 - 2026-10-31: GIF rebuilt after the owner found ImageIO's output "very bad" (bands, colors breaking, lag): our own GIF encoder (no dependencies) with one palette per clip, dithering, redraw-only-what-changed frames and true timing, fed every frame up to 30 fps (evenly), upright and color-managed by Core Image.
 - 2026-10-31: New logo (owner's pick of four concepts): "Shrink", nested circles getting smaller with a solid dot, in place of the drop. Used for the bubble glyph, the menu bar icon and a new app icon (dark tile, mint dot). Geometry in `Bubble/Logo.swift`; icon source `scripts/app-icon.svg`.

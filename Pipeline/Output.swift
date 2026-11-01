@@ -28,13 +28,39 @@ enum SizeGuard {
     }
 }
 
+/// Files dragged in from other apps (Photos, Mail, a browser) that had to be written somewhere
+/// first: they arrive in a folder under `root`, and their results go to Downloads instead of
+/// next to that temporary copy.
+enum ReceivedFiles {
+    static let root = FileManager.default.temporaryDirectory.appendingPathComponent("Droptimize Received", isDirectory: true)
+
+    static func contains(_ url: URL) -> Bool {
+        let base = root.resolvingSymlinksInPath().standardizedFileURL.path
+        return url.resolvingSymlinksInPath().standardizedFileURL.path.hasPrefix(base + "/")
+    }
+
+    /// A fresh folder for one drop. Earlier drops' copies are no longer needed (their results are
+    /// saved), so they go.
+    static func newFolder() throws -> URL {
+        clear()
+        let folder = root.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return folder
+    }
+
+    static func clear() {
+        try? FileManager.default.removeItem(at: root)
+    }
+}
+
 /// Saves results as new files: next to the original, or in Downloads when that folder can't
-/// be written to (a read-only volume or disk image, say).
+/// be written to (a read-only volume or disk image, say) or the original is a received copy.
 enum OutputWriter {
     static func write(_ data: Data, for input: URL, fileExtension: String, suffix: String?,
                       fallbackDirectory: URL? = defaultFallback) throws -> URL {
         do {
-            return try write(data, for: input, fileExtension: fileExtension, suffix: suffix, in: nil)
+            return try write(data, for: input, fileExtension: fileExtension, suffix: suffix,
+                             in: folder(for: input, fallback: fallbackDirectory))
         } catch let error as CocoaError where error.isPermissionProblem {
             guard let fallbackDirectory else { throw JobError.cantSave }
             return try write(data, for: input, fileExtension: fileExtension, suffix: suffix, in: fallbackDirectory)
@@ -43,6 +69,11 @@ enum OutputWriter {
 
     static var defaultFallback: URL? {
         FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+    }
+
+    /// Where a result goes: nil for next to the original.
+    static func folder(for input: URL, fallback: URL?) -> URL? {
+        ReceivedFiles.contains(input) ? fallback : nil
     }
 
     private static func write(_ data: Data, for input: URL, fileExtension: String, suffix: String?,
@@ -67,7 +98,8 @@ extension OutputWriter {
     static func move(_ file: URL, for input: URL, fileExtension: String, suffix: String?,
                      fallbackDirectory: URL? = defaultFallback) throws -> URL {
         do {
-            return try move(file, for: input, fileExtension: fileExtension, suffix: suffix, in: nil)
+            return try move(file, for: input, fileExtension: fileExtension, suffix: suffix,
+                            in: folder(for: input, fallback: fallbackDirectory))
         } catch let error as CocoaError where error.isPermissionProblem {
             guard let fallbackDirectory else { throw JobError.cantSave }
             return try move(file, for: input, fileExtension: fileExtension, suffix: suffix, in: fallbackDirectory)

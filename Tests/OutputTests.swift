@@ -91,6 +91,25 @@ final class OutputWriterTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: first), Data("a".utf8))
         XCTAssertEqual(try Data(contentsOf: original), Data("original".utf8), "the original is untouched")
     }
+
+    func testFilesReceivedFromOtherAppsSaveToDownloads() throws {
+        let received = try ReceivedFiles.newFolder()
+        defer { ReceivedFiles.clear() }
+        let photo = received.appendingPathComponent("IMG_1234.heic")
+        try Data("photo".utf8).write(to: photo)
+        XCTAssertTrue(ReceivedFiles.contains(photo))
+        XCTAssertFalse(ReceivedFiles.contains(folder.appendingPathComponent("IMG_1234.heic")))
+
+        // `folder` stands in for Downloads.
+        let output = try OutputWriter.write(Data("a".utf8), for: photo, fileExtension: "webp", suffix: nil,
+                                            fallbackDirectory: folder)
+        XCTAssertEqual(output.deletingLastPathComponent().standardizedFileURL.path, folder.standardizedFileURL.path)
+        XCTAssertEqual(output.lastPathComponent, "IMG_1234.webp")
+
+        let next = try ReceivedFiles.newFolder()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: received.path), "earlier copies are cleared")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: next.path))
+    }
 }
 
 final class ImagePlanTests: XCTestCase {

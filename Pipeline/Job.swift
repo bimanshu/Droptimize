@@ -51,6 +51,7 @@ enum JobError: LocalizedError, Equatable {
     case noAudio
     case alreadyAtMost(Int)
     case unreadableVideo
+    case notReceived
     /// An action or format that isn't built yet; the message says which.
     case notYet(String)
 
@@ -66,6 +67,7 @@ enum JobError: LocalizedError, Equatable {
         case .noAudio: return "This video has no sound to remove."
         case .alreadyAtMost(let side): return "Already \(side)p or smaller."
         case .unreadableVideo: return "Can't open this video. MOV and MP4 work."
+        case .notReceived: return "Couldn't get the files from that app."
         case .notYet(let message): return message
         }
     }

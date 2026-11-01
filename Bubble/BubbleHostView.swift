@@ -38,7 +38,7 @@ final class BubbleHostView: NSView, NSDraggingSource {
         canvas.sizingOptions = []    // the canvas has a fixed size; don't let it resize the panel
         addSubview(canvas)
         canvas.unregisterDraggedTypes()
-        registerForDraggedTypes([.fileURL])
+        registerForDraggedTypes(DroppedItems.draggedTypes)
         layoutCanvas()
     }
 
@@ -131,7 +131,7 @@ final class BubbleHostView: NSView, NSDraggingSource {
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
         guard let controller, !isOwnDrag(sender) else { return [] }
-        return controller.dragEntered(fileURLs(in: sender)) ? controller.dragMoved() : []
+        return controller.dragEntered(DroppedItems(sender.draggingPasteboard, withData: false)) ? controller.dragMoved() : []
     }
 
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
@@ -145,7 +145,7 @@ final class BubbleHostView: NSView, NSDraggingSource {
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         guard let controller, !isOwnDrag(sender) else { return false }
-        return controller.drop(fileURLs(in: sender))
+        return controller.drop(DroppedItems(sender.draggingPasteboard, withData: true))
     }
 
     override func draggingEnded(_ sender: NSDraggingInfo) {
@@ -154,10 +154,5 @@ final class BubbleHostView: NSView, NSDraggingSource {
 
     private func isOwnDrag(_ info: NSDraggingInfo) -> Bool {
         (info.draggingSource as? NSView) === self
-    }
-
-    private func fileURLs(in info: NSDraggingInfo) -> [URL] {
-        let options: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingFileURLsOnly: true]
-        return info.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: options) as? [URL] ?? []
     }
 }

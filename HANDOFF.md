@@ -41,6 +41,8 @@
 - **Runner**: a batch with any video runs one file at a time; progress moves per frame (`ProgressReporter.within`, 1% steps), retries keep the ring moving forward, and cancel stops the encode. The output file goes on the clipboard as a file URL, like images.
 - **Deferred:** WebM and FFmpeg "max quality" + VMAF auto-tune need FFmpeg (LGPL) or libvpx + libwebm (BSD-3), which needs the owner's OK (Rule 7, `CORE.md` §13). HDR sources aren't tone-mapped for MP4 yet (see *Risks*; GIFs go through Core Image's color management).
 
+**Drag from any app (owner asked, 2026-11-01):** besides Finder files, the bubble takes **promised files** (`NSFilePromiseReceiver`: Photos, Mail and Messages attachments, Safari and most browsers' images, any app that can drag a file to the Desktop) and, failing that, **picture data** (PNG, JPEG, HEIC, WebP, AVIF, GIF, then TIFF), named after the picture's web address when there is one. `Bubble/DroppedItems.swift` reads the drag: kinds for the menu at drag-enter (from the promise's file types; nothing is fetched), everything at the drop. Promised files can take a while (Photos may download from iCloud), so the bubble spins while they arrive (up to 90 s, then it goes on with what came; a click cancels). They land in `ReceivedFiles` (a temp folder, cleared on the next drop and at launch) and **results go to Downloads** (`OutputWriter.folder(for:fallback:)`); the card says "Saved to Downloads". The free plan counts and caps them like any files. Web links themselves are never downloaded (Rule 4).
+
 **Free plan and Pro (owner's decision, 2026-11-01; `CORE.md` §8.1):** free = **3 files a day**, any action, counted per output file, reset at local midnight; Pro = unlimited, **$5/month or $50 lifetime**, sold through **Lemon Squeezy** (license keys).
 
 - **Counting** (`Store/Allowance.swift`, portable): `ProStore.grant(n)` caps a drop to what's left; `record(outputs)` counts what came out (failures don't count). A drop with more files than are left runs the first ones and the card says "Free plan: 2 of 5. Pro does all"; the last free file says "That was today's last free file". With none left, dragging over the bubble shows "No free files left today. Click for Pro." (it stays a moment after the drag leaves; clicking opens the Pro window). Stored in UserDefaults (`pro.allowance`), so a determined user can reset it; fine for a $5 utility.
@@ -75,7 +77,7 @@
 4. **JobQueue** (`CORE.md` §5): drops while a job runs are still ignored (`BubbleController.dragEntered` returns false while working). Make new drops queue, and move cancellation into the queue.
 5. Phase 1 step 3: SSIMULACRA 2 auto-tune (replaces the fixed values in `EncoderTuning`). (Step 4, Remove BG, is done.)
 6. **Video follow-ups:** check HDR iPhone clips (Risk 9); ask the owner how the new GIFs look (tune `VideoTuning.gif*`: frame rate, size, change threshold, dither strength); ask the owner about WebM (FFmpeg or libvpx + libwebm) and then VMAF auto-tune (`CORE.md` §7.3); a notification when a long video finishes.
-7. Smaller items: accept file promises (`NSFilePromiseReceiver`) so drags from Photos, Safari and Mail work; post a notification for jobs over ~10s; a Settings window (`CORE.md` §10).
+7. Smaller items: post a notification for jobs over ~10s; a Settings window (`CORE.md` §10), which could also offer "save results from other apps to…" instead of always Downloads.
 
 ## ✱ Risks to check first on a real Mac
 
@@ -86,7 +88,7 @@
 5. **JPEG and HEIC through ImageIO** embed an sRGB ICC profile (~3 KB), which matters on small JPEGs. jpegli replaces this.
 6. **Option bubbles mid-drag.** Moving outward from Compress to a size bubble is a longer reach. If it feels fiddly, tune `Motion.optionRingDistance`, `optionDiameter` and the boundary in `SubmenuLayout.innerBoundary`.
 7. **Custom panel focus.** It relies on a `.nonactivatingPanel` becoming key while another app stays active. If typing doesn't reach it, the fallback is `NSApp.activate()` while it's open (which breaks Rule 1 briefly).
-8. File promises aren't handled yet (see step 7). Haptics only fire on Force Touch trackpads.
+8. **Drags from other apps** (built 2026-11-01, untested by a person): Photos, Mail, Messages and browsers each package drags their own way. If one doesn't work, log `sender.draggingPasteboard.types` in `BubbleHostView.draggingEntered` to see what it offers. Haptics only fire on Force Touch trackpads.
 9. **HDR video.** iPhones record HDR (HLG / Dolby Vision, 10-bit HEVC). Re-encodes decode to 8-bit 4:2:0 without asking for a color space, so an H.264 result may look washed out or dim. If it does, set `AVVideoColorPropertiesKey` (BT.709) on the reader output and the writer in `VideoOptimizer.transcode` so Apple tone-maps it, and keep HDR for HEVC (`CORE.md` §7.4). Remux and Mute copy the streams, so they're unaffected.
 10. **Encoder overshoot.** On busy footage VideoToolbox can come out far over the asked bitrate (the noise test video comes out ~3× over). Compress-to-size retries; Auto relies on the size guard. If real clips often miss, tune `VideoTuning`.
 
@@ -106,13 +108,14 @@
 12. **Convert → AVIF** on a photo → `photo.avif`, usually smaller than the WebP. **Convert → JPG** on a transparent PNG → white background and a note. **Convert → PNG** on a WebP → a PNG even if it's bigger. Quick Look shows it.
 13. **Video:** drag a `.mov` screen recording over the bubble: Convert · Compress · Resize · Mute. Drop on the center → a smaller `.mp4`, the ring filling as it goes. **Convert → MP4** on an iPhone clip is instant. **Compress → 10 MB** on a big clip → `-10mb.mov` under 10 MB (maybe "Scaled to 720p to fit"). **Resize → 720p**, **Mute**, **Convert → GIF** (plays smoothly in Quick Look and a browser, loops; gradients and skin tones without bands; still backgrounds don't crawl). Click the bubble mid-encode to cancel. Check portrait clips stay upright and HDR clips don't look washed out.
 14. Drag a `.txt` over it: "Can't open this file type yet." while over, gone on exit.
-15. While a big batch works: hovering shows ×, and a click cancels.
-16. Type in TextEdit and drop on the bubble mid-sentence: TextEdit keeps focus.
-17. Menu bar → **History…**: every file you made, newest first. Double-click one (Finder), drag one into Slack, right-click → Copy. Clear History asks first.
-18. Menu bar → **Droptimize Pro…**: the Pro window (buy buttons disabled until it's on sale). Once `StoreConfig` is filled in: the menu says "Free plan: 3 of 3 files left today"; make 3 files, then drag a 4th over the bubble: "No free files left today. Click for Pro."; click it. Buy in Lemon Squeezy test mode, paste the key, Activate: Pro, unlimited.
-19. Switch Spaces and enter a full-screen app: the bubble is still there. ⌃⌥⌘D hides and shows it.
-20. Turn on Reduce Motion (System Settings → Accessibility → Display): fades only. Check light and dark mode.
-21. With two displays: move the bubble to the second one, relaunch, and it's still there.
+15. **From other apps:** drag a photo out of **Photos**, an attachment out of **Mail**, and an image from **Safari** and **Chrome** onto the bubble. Each gets the image menu; the result lands in **Downloads** ("Saved to Downloads" on the card) and on the clipboard.
+16. While a big batch works: hovering shows ×, and a click cancels.
+17. Type in TextEdit and drop on the bubble mid-sentence: TextEdit keeps focus.
+18. Menu bar → **History…**: every file you made, newest first. Double-click one (Finder), drag one into Slack, right-click → Copy. Clear History asks first.
+19. Menu bar → **Droptimize Pro…**: the Pro window (buy buttons disabled until it's on sale). Once `StoreConfig` is filled in: the menu says "Free plan: 3 of 3 files left today"; make 3 files, then drag a 4th over the bubble: "No free files left today. Click for Pro."; click it. Buy in Lemon Squeezy test mode, paste the key, Activate: Pro, unlimited.
+20. Switch Spaces and enter a full-screen app: the bubble is still there. ⌃⌥⌘D hides and shows it.
+21. Turn on Reduce Motion (System Settings → Accessibility → Display): fades only. Check light and dark mode.
+22. With two displays: move the bubble to the second one, relaunch, and it's still there.
 
 ## ✱ Decisions made so far (also in `CORE.md` §14)
 
@@ -194,6 +197,7 @@ It parses every Swift file, builds libwebp, libaom and libavif for Linux (needs 
 | `Bubble/RadialMenu.swift` | SwiftUI segments with fan-out and stagger. |
 | `Bubble/Logo.swift` | The logo's geometry (`Logo`), its SwiftUI view (`LogoMark`, the bubble glyph) and the menu bar template image. |
 | `App/Assets.xcassets` | The app icon, PNGs rendered from `scripts/app-icon.svg` by `scripts/make-app-icon.js` (Node + Playwright, a dev tool only). |
+| `Bubble/DroppedItems.swift` | What a drag carries: Finder files, promised files from other apps, or picture data; turns them into files on disk. |
 | `Bubble/Thumbnails.swift` | QuickLook thumbnails for the card. |
 | `Bubble/InputPanel.swift` | The post-drop panel for Custom: size (KB/MB) or color (hex, swatches, eyedropper); key without activating; `Color(rgb:)`. |
 | `Image/RGBAImage.swift` | Portable pixel buffer (sRGB, straight alpha) with opacity and color-count checks; `EncoderTuning` (all encoder settings). |
@@ -212,7 +216,7 @@ It parses every Swift file, builds libwebp, libaom and libavif for Linux (needs 
 | `Pipeline/Job.swift` | `Job`, `JobProgress`, `JobResult`, `JobError` (every user-facing error line), and the `JobRunner` protocol. |
 | `Pipeline/ImagePlan.swift` | Portable: action + option + source format → encoder, extension, suffix, scale; "coming soon" errors. |
 | `Pipeline/ActionOptions.swift` | Portable: `ActionOption`, `MenuOption`, each action's option bubbles, `OptionMemory` (last size and color). |
-| `Pipeline/Output.swift` | Portable: `OutputNaming`, `SizeGuard` (Rule 3), `OutputWriter` (never overwrites; Downloads fallback). |
+| `Pipeline/Output.swift` | Portable: `OutputNaming`, `SizeGuard` (Rule 3), `OutputWriter` (never overwrites; Downloads fallback), `ReceivedFiles` (copies of files dragged in from other apps; their results go to Downloads). |
 | `Pipeline/ImageJobRunner.swift` | macOS: `ImageOptimizer` (one file: plain, compress-to-fit, Remove BG) and `ImageJobRunner` (parallel batches, one at a time with videos, which go to `VideoOptimizer`; progress within a file; clipboard, notes). |
 | `Pipeline/Clipboard.swift` | macOS: file URLs plus a PNG picture on the pasteboard. |
 | `Pipeline/History.swift` | Portable: `HistoryEntry`, `HistoryLog` (newest first, 500 max, Recent, totals), `HistoryFile` (JSON in Application Support), `ActionOption.title`. |
