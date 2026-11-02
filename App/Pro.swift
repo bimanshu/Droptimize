@@ -58,16 +58,15 @@ final class ProStore: ObservableObject {
         problem = nil
         defer { isWorking = false }
         do {
-            let data = try await send(.activate, ["license_key": key, "instance_name": Self.macName])
-            switch LemonSqueezy.activation(data, key: key, at: now()) {
+            let answer = try await send(.activate, ["license_key": key, "name": Self.macName])
+            switch Dodo.activation(status: answer.status, data: answer.data, key: key, at: now()) {
             case .success(let activated):
                 license = activated
                 save()
-                if !activated.isActive { problem = "This key isn't active." }
             case .failure(let failure):
                 // Someone else's product: give the activation straight back.
-                if case .notDroptimize(let instance?) = failure {
-                    _ = try? await send(.deactivate, ["license_key": key, "instance_id": instance])
+                if case .notDroptimize(let instance) = failure {
+                    _ = try? await send(.deactivate, ["license_key": key, "license_key_instance_id": instance])
                 }
                 problem = failure.message
             }
@@ -83,13 +82,13 @@ final class ProStore: ObservableObject {
         problem = nil
         defer { isWorking = false }
         do {
-            let data = try await send(.deactivate, ["license_key": current.key, "instance_id": current.instanceID])
-            let answer = try? JSONDecoder().decode(LemonSqueezy.Response.self, from: data)
-            if answer?.deactivated == true || answer?.error?.lowercased().contains("not found") == true {
+            let answer = try await send(.deactivate, ["license_key": current.key,
+                                                      "license_key_instance_id": current.instanceID])
+            if Dodo.deactivated(status: answer.status) {
                 license = nil
                 save()
             } else {
-                problem = answer?.error ?? "Couldn't deactivate it. Try again later."
+                problem = "Couldn't deactivate it. Try again later."
             }
         } catch {
             problem = "Couldn't reach the license server. Check your connection and try again."
@@ -102,8 +101,10 @@ final class ProStore: ObservableObject {
         guard let current = license, force || current.needsCheck(at: now()), !isWorking else { return }
         isWorking = true
         defer { isWorking = false }
-        guard let data = try? await send(.validate, ["license_key": current.key, "instance_id": current.instanceID]),
-              let updated = LemonSqueezy.validation(data, license: current, at: now()) else { return }
+        guard let answer = try? await send(.validate, ["license_key": current.key,
+                                                        "license_key_instance_id": current.instanceID]),
+              let updated = Dodo.validation(status: answer.status, data: answer.data, license: current, at: now())
+        else { return }
         license = updated
         save()
     }
@@ -115,13 +116,12 @@ final class ProStore: ObservableObject {
         save()
     }
 
-    private func send(_ endpoint: LemonSqueezy.Endpoint, _ fields: [String: String]) async throws -> Data {
-        let (data, response) = try await session.data(for: LemonSqueezy.request(endpoint, fields))
+    private func send(_ endpoint: Dodo.Endpoint, _ fields: [String: String]) async throws -> (status: Int, data: Data) {
+        let (data, response) = try await session.data(for: Dodo.request(endpoint, fields))
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         // Busy or broken servers say nothing about the key.
-        if let http = response as? HTTPURLResponse, http.statusCode == 429 || http.statusCode >= 500 {
-            throw URLError(.badServerResponse)
-        }
-        return data
+        if status == 429 || status >= 500 || status == 0 { throw URLError(.badServerResponse) }
+        return (status, data)
     }
 
     private func save() {
@@ -135,7 +135,7 @@ final class ProStore: ObservableObject {
         }
     }
 
-    /// The name the activation shows under in the Lemon Squeezy dashboard.
+    /// The name the activation shows under in the Dodo Payments dashboard.
     private static var macName: String {
         (SCDynamicStoreCopyComputerName(nil, nil) as String?) ?? "Mac"
     }
@@ -320,8 +320,8 @@ private struct ProView: View {
             }
             .font(.system(size: 12))
             HStack {
-                if license.plan == .monthly {
-                    Button("Manage Subscription") { open(StoreConfig.manageSubscription) }
+                if license.plan == .monthly, let portal = StoreConfig.customerPortal {
+                    Button("Manage Subscription") { open(portal) }
                 }
                 Button("Deactivate on This Mac") { Task { await store.deactivate() } }
                     .disabled(store.isWorking)

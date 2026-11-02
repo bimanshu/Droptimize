@@ -3,25 +3,25 @@ import Foundation
 import FoundationNetworking
 #endif
 
-/// Fill these in from the Lemon Squeezy dashboard (HANDOFF.md → "Selling Pro"). Until they're
-/// all set, Pro can't be bought and the free limit isn't enforced, so preview builds stay unlimited.
+/// Fill these in from the Dodo Payments dashboard (HANDOFF.md → "Selling Pro"). Until the
+/// products and checkout links are set, Pro can't be bought and the free limit isn't enforced, so
+/// preview builds stay unlimited.
 enum StoreConfig {
-    /// Settings → Stores: the store's number.
-    static let storeID: Int? = nil
-    /// Each product's number (Products → the product → its ID).
-    static let monthlyProductID: Int? = nil
-    static let lifetimeProductID: Int? = nil
-    /// Each product's checkout link (Share → Checkout URL).
+    /// Each product's ID ("pdt_…"), from Products in the dashboard.
+    static let monthlyProductID: String? = nil
+    static let lifetimeProductID: String? = nil
+    /// Each product's checkout link (the product's share or payment link).
     static let monthlyCheckout: URL? = nil
     static let lifetimeCheckout: URL? = nil
-    /// Where buyers manage or cancel a subscription.
-    static let manageSubscription = URL(string: "https://app.lemonsqueezy.com/my-orders")!
+    /// The customer portal's link, where buyers manage or cancel a subscription. Optional.
+    static let customerPortal: URL? = nil
+    /// Dodo's test mode (test cards, test keys) while trying purchases out; false to sell.
+    static let testMode = false
     static let monthlyPrice = "$5"
     static let lifetimePrice = "$50"
 
     static var isSelling: Bool {
-        storeID != nil && monthlyProductID != nil && lifetimeProductID != nil
-            && monthlyCheckout != nil && lifetimeCheckout != nil
+        monthlyProductID != nil && lifetimeProductID != nil && monthlyCheckout != nil && lifetimeCheckout != nil
     }
 }
 
@@ -31,7 +31,7 @@ enum ProPlan: String, Codable, Equatable {
     var title: String { self == .monthly ? "Monthly" : "Lifetime" }
 }
 
-/// A Pro license activated on this Mac, as of the last answer from Lemon Squeezy.
+/// A Pro license activated on this Mac, as of the last answer from Dodo Payments.
 struct License: Codable, Equatable {
     var key: String
     /// This Mac's activation, needed to check or release it.
@@ -66,85 +66,67 @@ struct License: Codable, Equatable {
     }
 }
 
-/// Lemon Squeezy's License API (https://docs.lemonsqueezy.com/api/license-api). Public: it takes
-/// the key itself, no API secret. The only network calls the app makes (CORE.md Rule 4), and they
-/// carry the key and this Mac's name, never files. Building requests and reading answers is
-/// portable; sending them is in `ProStore`.
-enum LemonSqueezy {
-    static let base = URL(string: "https://api.lemonsqueezy.com/v1/licenses/")!
+/// Dodo Payments' public license API (https://docs.dodopayments.com/features/license-keys): it
+/// takes the key itself, no API secret. The only network calls the app makes (CORE.md Rule 4),
+/// and they carry the key and this Mac's name, never files. Building requests and reading answers
+/// is portable; sending them is in `ProStore`.
+enum Dodo {
+    static var base: URL {
+        URL(string: StoreConfig.testMode ? "https://test.dodopayments.com/" : "https://live.dodopayments.com/")!
+    }
 
     enum Endpoint: String {
         case activate, validate, deactivate
     }
 
     static func request(_ endpoint: Endpoint, _ fields: [String: String]) -> URLRequest {
-        var request = URLRequest(url: base.appendingPathComponent(endpoint.rawValue))
+        var request = URLRequest(url: base.appendingPathComponent("licenses").appendingPathComponent(endpoint.rawValue))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 20
-        // Unreserved ASCII only; everything else is percent-encoded.
-        let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
-        request.httpBody = fields.keys.sorted().map { name in
-            let value = fields[name]?.addingPercentEncoding(withAllowedCharacters: allowed) ?? ""
-            return "\(name)=\(value)"
-        }.joined(separator: "&").data(using: .utf8)
+        request.httpBody = try? JSONSerialization.data(withJSONObject: fields, options: [.sortedKeys])
         return request
     }
 
-    /// The parts of an answer we use.
-    struct Response: Decodable {
-        var activated: Bool?
-        var valid: Bool?
-        var deactivated: Bool?
-        var error: String?
-        var licenseKey: Key?
-        var instance: Instance?
-        var meta: Meta?
+    /// An activation: this Mac's instance, for which product, bought by whom.
+    struct Instance: Decodable {
+        var id: String
+        var product: Product?
+        var customer: Customer?
 
-        struct Key: Decodable {
-            var status: String?
-            var key: String?
-        }
-
-        struct Instance: Decodable {
-            var id: String?
-        }
-
-        struct Meta: Decodable {
-            var storeID: Int?
-            var productID: Int?
-            var customerEmail: String?
+        struct Product: Decodable {
+            var productID: String
 
             enum CodingKeys: String, CodingKey {
-                case storeID = "store_id", productID = "product_id", customerEmail = "customer_email"
+                case productID = "product_id"
             }
         }
 
-        enum CodingKeys: String, CodingKey {
-            case activated, valid, deactivated, error, instance, meta
-            case licenseKey = "license_key"
+        struct Customer: Decodable {
+            var email: String?
         }
     }
 
+    struct Validity: Decodable {
+        var valid: Bool
+    }
+
     enum Failure: Error, Equatable {
-        /// The server said no, in its own words.
-        case refused(String)
-        /// A real key, but for another product or store.
-        case notDroptimize(instanceID: String?)
+        case notFound
+        /// On as many Macs as the key allows.
+        case tooManyMacs
+        /// Cancelled, refunded or disabled.
+        case inactive
+        /// A real key, but for another product.
+        case notDroptimize(instanceID: String)
         case unreadable
 
         var message: String {
             switch self {
-            case .refused(let reason):
-                let lowered = reason.lowercased()
-                if lowered.contains("not found") { return "That key wasn't found. Check it and try again." }
-                if lowered.contains("activation limit") {
-                    return "This key is on too many Macs. Deactivate it on one, then try again."
-                }
-                if lowered.contains("expired") { return "This key has expired." }
-                if lowered.contains("disabled") { return "This key has been disabled." }
-                return reason
+            case .notFound: return "That key wasn't found. Check it and try again."
+            case .tooManyMacs: return "This key is on too many Macs. Deactivate it on one, then try again."
+            case .inactive: return "This key isn't active. If the subscription ended, renew it."
             case .notDroptimize: return "That key isn't for Droptimize Pro."
             case .unreadable: return "Couldn't read the license server's answer. Try again later."
             }
@@ -152,37 +134,46 @@ enum LemonSqueezy {
     }
 
     /// Which plan a product is, if it's one of ours.
-    static func plan(store: Int?, product: Int?) -> ProPlan? {
-        guard let store, store == StoreConfig.storeID, let product else { return nil }
+    static func plan(product: String?) -> ProPlan? {
+        guard let product else { return nil }
         if product == StoreConfig.lifetimeProductID { return .lifetime }
         if product == StoreConfig.monthlyProductID { return .monthly }
         return nil
     }
 
-    /// Reads an answer to `activate`: the license, or why not.
-    static func activation(_ data: Data, key: String, at now: Date,
-                           plan: (Int?, Int?) -> ProPlan? = plan(store:product:)) -> Result<License, Failure> {
-        guard let response = try? JSONDecoder().decode(Response.self, from: data) else { return .failure(.unreadable) }
-        guard response.activated == true, let instanceID = response.instance?.id else {
-            return .failure(.refused(response.error ?? "The key wasn't accepted."))
+    /// Reads an answer to `activate` (HTTP `status` and body): the license, or why not.
+    static func activation(status: Int, data: Data, key: String, at now: Date,
+                           plan: (String?) -> ProPlan? = plan(product:)) -> Result<License, Failure> {
+        switch status {
+        case 200..<300:
+            guard let instance = try? JSONDecoder().decode(Instance.self, from: data) else { return .failure(.unreadable) }
+            guard let kind = plan(instance.product?.productID) else {
+                return .failure(.notDroptimize(instanceID: instance.id))
+            }
+            return .success(License(key: key, instanceID: instance.id, plan: kind, isActive: true, checked: now,
+                                    email: instance.customer?.email))
+        case 404: return .failure(.notFound)
+        case 422: return .failure(.tooManyMacs)
+        case 403: return .failure(.inactive)
+        default: return .failure(.unreadable)
         }
-        guard let kind = plan(response.meta?.storeID, response.meta?.productID) else {
-            return .failure(.notDroptimize(instanceID: instanceID))
-        }
-        return .success(License(key: key, instanceID: instanceID, plan: kind,
-                                isActive: response.licenseKey?.status == "active", checked: now,
-                                email: response.meta?.customerEmail))
     }
 
-    /// Reads an answer to `validate`: the license as it stands now. A definite "no" turns Pro off;
-    /// anything unreadable leaves it as it was (the caller keeps the old one).
-    static func validation(_ data: Data, license: License, at now: Date) -> License? {
-        guard let response = try? JSONDecoder().decode(Response.self, from: data), let valid = response.valid else {
+    /// Reads an answer to `validate`: the license as it stands now. A definite "no" (the key was
+    /// cancelled, refunded or disabled, or this Mac's activation was removed) turns Pro off;
+    /// anything else leaves it as it was (nil: keep the old one).
+    static func validation(status: Int, data: Data, license: License, at now: Date) -> License? {
+        guard (200..<300).contains(status), let answer = try? JSONDecoder().decode(Validity.self, from: data) else {
             return nil
         }
         var updated = license
         updated.checked = now
-        updated.isActive = valid && response.licenseKey?.status == "active"
+        updated.isActive = answer.valid
         return updated
+    }
+
+    /// Whether a `deactivate` answer means this Mac's activation is gone (or never was).
+    static func deactivated(status: Int) -> Bool {
+        (200..<300).contains(status) || status == 403 || status == 404
     }
 }

@@ -47,61 +47,63 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(monthly.maskedKey, "••••-1234")
     }
 
-    func testRequestsAreFormEncodedPosts() throws {
-        let request = LemonSqueezy.request(.activate, ["license_key": "AB C&D=1", "instance_name": "Bimanshu’s Mac"])
-        XCTAssertEqual(request.url?.absoluteString, "https://api.lemonsqueezy.com/v1/licenses/activate")
+    func testRequestsAreJSONPostsToTheLicenseAPI() throws {
+        let request = Dodo.request(.activate, ["license_key": "PRO-AAAA-BBBB", "name": "Bimanshu’s Mac"])
+        XCTAssertEqual(request.url?.absoluteString, "https://live.dodopayments.com/licenses/activate")
         XCTAssertEqual(request.httpMethod, "POST")
-        XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "application/json")
-        let body = String(decoding: try XCTUnwrap(request.httpBody), as: UTF8.self)
-        XCTAssertEqual(body, "instance_name=Bimanshu%E2%80%99s%20Mac&license_key=AB%20C%26D%3D1")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/json")
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: try XCTUnwrap(request.httpBody)) as? [String: String])
+        XCTAssertEqual(body, ["license_key": "PRO-AAAA-BBBB", "name": "Bimanshu’s Mac"])
     }
 
+    // As documented at https://docs.dodopayments.com/api-reference/licenses/activate-license (201).
     private let activated = """
-    {"activated": true, "error": null,
-     "license_key": {"id": 1, "status": "active", "key": "38b1460a-5104-4067-a91d-77b872934d51",
-                     "activation_limit": 3, "activation_usage": 1, "created_at": "2026-11-01T10:00:00.000000Z", "expires_at": null},
-     "instance": {"id": "47596ad9-a811-4ebf-ac8a-03fc7b6d2a17", "name": "Mac", "created_at": "2026-11-01T10:00:00.000000Z"},
-     "meta": {"store_id": 11, "order_id": 2, "order_item_id": 3, "product_id": 44, "product_name": "Droptimize Pro",
-              "variant_id": 5, "variant_name": "Default", "customer_id": 6, "customer_name": "Ada", "customer_email": "ada@example.com"}}
+    {"id": "lki_123", "business_id": "bus_1", "name": "Mac", "license_key_id": "lic_123",
+     "created_at": "2026-11-02T10:00:00.000Z",
+     "product": {"product_id": "pdt_lifetime", "name": "Droptimize Pro Lifetime"},
+     "customer": {"customer_id": "cus_1", "name": "Ada", "email": "ada@example.com", "phone_number": null}}
     """
 
     func testActivationReadsThePlanAndRefusesOtherProducts() throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
-        let ours: (Int?, Int?) -> ProPlan? = { store, product in store == 11 && product == 44 ? .lifetime : nil }
-        let license = try LemonSqueezy.activation(Data(activated.utf8), key: "KEY", at: now, plan: ours).get()
-        XCTAssertEqual(license, License(key: "KEY", instanceID: "47596ad9-a811-4ebf-ac8a-03fc7b6d2a17", plan: .lifetime,
-                                        isActive: true, checked: now, email: "ada@example.com"))
+        let ours: (String?) -> ProPlan? = { $0 == "pdt_lifetime" ? .lifetime : nil }
+        let license = try Dodo.activation(status: 201, data: Data(activated.utf8), key: "KEY", at: now, plan: ours).get()
+        XCTAssertEqual(license, License(key: "KEY", instanceID: "lki_123", plan: .lifetime, isActive: true, checked: now,
+                                        email: "ada@example.com"))
 
-        let theirs: (Int?, Int?) -> ProPlan? = { _, _ in nil }
-        XCTAssertEqual(LemonSqueezy.activation(Data(activated.utf8), key: "KEY", at: now, plan: theirs),
-                       .failure(.notDroptimize(instanceID: "47596ad9-a811-4ebf-ac8a-03fc7b6d2a17")))
+        let theirs: (String?) -> ProPlan? = { _ in nil }
+        XCTAssertEqual(Dodo.activation(status: 201, data: Data(activated.utf8), key: "KEY", at: now, plan: theirs),
+                       .failure(.notDroptimize(instanceID: "lki_123")))
 
-        let refused = #"{"activated": false, "error": "license_key not found.", "license_key": null, "instance": null, "meta": null}"#
-        let failure = LemonSqueezy.activation(Data(refused.utf8), key: "KEY", at: now, plan: ours)
-        XCTAssertEqual(failure, .failure(.refused("license_key not found.")))
-        if case .failure(let reason) = failure {
-            XCTAssertEqual(reason.message, "That key wasn't found. Check it and try again.")
-        }
-        XCTAssertEqual(LemonSqueezy.activation(Data("<html>".utf8), key: "KEY", at: now, plan: ours), .failure(.unreadable))
-        XCTAssertNil(LemonSqueezy.plan(store: 11, product: 44), "nothing is ours until StoreConfig is filled in")
+        let refusal = Data(#"{"code": "NOT_FOUND", "message": "License key not found"}"#.utf8)
+        XCTAssertEqual(Dodo.activation(status: 404, data: refusal, key: "KEY", at: now, plan: ours), .failure(.notFound))
+        XCTAssertEqual(Dodo.activation(status: 422, data: refusal, key: "KEY", at: now, plan: ours), .failure(.tooManyMacs))
+        XCTAssertEqual(Dodo.activation(status: 403, data: refusal, key: "KEY", at: now, plan: ours), .failure(.inactive))
+        XCTAssertEqual(Dodo.activation(status: 201, data: Data("<html>".utf8), key: "KEY", at: now, plan: ours),
+                       .failure(.unreadable))
+        XCTAssertEqual(Dodo.Failure.tooManyMacs.message, "This key is on too many Macs. Deactivate it on one, then try again.")
+        XCTAssertNil(Dodo.plan(product: "pdt_lifetime"), "nothing is ours until StoreConfig is filled in")
     }
 
     func testValidationTurnsProOffOnlyOnADefiniteNo() {
         let then = Date(timeIntervalSince1970: 1_800_000_000), now = then.addingTimeInterval(86_400)
-        let license = License(key: "KEY", instanceID: "i", plan: .monthly, isActive: true, checked: then)
+        let license = License(key: "KEY", instanceID: "lki_1", plan: .monthly, isActive: true, checked: then)
 
-        let stillValid = #"{"valid": true, "error": null, "license_key": {"status": "active"}}"#
-        XCTAssertEqual(LemonSqueezy.validation(Data(stillValid.utf8), license: license, at: now)?.checked, now)
-        XCTAssertEqual(LemonSqueezy.validation(Data(stillValid.utf8), license: license, at: now)?.isActive, true)
+        let valid = Dodo.validation(status: 200, data: Data(#"{"valid": true}"#.utf8), license: license, at: now)
+        XCTAssertEqual(valid?.checked, now)
+        XCTAssertEqual(valid?.isActive, true)
 
-        let ended = #"{"valid": true, "error": null, "license_key": {"status": "expired"}}"#
-        XCTAssertEqual(LemonSqueezy.validation(Data(ended.utf8), license: license, at: now)?.isActive, false)
+        let cancelled = Dodo.validation(status: 200, data: Data(#"{"valid": false}"#.utf8), license: license, at: now)
+        XCTAssertEqual(cancelled?.isActive, false, "a cancelled subscription disables its key")
 
-        let unknown = #"{"valid": false, "error": "license_key not found."}"#
-        XCTAssertEqual(LemonSqueezy.validation(Data(unknown.utf8), license: license, at: now)?.isActive, false)
+        XCTAssertNil(Dodo.validation(status: 422, data: Data("{}".utf8), license: license, at: now), "says nothing about the key")
+        XCTAssertNil(Dodo.validation(status: 200, data: Data("oops".utf8), license: license, at: now))
+    }
 
-        let rateLimited = #"{"error": "Too many requests"}"#
-        XCTAssertNil(LemonSqueezy.validation(Data(rateLimited.utf8), license: license, at: now), "says nothing about the key")
-        XCTAssertNil(LemonSqueezy.validation(Data("oops".utf8), license: license, at: now))
+    func testDeactivationCountsAMissingActivationAsGone() {
+        XCTAssertTrue(Dodo.deactivated(status: 200))
+        XCTAssertTrue(Dodo.deactivated(status: 404), "the key is gone")
+        XCTAssertTrue(Dodo.deactivated(status: 403), "this Mac's activation is gone")
+        XCTAssertFalse(Dodo.deactivated(status: 422))
     }
 }
