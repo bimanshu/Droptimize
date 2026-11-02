@@ -12,10 +12,10 @@ The owner approved the brief and the VO script ("let's build the vid") and left 
 - [x] **Music:** see *Music* below.
 - [x] **Photos:** none, by the owner's call (see *No photos*).
 - [x] **VO:** generated once as a single take with long pauses, 427 credits: **`audio/emma-vo-full.mp3`** (31.4 s, committed so it never has to be paid for again). Split by silence; placements are in *VO placement* below.
-- [ ] **Animation:** `film/index.html`, with `seek(t)` as the only source of truth.
-- [ ] **Stills:** one per beat, then fix anything off.
-- [ ] **Audio:** `film/mix.py`. Cut and stretch the track, add the VO with ducking, synthesise the UI sounds, add the final hit and the tail.
-- [ ] **Render:** `film/render.js` (Playwright, 240 fps subframes piped to ffmpeg `tmix`, output at 60 fps), then mux.
+- [x] **Animation:** `film/index.html`. Every style comes from `seek(t)`, using closed-form springs with the app's own values; `window.EVENTS` is the sound cue list. A first cut covers the whole timeline below.
+- [x] **Stills:** checked through the film. Fixed so far: the cold open on the light canvas, elements hidden with `visibility` that a child overrode (hide with `display`), the camera push cropping the headline, tiles over the headline, the Remove BG preview over the word list, the dark scene covering its headline, the 486 KB card lingering behind the logo, and the headline running into the Mac outline.
+- [x] **Audio:** `film/mix.py`: stretch and cut the track; high-pass until the drop; breaths at 11.5 and 25.5; low-pass and fade after the 26.0 hit; Emma's lines placed and the music ducked 8 dB under them; synthesised UI sounds from `events.json`; the synthesised deep hit. **Bar 9 comes from the beat grid** (0.476/stretch + 16 + 0.005 s); onset-picking caught a bass swell 83 ms late.
+- [ ] **Render:** `film/render.js full video.mp4` (240 fps subframes piped to ffmpeg `tmix`, out at 60 fps; several minutes), then mux: `ffmpeg -i video.mp4 -i mix.wav -c:v copy -c:a aac -b:a 256k -movflags +faststart droptimize-launch.mp4`. **In progress.**
 - [ ] **Deliver:** send the MP4 to the owner (`SendUserFile`). Keep big media out of git (see *Licences*).
 
 ## Owner's rules for this work
@@ -78,6 +78,24 @@ Cut each segment with a 30 ms margin either side and 10 ms fades. **The film is 
 - **20–22 · Private.** The result card expands to fill the frame, near-black. "Never leaves your Mac." word by word on beats; a Mac outline with file tiles moving only inside it.
 - **22–25 · Batch and paste.** Back to light at 22.0. Ten small tiles stream into the bubble on 16ths from 22.25, with the counter 1/10 → 10/10 inside the bubble; card "10 files · −81%" at 23.5. Keycaps ⌘ (24.0) and V (24.5) press, and the tile pastes into a plain composer.
 - **25–28.5 · End.** At 25.0 the composer pushes toward the camera and blurs away; 25.5 card "IMG_2041.HEIC 486 KB"; 26.0 final hit, end card (logo, "Droptimize", "Drop it. Done.", "Free to start · Pro $9.99 once", no URL yet). Hold, then silence 28.5–31.5.
+
+## How to rebuild (from `docs/launch-video/film/`)
+```bash
+curl -fsSL -o 132.mp3 https://assets.mixkit.co/music/132/132.mp3
+node render.js stills stills/ 2.2 7.8 13.4          # check particular moments (or no times: one per beat)
+node render.js events events.json
+python3 mix.py --music 132.mp3 --vo ../audio/emma-vo-full.mp3 --events events.json --out mix.wav
+node render.js full video.mp4
+ffmpeg -i video.mp4 -i mix.wav -c:v copy -c:a aac -b:a 256k -movflags +faststart droptimize-launch.mp4
+```
+
+## Typography and copy (the owner asked: "no slop typography and AI writing"; checked with the better-typography and better-writing skills)
+- **One type scale, seven sizes** (CSS variables in `index.html`): display-xl 220 (sizes in the cold open and the 486 KB card), display 144 (headlines and "Droptimize"), title 96 (word list, carousel, "Never leaves your Mac."), subtitle 48 (file names, result percentages, tagline, keycaps), body 28 (price line, placeholder), ui 24 (bubble labels, options, chips), ui-sm 20 (mono file details, long labels).
+- **Spacing and figures:** tracking tightens as the size grows (−0.04em to −0.02em; none at UI sizes); leading 1.1 for headings. Every counter uses tabular figures. Non-breaking spaces sit between numbers and units. Geist Mono only for file names and sizes.
+- **Accuracy and plain wording:**
+  - Copy matches the app: compressing a HEIC keeps it HEIC (`IMG_2041-500kb.heic`), `hero.avif`, `launch-25mb.mov`, "10 files".
+  - The price line is specific: "Free for 3 files a day · Pro $9.99 once".
+  - Headlines are plain statements, no hype.
 
 ## Licences and what goes in git
 - **Commit:** the film's sources (`film/*.html`, `*.js`, `*.py`), and these notes.

@@ -16,3 +16,10 @@ Vendor/
 # The updater's private signing key (scripts/sign-update.swift generate). It belongs in GitHub's
 # UPDATE_SIGNING_KEY secret and the owner's password manager, never in the repository.
 UPDATE_SIGNING_KEY.txt
+
+# Launch film: fetched music, renders and stills stay out of git (docs/launch-video/HANDOFF-VIDEO.md)
+docs/launch-video/film/*.mp3
+docs/launch-video/film/*.mp4
+docs/launch-video/film/*.wav
+docs/launch-video/film/events.json
+docs/launch-video/film/stills/
