@@ -2,22 +2,43 @@
 # agents working in Linux containers can't build AppKit/SwiftUI code locally (see HANDOFF.md).
 # Every green push also refreshes the "preview" release (a DMG, a zip and scripts/install.sh),
 # so the owner can install or update with one Terminal command, no Xcode needed.
+# A run started by hand with a version (Actions → Build → Run workflow, or `gh workflow run build.yml
+# -f release_version=1.0.0`) also publishes the "stable" release, whose update.json the app's
+# built-in updater reads (App/Updater.swift). That needs the UPDATE_SIGNING_KEY secret (HANDOFF.md).
 name: Build
 
 on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Release to everyone as this version (e.g. 1.0.0). Leave empty for a preview only."
+        required: false
+        default: ""
+      release_notes:
+        description: "What's new, shown in the app's update window (plain text)"
+        required: false
+        default: ""
 
 concurrency:
-  group: build-${{ github.ref }}
-  cancel-in-progress: true
+  # A release run gets a group of its own, so a later push can't cancel it halfway.
+  group: ${{ inputs.release_version && format('release-{0}', inputs.release_version) || format('build-{0}', github.ref) }}
+  cancel-in-progress: ${{ !inputs.release_version }}
 
 jobs:
   build:
     runs-on: macos-15
     timeout-minutes: 45
+    env:
+      RELEASE_VERSION: ${{ inputs.release_version }}
     steps:
+      - name: Check the release version
+        if: inputs.release_version
+        run: |
+          [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] \
+            || { echo "::error::release_version must look like 1.0 or 1.0.1, not '$RELEASE_VERSION'"; exit 1; }
+
       - uses: actions/checkout@v4
 
       - name: Toolchain
@@ -65,6 +86,8 @@ jobs:
           test ! -s warnings.txt
 
       - name: Release build (universal)
+        # The build number (CFBundleVersion) is the run number, which only goes up: it's what the
+        # updater compares. A release also sets the version people see (CFBundleShortVersionString).
         run: |
           set +e
           xcodebuild build \
@@ -75,6 +98,7 @@ jobs:
             -derivedDataPath build \
             CODE_SIGN_IDENTITY=- \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            ${RELEASE_VERSION:+MARKETING_VERSION=$RELEASE_VERSION} \
             > release.log 2>&1
           status=$?
           grep -E 'error:|\*\* BUILD' release.log || true
@@ -108,13 +132,50 @@ jobs:
           test -x "$apps/Droptimize.app/Contents/MacOS/Droptimize"
           test ! -e "$apps/Droptimize.app.new"
 
+      - name: Test the update signer
+        # Every run, with a throwaway key, so a release never finds scripts/sign-update.swift broken.
+        run: swift scripts/sign-update.swift self-test Droptimize.zip
+
+      - name: Sign the release
+        # The zip the updater downloads, and the feed that points at it, signed with the private key
+        # whose public half is built into the app (Update.publicKey in Store/UpdateFeed.swift).
+        if: inputs.release_version
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          BUILD: ${{ github.run_number }}
+        run: |
+          if [ -z "$UPDATE_SIGNING_KEY" ]; then
+            echo "::error::Add the UPDATE_SIGNING_KEY secret first (HANDOFF.md → built-in updater)."
+            exit 1
+          fi
+          built_in=$(sed -n 's/.*static let publicKey = "\(.*\)".*/\1/p' Store/UpdateFeed.swift)
+          secret=$(swift scripts/sign-update.swift public-key)
+          if [ "$built_in" != "$secret" ]; then
+            echo "::error::UPDATE_SIGNING_KEY doesn't match Update.publicKey in Store/UpdateFeed.swift, so the app would refuse this update."
+            exit 1
+          fi
+          app=build/Build/Products/Release/Droptimize.app
+          test "$(defaults read "$PWD/$app/Contents/Info" CFBundleShortVersionString)" = "$RELEASE_VERSION"
+          test "$(defaults read "$PWD/$app/Contents/Info" CFBundleVersion)" = "$BUILD"
+          cp Droptimize.zip "Droptimize-$BUILD.zip"
+          printf '%s\n' "$RELEASE_NOTES" > release-notes.txt
+          swift scripts/sign-update.swift feed "Droptimize-$BUILD.zip" \
+            --version "$RELEASE_VERSION" --build "$BUILD" \
+            --url "https://github.com/$GITHUB_REPOSITORY/releases/download/stable/Droptimize-$BUILD.zip" \
+            --notes-file release-notes.txt --minimum-system 14.0 > update.json
+          cat update.json
+
       - name: Upload build
         uses: actions/upload-artifact@v4
         with:
           name: Droptimize-build
+          # update.json and the numbered zip only exist for releases.
           path: |
             Droptimize.dmg
             Droptimize.zip
+            Droptimize-*.zip
+            update.json
           retention-days: 14
 
   # Replaces the "preview" pre-release with this build. Its links never change:
@@ -185,3 +246,48 @@ jobs:
               --notes-file notes.md
           fi
           echo "curl -fsSL https://github.com/$GH_REPO/releases/download/preview/install.sh | bash"
+
+      # The release buyers download and their copies update from:
+      # https://github.com/<owner>/<repo>/releases/download/stable/{update.json,Droptimize.dmg,Droptimize-<build>.zip}
+      - name: Publish the stable release
+        if: inputs.release_version
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          BUILD: ${{ github.run_number }}
+        run: |
+          zip="Droptimize-$BUILD.zip"
+          test -f "$zip" && test -f update.json && test -f Droptimize.dmg
+          {
+            echo "**Droptimize $RELEASE_VERSION** (build $BUILD, $(date -u '+%Y-%m-%d'))."
+            echo
+            if [ -n "$RELEASE_NOTES" ]; then printf '%s\n\n' "$RELEASE_NOTES"; fi
+            cat <<'EOF'
+          ### Install
+          1. Download **Droptimize.dmg** below and open it.
+          2. Drag **Droptimize** into **Applications**, then open it from there.
+          3. The first time, macOS says it can't check the app for malicious software (it isn't notarized by Apple yet). Click **Done**, go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway**. Only once.
+          4. Look for the circles icon in the menu bar and the bubble on the right edge of your screen.
+
+          After that, Droptimize updates itself: it offers new versions in a small window, or use the menu bar icon → **Check for Updates…**. Needs macOS 14 (Sonoma) or newer, on Apple Silicon or Intel.
+          EOF
+          } > stable-notes.md
+          if gh release view stable >/dev/null 2>&1; then
+            # The zip and DMG first and update.json last, so the feed never points at a missing file.
+            gh release upload stable "$zip" Droptimize.dmg --clobber
+            gh release upload stable update.json --clobber
+            gh api -X PATCH "repos/$GH_REPO/git/refs/tags/stable" -f sha="$GITHUB_SHA" -F force=true >/dev/null
+            gh release edit stable --prerelease=false --latest --title "Droptimize $RELEASE_VERSION" --notes-file stable-notes.md
+          else
+            gh release create stable "$zip" Droptimize.dmg update.json \
+              --target "$GITHUB_SHA" \
+              --latest \
+              --title "Droptimize $RELEASE_VERSION" \
+              --notes-file stable-notes.md
+          fi
+          # Keep this zip and the one before it (a copy that read the old feed a moment ago may still
+          # be downloading it); delete older ones.
+          gh release view stable --json assets --jq '.assets[].name' \
+            | grep -E '^Droptimize-[0-9]+\.zip$' | sort -t- -k2 -n | head -n -2 \
+            | while read -r old; do gh release delete-asset stable "$old" -y; done
+          echo "Released Droptimize $RELEASE_VERSION (build $BUILD): https://github.com/$GH_REPO/releases/tag/stable"

@@ -2,8 +2,9 @@
 # What can be checked without a Mac (for agents working in Linux containers):
 #   1. every Swift file parses;
 #   2. the portable code passes its unit tests: layout, spring, dock position, action menus,
-#      output naming, the size guard, and the PNG, WebP and AVIF encoders (libwebp, libaom and
-#      libavif are built for the host by scripts/build-deps.sh; zlib comes from the system).
+#      output naming, the size guard, the updater's feed and swap script, and the PNG, WebP and
+#      AVIF encoders (libwebp, libaom and libavif are built for the host by scripts/build-deps.sh;
+#      zlib comes from the system).
 # This is NOT a build: AppKit/SwiftUI code is only type-checked by Xcode or by CI
 # (.github/workflows/build.yml). Needs a Swift toolchain on PATH; see HANDOFF.md.
 set -euo pipefail
@@ -33,6 +34,7 @@ PORTABLE_SOURCES=(
   Video/GIFEncoder.swift
   Store/Allowance.swift
   Store/License.swift
+  Store/UpdateFeed.swift
 )
 PORTABLE_TESTS=(
   Tests/LayoutTests.swift
@@ -47,6 +49,7 @@ PORTABLE_TESTS=(
   Tests/VideoPlanTests.swift
   Tests/GIFTests.swift
   Tests/StoreTests.swift
+  Tests/UpdateTests.swift
   Tests/Support/TestPNGReader.swift
   Tests/Support/TestGIFReader.swift
 )

@@ -1,4 +1,4 @@
-Droptimize (preview)
+Droptimize
 
 1. Drag Droptimize into the Applications folder.
 
@@ -38,11 +38,15 @@ Videos (MOV, MP4, M4V) get their own buttons:
   and clicking the bubble cancels.
 
 The first time it saves into Desktop, Documents or Downloads, macOS asks whether
-Droptimize may access that folder. Click Allow. (Each new preview build may ask again.)
+Droptimize may access that folder. Click Allow. (Each new version may ask again.)
 
 Everything you make is listed in History (click the circles icon in the menu bar).
 Hide or show the bubble with Control-Option-Command-D.
 
-To update later, you don't need this disk image. Paste this into Terminal:
+Updates install themselves: when a new version is out, Droptimize offers it in a small
+window (Install & Relaunch). You can also click the circles icon in the menu bar and
+choose Check for Updates.
+
+Preview builds (for testing) update with this Terminal command instead:
 
     curl -fsSL https://github.com/bimanshu/Droptimize/releases/download/preview/install.sh | bash

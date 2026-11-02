@@ -1,7 +1,7 @@
 import AppKit
 import Carbon.HIToolbox
 
-/// The menu bar icon: show or hide the bubble, recent results, settings, quit (CORE.md §4.4).
+/// The menu bar icon: show or hide the bubble, recent results, settings, updates, quit (CORE.md §4.4).
 @MainActor
 final class MenuBar: NSObject, NSMenuDelegate {
     /// Show/hide shortcut: ⌃⌥⌘D. (⌥⌘D is taken by the system's Dock hiding.)
@@ -14,18 +14,21 @@ final class MenuBar: NSObject, NSMenuDelegate {
     private let historyWindow: HistoryWindowController
     private let pro: ProStore
     private let proWindow: ProWindowController
+    private let updater: Updater
+    private let updateItem = NSMenuItem()
     private let planItem = NSMenuItem()
     private let proItem = NSMenuItem()
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let toggleItem = NSMenuItem()
     private let recentMenu = NSMenu(title: "Recent")
 
-    init(bubble: BubbleController, history: HistoryStore, pro: ProStore) {
+    init(bubble: BubbleController, history: HistoryStore, pro: ProStore, updater: Updater) {
         self.bubble = bubble
         self.history = history
         self.historyWindow = HistoryWindowController(store: history)
         self.pro = pro
         self.proWindow = ProWindowController(store: pro)
+        self.updater = updater
         super.init()
 
         statusItem.button?.image = Logo.menuBarImage()
@@ -58,6 +61,9 @@ final class MenuBar: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
         // Settings arrive with Phase 1; an item without an action shows disabled.
         menu.addItem(NSMenuItem(title: "Settings…", action: nil, keyEquivalent: ","))
+        updateItem.action = #selector(checkForUpdates)
+        updateItem.target = self
+        menu.addItem(updateItem)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Droptimize", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
@@ -66,6 +72,7 @@ final class MenuBar: NSObject, NSMenuDelegate {
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         toggleItem.title = bubble.isVisible ? "Hide Bubble" : "Show Bubble"
+        updateItem.title = updater.availableVersion.map { "Update to Droptimize \($0)…" } ?? "Check for Updates…"
         planItem.isHidden = !pro.isSelling
         if pro.isPro {
             planItem.title = "Droptimize Pro"
@@ -101,6 +108,10 @@ final class MenuBar: NSObject, NSMenuDelegate {
 
     func showPro() {
         proWindow.show()
+    }
+
+    @objc private func checkForUpdates() {
+        updater.checkNow()
     }
 
     @objc private func toggleBubble() {

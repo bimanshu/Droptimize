@@ -5,6 +5,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var bubble: BubbleController?
     private var menuBar: MenuBar?
     private var hotKey: HotKey?
+    private var updater: Updater?
     private var licenseTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -16,7 +17,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let pro = ProStore()
         let bubble = BubbleController(history: history, pro: pro)
         self.bubble = bubble
-        let menuBar = MenuBar(bubble: bubble, history: history, pro: pro)
+        let updater = Updater()
+        self.updater = updater
+        let menuBar = MenuBar(bubble: bubble, history: history, pro: pro, updater: updater)
         self.menuBar = menuBar
         bubble.onShowPro = { [weak menuBar] in menuBar?.showPro() }
         // A Pro license is checked now and then (CORE.md Rule 4's one exception).
@@ -24,6 +27,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         licenseTimer = Timer.scheduledTimer(withTimeInterval: 6 * 3600, repeats: true) { [weak pro] _ in
             Task { @MainActor in await pro?.check() }
         }
+        // Checks GitHub for a newer stable build, after launch and daily (Rule 4's second exception).
+        updater.start()
         hotKey = HotKey(keyCode: MenuBar.toggleKeyCode, modifiers: MenuBar.toggleCarbonModifiers) { [weak bubble] in
             bubble?.toggle()
         }

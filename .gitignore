@@ -12,3 +12,7 @@ build/
 
 # Built by scripts/build-deps.sh
 Vendor/
+
+# The updater's private signing key (scripts/sign-update.swift generate). It belongs in GitHub's
+# UPDATE_SIGNING_KEY secret and the owner's password manager, never in the repository.
+UPDATE_SIGNING_KEY.txt
