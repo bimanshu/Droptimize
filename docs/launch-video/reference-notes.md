@@ -48,7 +48,8 @@ The owner wants an engaging female voice and to preview it before it's used.
   - **Christina, Energetic Commercial** (`BuaKXS4Sv1Mccaw3flfU`).
   - **Lola, Engaging News & Ads** (`MQCqYs9QBU817XwwHCTz`): warm and composed; works best with `eleven_v4`.
 - **Sent to the owner:** the three stock samples, plus Sia reading our line ("Every photo. Every video. One drop. Droptimize makes them smaller, right where you work. Drop it. Done.", `eleven_v4`, 131 credits, 9.1 s; the second take didn't start, so it wasn't charged).
-- **Waiting on:** the owner's choice. Then generate our line in that voice (one run, 2 takes), then the full VO script.
+- **Chosen: Emma** (owner, 2026-11-02: "emma is the best"). Her take of our line is in `audio/emma-preview-line.mp3` (one take, 131 credits).
+- **Owner's rule:** they're on the ElevenLabs Starter plan and want **no charges beyond it**. So: price first with `estimate_only`, one take per line, and synthesise UI sounds rather than buying sound effects.
 
-## Not done yet
-The tailored prompt (in the structure of `prompt-reference.md`). The owner asked for it after sharing these references, and then switched to choosing the voice.
+## Prompt
+Written: `PROMPT.md` (the owner's structure, tailored to Droptimize).
