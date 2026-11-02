@@ -27,7 +27,7 @@ Working name: **Droptimize** (also considered: Blip, Ripple, Halo, PixDrop). If 
 | Phase 1: image pipeline | Steps 1 and 4 done, step 2 half done (WebP, AVIF, Compress incl. target sizes, Half size, Remove BG with backgrounds, naming, size guard, clipboard) | libwebp; libaom + libavif; own lossless PNG optimizer; ImageIO for JPEG/HEIC until jpegli; Vision for Remove BG. Next: Auto classification and the full PNG pipeline (step 2), auto-tune (step 3) |
 | Phase 1.5: benchmark, polish, launch clip | Not started | |
 | Phase 2: video pipeline | Steps 1–4 done with AVFoundation only (remux, H.264/HEVC, compress to a size, resize, mute, GIF) | No new dependencies. Next: WebM and FFmpeg "max quality" + VMAF, which need the owner's OK on FFmpeg or libvpx (§13) |
-| Phase 3: signing, notarization, distribution | Not started | |
+| Phase 3: signing, notarization, distribution | Built-in updater built (local commits, not yet through CI); signing and notarization not started | No Apple Developer account until Droptimize earns (owner, 2026-11-02), so ad-hoc signing and our own signed-update check instead of Sparkle (§8.2) |
 
 ---
 
@@ -48,7 +48,7 @@ The tools that inspired this all kill a detour. CleanShot X keeps the screenshot
 1. **Never leave the user's context.** No windows to manage in the core flow. Drop → result. Images go to the clipboard; videos appear as a draggable thumbnail on the bubble. Both are also saved next to the original.
 2. **Never touch the original.** Always write a new file. Never overwrite; on a name clash append `-2`, `-3`.
 3. **Never hand back a bigger file.** If the output is larger than the input (or saves less than ~1%, *tune*), keep the original and say "Already as small as it gets." Exceptions, agreed with the owner: **Convert** into another format, and **Remove BG**. They do what was asked even when the result is bigger. The video equivalents (Convert to MP4, HEVC or GIF, and **Mute**) follow the same reasoning.
-4. **Everything on-device.** No network calls, no accounts, no analytics in v1. Works offline, costs nothing per use. Privacy is a selling point. The one exception (owner approved, 2026-11-01): checking a Pro license key with Dodo Payments (§8.1). It sends the key and the Mac's name, never files or anything about them, and the free plan works fully offline.
+4. **Everything on-device.** No network calls, no accounts, no analytics in v1. Works offline, costs nothing per use. Privacy is a selling point. The one exception (owner approved, 2026-11-01): checking a Pro license key with Dodo Payments (§8.1). It sends the key and the Mac's name, never files or anything about them, and the free plan works fully offline. The second (owner approved, 2026-11-02): the built-in updater fetches one small JSON file from GitHub (`update.json` on the `stable` release) about 30 s after launch and then daily, sending nothing about the user or their files; an update downloads only when you click Install (§8.2).
 5. **The bubble never stutters.** Decoding, encoding and analysis all run off the main thread. The UI reacts to a drag within one frame.
 6. **Quality is measured, not guessed.** "Looks the same" means a perceptual metric score (§6.4, §7.3), not a fixed quality number.
 7. **License-check every dependency before adding it** (§8). Ask the user before adding anything GPL or AGPL.
@@ -111,7 +111,7 @@ An icon with: Show/Hide bubble (plus a global shortcut), **History…** (a windo
 - **Minimum macOS 14 (Sonoma)**, required for Vision's foreground mask (§6.5). Build universal (Apple Silicon + Intel).
 - **XcodeGen** (`project.yml`) generates the Xcode project so everything builds from the command line with `xcodebuild`. Commit `project.yml`, not the generated `.xcodeproj`.
 - **Concurrency:** Swift concurrency. A `JobQueue` actor runs jobs with a limit (images: number of performance cores; video: one at a time). Every job is cancellable.
-- **Distribution:** direct download with Developer ID and notarization, **not** the Mac App Store, for v1. The App Store sandbox makes "save next to the original" and bundled encoders much harder. Revisit later.
+- **Distribution:** direct download, **not** the Mac App Store, for v1: Developer ID and notarization once there's an Apple Developer account; until then ad-hoc signed, with the built-in updater (§8.2). The App Store sandbox makes "save next to the original" and bundled encoders much harder. Revisit later.
 
 Structure (current; `HANDOFF.md` has a one-line description of every file):
 
@@ -253,7 +253,7 @@ Video takes time (a 2-minute 4K clip can take a minute or more). Show real progr
 | SVT-AV1 | AV1 | BSD-style (+ AOM patent license) | Yes |
 | VMAF | Video quality metric | BSD-2-Clause-Patent | Yes |
 | gifski | High-quality GIF | AGPL or commercial | **Only with a commercial license** |
-| Sparkle | Auto-updates (Phase 3) | MIT | Yes |
+| Sparkle | Auto-updates (Phase 3) | MIT | Yes. Not used yet: its docs assume Developer ID signing, so a built-in updater stands in (§8.2) |
 | Apple frameworks (ImageIO, Vision, AVFoundation, VideoToolbox, vImage) | Built in | Apple | Yes |
 | zlib (system) | PNG compression | zlib license | Yes (ships with macOS) |
 
@@ -264,6 +264,14 @@ Video takes time (a 2-minute 4K clip can take a minute or more). Show real progr
 - **Free:** 3 files a day, any action (images and video alike), counted per file that comes out, reset at local midnight. A drop with more files than are left runs what's left and says so on the card; with none left, the bubble says "No free files left today. Click for Pro." while you drag over it.
 - **Pro:** unlimited, **$9.99 once**, for life (owner, 2026-11-02: "a commodity tool", so no subscription; this replaced $5/month or $50 lifetime).
 - **Sold directly through Dodo Payments** (owner switched from Lemon Squeezy, 2026-11-02; merchant of record: cards, tax, refunds), not the Mac App Store. The buyer gets a license key by email and pastes it into the Pro window (menu bar → Upgrade to Pro…). The app activates it and checks it weekly when online (to catch refunds); offline, Pro just keeps working. Code: `Store/` (portable), `App/Pro.swift`. The product ID and checkout link go in `StoreConfig`; until they're set, nothing is for sale and nothing is limited. A refunded purchase disables its key at Dodo, which the next check picks up.
+
+### 8.2 Updates (built in, 2026-11-02)
+
+- **Why not Sparkle:** no Developer ID until Droptimize earns (owner), and buyers shouldn't need Terminal. So the app updates itself, with no new dependency.
+- **Feed:** `https://github.com/bimanshu/Droptimize/releases/download/stable/update.json` = `{version, build, url, signature, notes, minimumSystemVersion}`. `build` is `CFBundleVersion` (CI's run number, which only goes up); a newer build than this copy's is offered. Preview builds are always at least as new as the last stable one, so the owner's copy is never offered an older build.
+- **Trust:** the app is ad-hoc signed, so its code signature can't say who built it. CI signs the zip with an **Ed25519** private key (the `UPDATE_SIGNING_KEY` secret); the app checks it against the public key built in (`Update.publicKey`) before unzipping, then checks the bundle ID, build and code signature. Losing the private key means existing copies can't be updated (they'd need a manual reinstall with a new key), so the owner keeps a backup.
+- **Flow:** a small window that doesn't take focus (Rule 1) with what's new: Install & Relaunch · Later · Skip This Version; menu bar → Check for Updates…. Install downloads, checks, stages the new copy beside the app, quits, and a `/bin/sh` script swaps it in and reopens it. It refuses, with a message, when the app runs from a disk image or a translocated/read-only place.
+- **Releasing:** Actions → Build → Run workflow with a version (e.g. 1.0.0) and notes; pushes keep refreshing only the preview. Code: `Store/UpdateFeed.swift`, `App/UpdateInstaller.swift`, `App/Updater.swift`, `scripts/sign-update.swift`, `.github/workflows/build.yml`.
 
 ### Building native dependencies
 
@@ -308,7 +316,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 **Phase 2: video**, in this order: remux fast path → Apple encoders (MP4) → resize and mute → GIF → WebM → FFmpeg max quality + VMAF auto-tune.
 
-**Phase 3: ship.** Developer ID signing, notarization, DMG, auto-updates (Sparkle), a simple landing page.
+**Phase 3: ship.** Developer ID signing, notarization, DMG, auto-updates (built in now, §8.2; Sparkle once Developer ID signed), a simple landing page.
 
 ---
 
@@ -337,12 +345,15 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 - Hovered label inside the bubble (current) or next to the segment?
 - Show/hide shortcut: ⌃⌥⌘D for now (⌥⌘D is macOS's Dock toggle). Make it configurable in Settings?
 - How to ship oxipng (Rust, no C API): a bundled binary via `Process`, or a different lossless PNG optimizer with a C library?
+- Switch the built-in updater to Sparkle once there's a Developer ID (§8.2), or keep ours?
+- The first stable version number (1.0.0 suggested) and when to release it (after Dodo is live, so buyers get the paid build?).
 - WebM and video "max quality": FFmpeg (LGPL build, dynamic linking) or libvpx + libwebm (BSD-3)? Needs the owner's OK (Rule 7). Ties into free vs paid for x264/x265.
 
 ---
 
 ## 14. Changelog
 
+- 2026-11-02: Built-in updater (owner approved; no Sparkle until a Developer ID): the app checks the `stable` release's `update.json` 30 s after launch and daily (Rule 4's second exception), offers newer builds in a window that doesn't take focus, and installs Ed25519-signed zips (checked against the key built into the app) by swapping itself and relaunching. CI publishes `stable` only from runs started by hand with a version; pushes refresh `preview` as before. Local commits only for now (owner: don't push), so not yet through CI.
 - 2026-11-02: Handoff made portable: `HANDOFF.md` has a "Picking this up in a new account (or from a zip)" section and a precise **Next** line (Dodo sign-up blocked on a website; waiting on the owner's choice and contact email). `CLAUDE.md` now says to refresh the handoff after every push. The owner took a zip of the repo to another account.
 - 2026-11-02: Pricing simplified (owner): free (3 files a day) and **Pro for $9.99 once**; no monthly plan. One Dodo product, Pro never expires, checked weekly for refunds.
 - 2026-11-02: Payments switched from Lemon Squeezy to **Dodo Payments** (owner's choice): the app talks to Dodo's public license API (activate, validate, deactivate; JSON, no API secret) and only accepts keys for our two product IDs. Still off until `StoreConfig` holds the product IDs and checkout links.
