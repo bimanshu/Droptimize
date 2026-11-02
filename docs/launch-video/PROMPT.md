@@ -14,15 +14,15 @@ Already decided. Don't ask again:
 
 Ask me only for:
 1. A royalty-free track (commercial use allowed: Pixabay, Uppbeat, Mixkit…) near 120 BPM that sounds like <direction>'s sound notes, or my OK to shortlist three for me to choose from.
-2. Four cold-open photos (Unsplash or Pexels licence, credits listed), or my OK to pick them.
-3. The website URL for the end card (the site isn't live yet; leave a placeholder until I give one).
+2. The website URL for the end card (the site isn't live yet; leave a placeholder until I give one).
 </inputs>
 
 <direction>
 Apple-grade launch film: calm, confident, precise. Inspiration (never copy): the "One" launch film, with clean Grok "Build Mode" restraint and a "holo"-style word list.
 
 Look:
-- A cinematic cold open of full-bleed photos.
+- **No photos or stock footage at all** (owner, 2026-11-02: "just text and UI elements are enough"). Everything is type and UI drawn in HTML/SVG. Any thumbnail is a flat, abstract tile (a few solid shapes, no gradients).
+- A typographic cold open on near-black: huge Geist Mono file names with their heavy sizes.
 - Then one continuous take on the warm-grey canvas. The camera glides, pushes in and racks between moments; the UI is the hero.
 - Shapes carry across scenes as match cuts. The cold open's four corner ticks become four mint dots, and the dots frame every headline.
 - Headlines are large, left-aligned, tight tracking (−2%), and arrive word by word: each word blurs in from 10 px with an 8 px rise, landing on a beat.
@@ -47,20 +47,20 @@ Sound (match the feel of reference A, measured):
 - **UI sounds:** dry, soft and low in the mix (about 18 dB under the music): a soft tick per menu-segment hover (like a trackpad haptic), a low "thup" on drop, a short airy swish on the ripple, a felt click per keycap, quiet ticks as numbers count. No chimes, no risers, no whooshes louder than the music.
 - **Voice:** Emma sits on top, warm and close. Duck the music 8 dB under her (80 ms attack, 250 ms release).
 
-Banned: bouncy easing, particle bursts, glows, gradients on UI chrome, lens flares, mismatched icon strokes, dead time, stock-template transitions, fake brand logos, any real company's UI or logo.
+Banned: photos, stock footage, bouncy easing, particle bursts, glows, gradients on UI chrome, lens flares, mismatched icon strokes, dead time, stock-template transitions, fake brand logos, any real company's UI or logo.
 </direction>
 
 <structure>
 120 BPM, 14 bars (bar.beat). Something happens on every beat. VO lines start on the beat shown; their first syllable lands on it. Emma reads at about 2.3 words a second, so every line ends before the next one starts (about 55 words, 22 s of speech, roughly 320 credits).
 
 1. **1.1–2.1 · Cold open** (no bass).
-   - Four full-bleed photos cut on every half bar. Each is framed by four white corner ticks and carries a mono chip with its real-world heft: `IMG_2041.HEIC · 12.4 MB`, `launch.mov · 840 MB`, `hero.png · 6.1 MB`, `shoot.tiff · 48 MB`.
+   - Near-black canvas. Four heavy files, one per half bar, as big Geist Mono type framed by four white corner ticks: `IMG_2041.HEIC` over `12.4 MB`, `launch.mov` over `840 MB`, `hero.png` over `6.1 MB`, `shoot.tiff` over `48 MB`. Each size ticks up into place, and each card cuts hard to the next on the half bar.
    - VO at 1.2: "Your files are too heavy." (It ends just before the bass drops.)
 2. **2.2 · Drop.** The bass enters. Match cut: the corner ticks fly to become four mint dots on the warm-grey grid. The Droptimize bubble rests at the right edge.
    - Headline, word by word: "Drop it."
    - VO at 2.4: "Meet Droptimize."
 3. **3.1–4.4 · The core move.**
-   - The cursor drags the `IMG_2041.HEIC · 12.4 MB` thumbnail to the bubble. It wakes to ×1.2 and the arc fans out, one segment per 16th note.
+   - The cursor drags the `IMG_2041.HEIC · 12.4 MB` file (an abstract flat tile with its name and size) to the bubble. It wakes to ×1.2 and the arc fans out, one segment per 16th note.
    - Hover ticks pass over Convert and then Compress; the label inside the bubble swaps; Compress's size bubbles fan out (100K · 250K · 500K · 1M · 2M · …).
    - Drop on 500K at 4.1: ripple, then the progress ring, then a check. The result card slides out beside the bubble while `12.4 MB` odometers down to `486 KB` and "−96%" lands on 4.4.
    - The headline completes: "Drop it. Done."
@@ -70,7 +70,7 @@ Banned: bouncy easing, particle bursts, glows, gradients on UI chrome, lens flar
    - Convert's formats run past as a horizontal carousel with motion blur (WebP · AVIF · JPG · PNG · HEIC) and settle on AVIF. `hero.png 6.1 MB` becomes `hero.avif 412 KB`.
    - VO at 5.1: "Convert to WebP or AVIF in one move."
 5. **7.1–8.4 · Remove BG.**
-   - The word list steps to Remove BG. A portrait drops on it; the subject lifts off over a checkerboard.
+   - The word list steps to Remove BG. A tile with a simple flat object (headphones drawn in SVG) on solid yellow drops on it; the object lifts off over a checkerboard.
    - Background chips (None · White · Black · a custom hex) appear; the cursor picks one, the eyedropper samples a colour, and the background fills on 8.1.
    - Breath: drop the top end out on 6.4.
    - VO at 7.1: "Lift the background right out."
@@ -87,7 +87,7 @@ Banned: bouncy easing, particle bursts, glows, gradients on UI chrome, lens flar
    - Physical keycaps ⌘ and V press on 13.1–13.2 (black rounded keys with a 3 px press depth); the image pastes into a plain, unbranded chat composer.
    - VO at 12.2: "Batches in one drop. Already on your clipboard."
 9. **13.3–14.4 · End.**
-   - The result card pushes toward the camera and blurs away. The nested-circles logo stays alone, then cross-fades to the first cold-open photo, now chipped `486 KB`.
+   - The result card pushes toward the camera and blurs away. The nested-circles logo stays alone; then the first cold-open card returns, now reading `IMG_2041.HEIC` over `486 KB`.
    - End card: logo, "Droptimize", "Drop it. Done.", "Free to start · Pro $9.99 once", the URL.
    - The deep sub hit lands on 14.1, then the tail, then 3 s of silence.
    - VO at 14.1: "Droptimize. Drop it. Done."
@@ -118,5 +118,5 @@ Banned: bouncy easing, particle bursts, glows, gradients on UI chrome, lens flar
 </gotchas>
 
 <start>
-Ask me only for the missing inputs (track, photos, URL). Then show me the beat grid as a table (bar.beat → picture, VO line, sound) and the VO credit estimate before you write any code.
+Ask me only for the missing inputs (track, URL). Then show me the beat grid as a table (bar.beat → picture, VO line, sound) and the VO credit estimate before you write any code.
 </start>
