@@ -4,60 +4,40 @@ import FoundationNetworking
 #endif
 
 /// Fill these in from the Dodo Payments dashboard (HANDOFF.md → "Selling Pro"). Until the
-/// products and checkout links are set, Pro can't be bought and the free limit isn't enforced, so
-/// preview builds stay unlimited.
+/// product and its checkout link are set, Pro can't be bought and the free limit isn't enforced,
+/// so preview builds stay unlimited.
 enum StoreConfig {
-    /// Each product's ID ("pdt_…"), from Products in the dashboard.
-    static let monthlyProductID: String? = nil
-    static let lifetimeProductID: String? = nil
-    /// Each product's checkout link (the product's share or payment link).
-    static let monthlyCheckout: URL? = nil
-    static let lifetimeCheckout: URL? = nil
-    /// The customer portal's link, where buyers manage or cancel a subscription. Optional.
-    static let customerPortal: URL? = nil
+    /// Pro's product ID ("pdt_…"), from Products in the dashboard.
+    static let productID: String? = nil
+    /// Its checkout link (the product's share or payment link).
+    static let checkout: URL? = nil
     /// Dodo's test mode (test cards, test keys) while trying purchases out; false to sell.
     static let testMode = false
-    static let monthlyPrice = "$5"
-    static let lifetimePrice = "$50"
+    /// One payment, Pro for life (owner's decision, 2026-11-02).
+    static let price = "$9.99"
 
-    static var isSelling: Bool {
-        monthlyProductID != nil && lifetimeProductID != nil && monthlyCheckout != nil && lifetimeCheckout != nil
-    }
+    static var isSelling: Bool { productID != nil && checkout != nil }
 }
 
-enum ProPlan: String, Codable, Equatable {
-    case monthly, lifetime
-
-    var title: String { self == .monthly ? "Monthly" : "Lifetime" }
-}
-
-/// A Pro license activated on this Mac, as of the last answer from Dodo Payments.
+/// A Pro license activated on this Mac, as of the last answer from Dodo Payments. Pro is a
+/// one-time purchase, so it only ends if the key is refunded or disabled.
 struct License: Codable, Equatable {
     var key: String
     /// This Mac's activation, needed to check or release it.
     var instanceID: String
-    var plan: ProPlan
-    /// False once the key expired (a subscription ended), was refunded or disabled.
+    /// False once the key was refunded or disabled.
     var isActive: Bool
     /// The last time the server answered.
     var checked: Date
     var email: String?
 
-    /// How long Pro keeps working without reaching the server (traveling, offline). A lifetime
-    /// license never needs to.                                                               (tune)
-    static let monthlyOfflineGrace: TimeInterval = 14 * 24 * 3600
-    /// How often to check when online: monthly daily (a cancelled subscription ends soon after),
-    /// lifetime weekly (refunds).
-    static let monthlyCheckInterval: TimeInterval = 24 * 3600
-    static let lifetimeCheckInterval: TimeInterval = 7 * 24 * 3600
+    /// How often to check when online, to catch refunds. Offline, Pro just keeps working.  (tune)
+    static let checkInterval: TimeInterval = 7 * 24 * 3600
 
-    func isPro(at now: Date) -> Bool {
-        guard isActive else { return false }
-        return plan == .lifetime || now.timeIntervalSince(checked) < Self.monthlyOfflineGrace
-    }
+    var isPro: Bool { isActive }
 
     func needsCheck(at now: Date) -> Bool {
-        now.timeIntervalSince(checked) >= (plan == .monthly ? Self.monthlyCheckInterval : Self.lifetimeCheckInterval)
+        now.timeIntervalSince(checked) >= Self.checkInterval
     }
 
     /// "••••-4D51": enough to recognise it.
@@ -126,31 +106,26 @@ enum Dodo {
             switch self {
             case .notFound: return "That key wasn't found. Check it and try again."
             case .tooManyMacs: return "This key is on too many Macs. Deactivate it on one, then try again."
-            case .inactive: return "This key isn't active. If the subscription ended, renew it."
+            case .inactive: return "This key isn't active (refunded or disabled)."
             case .notDroptimize: return "That key isn't for Droptimize Pro."
             case .unreadable: return "Couldn't read the license server's answer. Try again later."
             }
         }
     }
 
-    /// Which plan a product is, if it's one of ours.
-    static func plan(product: String?) -> ProPlan? {
-        guard let product else { return nil }
-        if product == StoreConfig.lifetimeProductID { return .lifetime }
-        if product == StoreConfig.monthlyProductID { return .monthly }
-        return nil
+    /// Whether a key is for Droptimize Pro (and not some other product sold through Dodo).
+    static func isPro(product: String?) -> Bool {
+        product != nil && product == StoreConfig.productID
     }
 
     /// Reads an answer to `activate` (HTTP `status` and body): the license, or why not.
     static func activation(status: Int, data: Data, key: String, at now: Date,
-                           plan: (String?) -> ProPlan? = plan(product:)) -> Result<License, Failure> {
+                           isOurs: (String?) -> Bool = isPro(product:)) -> Result<License, Failure> {
         switch status {
         case 200..<300:
             guard let instance = try? JSONDecoder().decode(Instance.self, from: data) else { return .failure(.unreadable) }
-            guard let kind = plan(instance.product?.productID) else {
-                return .failure(.notDroptimize(instanceID: instance.id))
-            }
-            return .success(License(key: key, instanceID: instance.id, plan: kind, isActive: true, checked: now,
+            guard isOurs(instance.product?.productID) else { return .failure(.notDroptimize(instanceID: instance.id)) }
+            return .success(License(key: key, instanceID: instance.id, isActive: true, checked: now,
                                     email: instance.customer?.email))
         case 404: return .failure(.notFound)
         case 422: return .failure(.tooManyMacs)
@@ -160,7 +135,7 @@ enum Dodo {
     }
 
     /// Reads an answer to `validate`: the license as it stands now. A definite "no" (the key was
-    /// cancelled, refunded or disabled, or this Mac's activation was removed) turns Pro off;
+    /// refunded or disabled, or this Mac's activation was removed) turns Pro off;
     /// anything else leaves it as it was (nil: keep the old one).
     static func validation(status: Int, data: Data, license: License, at now: Date) -> License? {
         guard (200..<300).contains(status), let answer = try? JSONDecoder().decode(Validity.self, from: data) else {

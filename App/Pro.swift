@@ -31,7 +31,7 @@ final class ProStore: ObservableObject {
             .flatMap { try? JSONDecoder().decode(FreeAllowance.self, from: $0) } ?? FreeAllowance()
     }
 
-    var isPro: Bool { license?.isPro(at: now()) ?? false }
+    var isPro: Bool { license?.isPro ?? false }
     /// Counting files: only once Pro is on sale, and only without Pro.
     var isLimited: Bool { isSelling && !isPro }
     var remainingToday: Int { allowance.remaining(on: today) }
@@ -95,8 +95,8 @@ final class ProStore: ObservableObject {
         }
     }
 
-    /// Asks the server whether the license still stands: when it's due, or now with `force`.
-    /// Without a connection nothing changes (and Pro keeps working through the grace period).
+    /// Asks the server whether the license still stands (to catch refunds): when it's due, or now
+    /// with `force`. Without a connection nothing changes, and Pro keeps working.
     func check(force: Bool = false) async {
         guard let current = license, force || current.needsCheck(at: now()), !isWorking else { return }
         isWorking = true
@@ -211,7 +211,7 @@ private struct ProView: View {
     }
 
     private var status: String {
-        if let license = store.license, store.isPro { return "Pro · \(license.plan.title). Thank you!" }
+        if store.isPro { return "Pro, for life. Thank you!" }
         if !store.isSelling { return "Pro goes on sale soon. Until then, everything is unlimited." }
         let left = store.remainingToday
         return "Free plan: \(left) of \(FreeAllowance.perDay) files left today."
@@ -226,12 +226,16 @@ private struct ProView: View {
                 benefit("photo.on.rectangle.angled", "Every action, for images and video")
                 benefit("square.stack.3d.up", "Whole folders in one drop")
             }
-            HStack(spacing: 10) {
-                buy("\(StoreConfig.monthlyPrice) a month", detail: "Cancel any time", url: StoreConfig.monthlyCheckout,
-                    prominent: false)
-                buy("\(StoreConfig.lifetimePrice) once", detail: "Yours for life", url: StoreConfig.lifetimeCheckout,
-                    prominent: true)
+            Button { open(StoreConfig.checkout) } label: {
+                VStack(spacing: 1) {
+                    Text("Get Pro for \(StoreConfig.price)").font(.system(size: 14, weight: .semibold))
+                    Text("One payment. Yours for life.").font(.system(size: 11)).opacity(0.8)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 4)
             }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
             .disabled(!store.isSelling)
         }
     }
@@ -243,25 +247,6 @@ private struct ProView: View {
             Image(systemName: symbol)
                 .foregroundStyle(Color.accentColor)
                 .frame(width: 20)
-        }
-    }
-
-    @ViewBuilder
-    private func buy(_ title: String, detail: String, url: URL?, prominent: Bool) -> some View {
-        let label = VStack(spacing: 1) {
-            Text(title).font(.system(size: 14, weight: .semibold))
-            Text(detail).font(.system(size: 11)).opacity(0.8)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 4)
-        if prominent {
-            Button { open(url) } label: { label }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-        } else {
-            Button { open(url) } label: { label }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
         }
     }
 
@@ -287,7 +272,7 @@ private struct ProView: View {
 
     private func ended(_ license: License) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Your Pro license (\(license.maskedKey)) isn't active any more. Renew below, or check again if you just did.")
+            Text("Your Pro license (\(license.maskedKey)) isn't active any more (refunded or disabled). If that's a mistake, check again or contact support.")
                 .font(.system(size: 12))
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
@@ -304,10 +289,6 @@ private struct ProView: View {
         VStack(alignment: .leading, spacing: 10) {
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
                 GridRow {
-                    Text("Plan").foregroundStyle(.secondary)
-                    Text(license.plan.title)
-                }
-                GridRow {
                     Text("Key").foregroundStyle(.secondary)
                     Text(license.maskedKey).font(.system(size: 12, design: .monospaced))
                 }
@@ -320,9 +301,6 @@ private struct ProView: View {
             }
             .font(.system(size: 12))
             HStack {
-                if license.plan == .monthly, let portal = StoreConfig.customerPortal {
-                    Button("Manage Subscription") { open(portal) }
-                }
                 Button("Deactivate on This Mac") { Task { await store.deactivate() } }
                     .disabled(store.isWorking)
                 if store.isWorking {

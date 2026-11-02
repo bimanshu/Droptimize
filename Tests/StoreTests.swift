@@ -29,22 +29,16 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(FreeAllowance.day(of: afterMidnightInIndia, calendar: calendar), "2026-11-02")
     }
 
-    func testProLastsThroughOfflineGraceAndLifetimeForever() {
+    func testProLastsForLifeUnlessRefunded() {
         let checked = Date(timeIntervalSince1970: 1_800_000_000)
         let day: TimeInterval = 24 * 3600
-        let monthly = License(key: "abc-1234", instanceID: "i", plan: .monthly, isActive: true, checked: checked)
-        XCTAssertTrue(monthly.isPro(at: checked.addingTimeInterval(13 * day)))
-        XCTAssertFalse(monthly.isPro(at: checked.addingTimeInterval(15 * day)), "offline too long")
-        XCTAssertFalse(monthly.needsCheck(at: checked.addingTimeInterval(day / 2)))
-        XCTAssertTrue(monthly.needsCheck(at: checked.addingTimeInterval(day)))
-
-        var lifetime = monthly
-        lifetime.plan = .lifetime
-        XCTAssertTrue(lifetime.isPro(at: checked.addingTimeInterval(400 * day)))
-        XCTAssertFalse(lifetime.needsCheck(at: checked.addingTimeInterval(6 * day)))
-        lifetime.isActive = false
-        XCTAssertFalse(lifetime.isPro(at: checked), "refunded or disabled")
-        XCTAssertEqual(monthly.maskedKey, "••••-1234")
+        var license = License(key: "abc-1234", instanceID: "i", isActive: true, checked: checked)
+        XCTAssertTrue(license.isPro, "one payment, Pro for life, online or not")
+        XCTAssertFalse(license.needsCheck(at: checked.addingTimeInterval(6 * day)))
+        XCTAssertTrue(license.needsCheck(at: checked.addingTimeInterval(7 * day)), "weekly, to catch refunds")
+        XCTAssertEqual(license.maskedKey, "••••-1234")
+        license.isActive = false
+        XCTAssertFalse(license.isPro, "refunded or disabled")
     }
 
     func testRequestsAreJSONPostsToTheLicenseAPI() throws {
@@ -60,41 +54,41 @@ final class StoreTests: XCTestCase {
     private let activated = """
     {"id": "lki_123", "business_id": "bus_1", "name": "Mac", "license_key_id": "lic_123",
      "created_at": "2026-11-02T10:00:00.000Z",
-     "product": {"product_id": "pdt_lifetime", "name": "Droptimize Pro Lifetime"},
+     "product": {"product_id": "pdt_pro", "name": "Droptimize Pro"},
      "customer": {"customer_id": "cus_1", "name": "Ada", "email": "ada@example.com", "phone_number": null}}
     """
 
-    func testActivationReadsThePlanAndRefusesOtherProducts() throws {
+    func testActivationReadsTheKeyAndRefusesOtherProducts() throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
-        let ours: (String?) -> ProPlan? = { $0 == "pdt_lifetime" ? .lifetime : nil }
-        let license = try Dodo.activation(status: 201, data: Data(activated.utf8), key: "KEY", at: now, plan: ours).get()
-        XCTAssertEqual(license, License(key: "KEY", instanceID: "lki_123", plan: .lifetime, isActive: true, checked: now,
+        let ours: (String?) -> Bool = { $0 == "pdt_pro" }
+        let license = try Dodo.activation(status: 201, data: Data(activated.utf8), key: "KEY", at: now, isOurs: ours).get()
+        XCTAssertEqual(license, License(key: "KEY", instanceID: "lki_123", isActive: true, checked: now,
                                         email: "ada@example.com"))
 
-        let theirs: (String?) -> ProPlan? = { _ in nil }
-        XCTAssertEqual(Dodo.activation(status: 201, data: Data(activated.utf8), key: "KEY", at: now, plan: theirs),
+        let theirs: (String?) -> Bool = { _ in false }
+        XCTAssertEqual(Dodo.activation(status: 201, data: Data(activated.utf8), key: "KEY", at: now, isOurs: theirs),
                        .failure(.notDroptimize(instanceID: "lki_123")))
 
         let refusal = Data(#"{"code": "NOT_FOUND", "message": "License key not found"}"#.utf8)
-        XCTAssertEqual(Dodo.activation(status: 404, data: refusal, key: "KEY", at: now, plan: ours), .failure(.notFound))
-        XCTAssertEqual(Dodo.activation(status: 422, data: refusal, key: "KEY", at: now, plan: ours), .failure(.tooManyMacs))
-        XCTAssertEqual(Dodo.activation(status: 403, data: refusal, key: "KEY", at: now, plan: ours), .failure(.inactive))
-        XCTAssertEqual(Dodo.activation(status: 201, data: Data("<html>".utf8), key: "KEY", at: now, plan: ours),
+        XCTAssertEqual(Dodo.activation(status: 404, data: refusal, key: "KEY", at: now, isOurs: ours), .failure(.notFound))
+        XCTAssertEqual(Dodo.activation(status: 422, data: refusal, key: "KEY", at: now, isOurs: ours), .failure(.tooManyMacs))
+        XCTAssertEqual(Dodo.activation(status: 403, data: refusal, key: "KEY", at: now, isOurs: ours), .failure(.inactive))
+        XCTAssertEqual(Dodo.activation(status: 201, data: Data("<html>".utf8), key: "KEY", at: now, isOurs: ours),
                        .failure(.unreadable))
         XCTAssertEqual(Dodo.Failure.tooManyMacs.message, "This key is on too many Macs. Deactivate it on one, then try again.")
-        XCTAssertNil(Dodo.plan(product: "pdt_lifetime"), "nothing is ours until StoreConfig is filled in")
+        XCTAssertFalse(Dodo.isPro(product: "pdt_pro"), "nothing is ours until StoreConfig is filled in")
     }
 
     func testValidationTurnsProOffOnlyOnADefiniteNo() {
         let then = Date(timeIntervalSince1970: 1_800_000_000), now = then.addingTimeInterval(86_400)
-        let license = License(key: "KEY", instanceID: "lki_1", plan: .monthly, isActive: true, checked: then)
+        let license = License(key: "KEY", instanceID: "lki_1", isActive: true, checked: then)
 
         let valid = Dodo.validation(status: 200, data: Data(#"{"valid": true}"#.utf8), license: license, at: now)
         XCTAssertEqual(valid?.checked, now)
         XCTAssertEqual(valid?.isActive, true)
 
         let cancelled = Dodo.validation(status: 200, data: Data(#"{"valid": false}"#.utf8), license: license, at: now)
-        XCTAssertEqual(cancelled?.isActive, false, "a cancelled subscription disables its key")
+        XCTAssertEqual(cancelled?.isActive, false, "a refund disables the key")
 
         XCTAssertNil(Dodo.validation(status: 422, data: Data("{}".utf8), license: license, at: now), "says nothing about the key")
         XCTAssertNil(Dodo.validation(status: 200, data: Data("oops".utf8), license: license, at: now))

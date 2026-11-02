@@ -262,8 +262,8 @@ Video takes time (a 2-minute 4K clip can take a minute or more). Show real progr
 ### 8.1 Plans and pricing (owner's decision, 2026-11-01)
 
 - **Free:** 3 files a day, any action (images and video alike), counted per file that comes out, reset at local midnight. A drop with more files than are left runs what's left and says so on the card; with none left, the bubble says "No free files left today. Click for Pro." while you drag over it.
-- **Pro:** unlimited. **$5 a month** or **$50 once** (lifetime).
-- **Sold directly through Dodo Payments** (owner switched from Lemon Squeezy, 2026-11-02; merchant of record: cards, tax, refunds), not the Mac App Store. The buyer gets a license key by email and pastes it into the Pro window (menu bar → Upgrade to Pro…). The app activates it, checks it about daily (monthly) or weekly (lifetime), and keeps Pro for 14 days offline (lifetime: always). Code: `Store/` (portable), `App/Pro.swift`. The two product IDs and checkout links go in `StoreConfig`; until they're set, nothing is for sale and nothing is limited. A cancelled or refunded purchase disables its key at Dodo, which the next check picks up.
+- **Pro:** unlimited, **$9.99 once**, for life (owner, 2026-11-02: "a commodity tool", so no subscription; this replaced $5/month or $50 lifetime).
+- **Sold directly through Dodo Payments** (owner switched from Lemon Squeezy, 2026-11-02; merchant of record: cards, tax, refunds), not the Mac App Store. The buyer gets a license key by email and pastes it into the Pro window (menu bar → Upgrade to Pro…). The app activates it and checks it weekly when online (to catch refunds); offline, Pro just keeps working. Code: `Store/` (portable), `App/Pro.swift`. The product ID and checkout link go in `StoreConfig`; until they're set, nothing is for sale and nothing is limited. A refunded purchase disables its key at Dodo, which the next check picks up.
 
 ### Building native dependencies
 
@@ -343,6 +343,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-02: Pricing simplified (owner): free (3 files a day) and **Pro for $9.99 once**; no monthly plan. One Dodo product, Pro never expires, checked weekly for refunds.
 - 2026-11-02: Payments switched from Lemon Squeezy to **Dodo Payments** (owner's choice): the app talks to Dodo's public license API (activate, validate, deactivate; JSON, no API secret) and only accepts keys for our two product IDs. Still off until `StoreConfig` holds the product IDs and checkout links.
 - 2026-11-02: The install command quits the running app with a plain signal instead of AppleScript, which needed a "Terminal wants to control Droptimize" permission that could hide behind Terminal and stall the update; downloads now time out with a message and the DMG link.
 - 2026-11-01: Drag from any app (owner asked): Photos, Mail and Messages attachments, Safari and other browsers' images, via file promises or picture data. Their results go to Downloads; the bubble spins while another app hands the files over.
