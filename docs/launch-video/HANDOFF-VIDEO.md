@@ -4,7 +4,7 @@
 
 ## Where it stands (2026-11-02)
 
-The owner approved the brief and the VO script ("let's build the vid") and left the missing inputs to us.
+**First cut finished and sent to the owner; waiting on their feedback.** The owner approved the brief and the VO script ("let's build the vid") and left the missing inputs to us.
 
 - [x] **Brief:** `PROMPT.md`. Owner's structure; references analysed in `reference-notes.md`.
 - [x] **Voice:** Emma, `voice_id 9HBoEQ8LqyvVZFYDodnr`, model `eleven_v4`. Preview: `audio/emma-preview-line.mp3`.
@@ -15,8 +15,17 @@ The owner approved the brief and the VO script ("let's build the vid") and left 
 - [x] **Animation:** `film/index.html`. Every style comes from `seek(t)`, using closed-form springs with the app's own values; `window.EVENTS` is the sound cue list. A first cut covers the whole timeline below.
 - [x] **Stills:** checked through the film. Fixed so far: the cold open on the light canvas, elements hidden with `visibility` that a child overrode (hide with `display`), the camera push cropping the headline, tiles over the headline, the Remove BG preview over the word list, the dark scene covering its headline, the 486 KB card lingering behind the logo, and the headline running into the Mac outline.
 - [x] **Audio:** `film/mix.py`: stretch and cut the track; high-pass until the drop; breaths at 11.5 and 25.5; low-pass and fade after the 26.0 hit; Emma's lines placed and the music ducked 8 dB under them; synthesised UI sounds from `events.json`; the synthesised deep hit. **Bar 9 comes from the beat grid** (0.476/stretch + 16 + 0.005 s); onset-picking caught a bass swell 83 ms late.
-- [ ] **Render:** `film/render.js full video.mp4` (240 fps subframes piped to ffmpeg `tmix`, out at 60 fps; several minutes), then mux: `ffmpeg -i video.mp4 -i mix.wav -c:v copy -c:a aac -b:a 256k -movflags +faststart droptimize-launch.mp4`. **In progress.**
-- [ ] **Deliver:** send the MP4 to the owner (`SendUserFile`). Keep big media out of git (see *Licences*).
+  - **Mastered for the web:** −14 LUFS integrated (what YouTube, Instagram and X play at; the first mix was −17.9, so it would have played 4 dB quiet), with ffmpeg's look-ahead `alimiter` (delay compensated, so sync is untouched) holding peaks under −1.5 dBFS. Result: −14.2 LUFS, −1.4 dBTP; it works only on Emma's line starts and the final hit. The hit sits 3 dB lower before the limiter, so the limiter doesn't flatten the 38 Hz thump.
+  - **Quiet stretches between beats are the track, not a bug:** "Hazy After Hours" pulses on every beat, and its quarter-second level swings about 12 dB.
+- [x] **Render:** `film/render.js full video.mp4` (240 fps subframes piped to ffmpeg `tmix`, out at 60 fps; about 7.5 min in the cloud container), then muxed with the mix (AAC 256 kbps, `+faststart`). Result: `droptimize-launch.mp4`, 31.5 s, 1920×1080, 60 fps, 1890 frames, 6.7 MB, −14.2 LUFS, −1.4 dBTP.
+  - **Checked in the final file:** 16 frames across the film plus the held end card (nothing overlapping, the type crisp, the end card complete); the picture cuts to the canvas on frame 120 (2.000 s) and the bass comes in within 20 ms of it; the final hit lands at 26.0 s with the logo; the last 3 s are digital silence.
+- [x] **Deliver:** sent to the owner as a file (2026-11-02). The MP4 isn't in git; rebuild it with the commands below.
+- [ ] **Owner's feedback on the first cut.** Waiting. Change what they ask for in `film/index.html` (picture) or `film/mix.py` (sound), check stills at the moments touched, then re-render and resend.
+
+## Next (after the owner's feedback)
+- **End card URL:** none yet (the Dodo site isn't up); the end card has room under the price line. Add it when the owner has one.
+- **Possible extras, only if the owner asks:** a ProRes 422 master (the brief mentions one; it's ~600 MB, so it wasn't made by default; re-render with `-c:v prores_ks -profile:v 2 -pix_fmt yuv422p10le` in `render.js`); square or vertical cuts for social (needs a layout pass, not just a crop: the bubble sits at the right edge).
+- **Don't generate any more voice.** Every line is in `audio/emma-vo-full.mp3`; if the copy changes, ask the owner before spending ElevenLabs credits.
 
 ## Owner's rules for this work
 - **ElevenLabs:** they're on the **Starter plan** and want **no charges beyond it**. Always `estimate_only` first, use **one take** per line, and never retry a generation call.
@@ -84,9 +93,9 @@ Cut each segment with a 30 ms margin either side and 10 ms fades. **The film is 
 curl -fsSL -o 132.mp3 https://assets.mixkit.co/music/132/132.mp3
 node render.js stills stills/ 2.2 7.8 13.4          # check particular moments (or no times: one per beat)
 node render.js events events.json
-python3 mix.py --music 132.mp3 --vo ../audio/emma-vo-full.mp3 --events events.json --out mix.wav
-node render.js full video.mp4
-ffmpeg -i video.mp4 -i mix.wav -c:v copy -c:a aac -b:a 256k -movflags +faststart droptimize-launch.mp4
+python3 mix.py --music 132.mp3 --vo ../audio/emma-vo-full.mp3 --events events.json --out mix.wav   # ~10 s; prints loudness
+node render.js full video.mp4                       # ~7.5 min; progress every 240 subframes
+ffmpeg -i video.mp4 -i mix.wav -map 0:v -map 1:a -c:v copy -c:a aac -b:a 256k -movflags +faststart droptimize-launch.mp4
 ```
 
 ## Typography and copy (the owner asked: "no slop typography and AI writing"; checked with the better-typography and better-writing skills)

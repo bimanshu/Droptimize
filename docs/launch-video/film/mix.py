@@ -6,12 +6,13 @@ cue list exported by render.js (`node render.js events events.json`). Spec: ../H
 numpy + ffmpeg only (no scipy). Filters run in ffmpeg on whole stems; numpy does the edits,
 cross-fades, ducking and the synthesised UI sounds.
 """
-import argparse, json, subprocess, numpy as np
+import argparse, json, re, subprocess, numpy as np
 
 SR = 48000
 PICTURE, END = 28.5, 31.5          # music and voice stop by 28.5 s; silence to the end
 DROP = 2.0                          # film time of the music's first full downbeat (track bar 9)
 STRETCH = 120 / 120.90              # Hazy After Hours measures 120.90 BPM; play it at 120
+LOUDNESS, CEILING = -14.0, -1.5     # web delivery: integrated loudness (LUFS), limiter ceiling (dBFS)
 
 def decode(path, filt=None, ch=2):
     cmd = ['ffmpeg', '-v', 'error', '-i', path]
@@ -23,14 +24,29 @@ def decode(path, filt=None, ch=2):
 def db(x): return 10 ** (x / 20)
 def ramp(n): return 0.5 - 0.5 * np.cos(np.linspace(0, np.pi, n))
 
-def find_downbeat(music, guess):
-    """The sub-bass onset nearest `guess` seconds (the track's bar 9)."""
-    mono = music.mean(1)
-    lo = np.convolve(mono, np.ones(400) / 400, 'same')               # crude low-pass (~120 Hz)
-    env = np.sqrt(np.convolve(lo ** 2, np.ones(480) / 480, 'same'))  # 10 ms RMS
-    a, b = int((guess - 0.25) * SR), int((guess + 0.25) * SR)
-    d = np.diff(env[a:b])
-    return (a + int(np.argmax(d))) / SR
+def loudness(x):
+    """Integrated loudness (LUFS) and true peak (dBTP) from ffmpeg's EBU R128 meter."""
+    err = subprocess.run(['ffmpeg', '-hide_banner', '-f', 'f32le', '-ar', str(SR), '-ac', '2', '-i', '-',
+                          '-af', 'ebur128=peak=true', '-f', 'null', '-'],
+                         input=x.astype('<f4').tobytes(), capture_output=True, check=True).stderr.decode()
+    summary = err[err.rfind('Summary:'):]
+    return (float(re.search(r'I:\s+(-?[\d.]+) LUFS', summary).group(1)),
+            float(re.search(r'Peak:\s+(-?[\d.]+) dBFS', summary).group(1)))
+
+def master(x):
+    """Raise the mix to LOUDNESS; a look-ahead limiter (delay compensated) holds peaks under CEILING."""
+    def limit(gain):
+        cmd = ['ffmpeg', '-v', 'error', '-f', 'f32le', '-ar', str(SR), '-ac', '2', '-i', '-', '-af',
+               f'volume={gain:.3f}dB,alimiter=limit={db(CEILING):.4f}:attack=7:release=120:level=0:latency=1',
+               '-f', 'f32le', '-']
+        y = np.frombuffer(subprocess.run(cmd, input=x.astype('<f4').tobytes(), capture_output=True,
+                                         check=True).stdout, dtype=np.float32).reshape(-1, 2)
+        out = np.zeros_like(x); out[:min(len(x), len(y))] = y[:len(x)]
+        return out
+    gain = LOUDNESS - loudness(x)[0]
+    y = limit(gain)
+    gain += LOUDNESS - loudness(y)[0]                                # the limiter costs a little loudness
+    return limit(gain), gain
 
 def crossfade(base, other, t0, t1, fade=0.04):
     """Use `other` between t0 and t1 seconds (with short cross-fades)."""
@@ -77,7 +93,7 @@ def synth(kind, rng):
         f = 38 + 17 * np.exp(-t / 0.08); ph = 2 * np.pi * np.cumsum(f) / SR
         body = np.sin(ph) * np.minimum(1, t / 0.004) * np.exp(-t / 0.55)
         click = noise(.05, .0005, .01, 1, 40)
-        out = db(-5) * body
+        out = db(-8) * body                                          # sub; the master limiter would flatten it any hotter
         out[:len(click)] += db(-26) * click
         return out
     return np.zeros(1)
@@ -147,11 +163,13 @@ def main():
 
     mix = music + vo[:, None] + ui[:, None] * np.array([[1.0, 0.94]])
     mix[int(PICTURE * SR):] = 0
-    peak = np.abs(mix).max()
-    mix *= db(-1) / peak if peak > db(-1) else 1
-    mix = np.tanh(mix * 1.05) / np.tanh(1.05)                       # gentle safety limiter
+    mix, gain = master(mix)
+    mix[int(PICTURE * SR):] = 0                                     # true digital silence on the end card
+    level, peak = loudness(mix)
     pcm = (np.clip(mix, -1, 1) * 32767).astype('<i2')
     subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 's16le', '-ar', str(SR), '-ac', '2', '-i', '-', a.out], input=pcm.tobytes(), check=True)
-    print(f'bar 9 at {bar9:.3f}s in the stretched track; music starts at {start / SR:.3f}s; wrote {a.out}')
+    print(f'bar 9 at {bar9:.3f}s in the stretched track; music starts at {start / SR:.3f}s')
+    print(f'mastered: {gain:+.1f} dB, {level:.1f} LUFS, true peak {peak:.1f} dBTP; wrote {a.out}')
 
-main()
+if __name__ == "__main__":
+    main()

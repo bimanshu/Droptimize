@@ -25,7 +25,7 @@ Working name: **Droptimize** (also considered: Blip, Ripple, Halo, PixDrop). If 
 |---|---|---|
 | Phase 0: app shell, bubble, radial menu (dummy actions) | Code complete; needs hands-on tuning on a Mac | Builds and passes tests in CI; DMG on the `preview` release. Feel not yet tuned by a person; see HANDOFF.md |
 | Phase 1: image pipeline | Steps 1 and 4 done, step 2 half done (WebP, AVIF, Compress incl. target sizes, Half size, Remove BG with backgrounds, naming, size guard, clipboard) | libwebp; libaom + libavif; own lossless PNG optimizer; ImageIO for JPEG/HEIC until jpegli; Vision for Remove BG. Next: Auto classification and the full PNG pipeline (step 2), auto-tune (step 3) |
-| Phase 1.5: benchmark, polish, launch clip | Not started | |
+| Phase 1.5: benchmark, polish, launch clip | Launch film done (first cut sent to the owner, 2026-11-02); benchmark and hands-on polish not started | 31.5 s, 1080p60, Emma's voice-over, built from HTML; sources and handoff in `docs/launch-video/` |
 | Phase 2: video pipeline | Steps 1–4 done with AVFoundation only (remux, H.264/HEVC, compress to a size, resize, mute, GIF) | No new dependencies. Next: WebM and FFmpeg "max quality" + VMAF, which need the owner's OK on FFmpeg or libvpx (§13) |
 | Phase 3: signing, notarization, distribution | Built-in updater built (pushed 2026-11-02; first stable release waits on the signing secret); signing and notarization not started | No Apple Developer account until Droptimize earns (owner, 2026-11-02), so ad-hoc signing and our own signed-update check instead of Sparkle (§8.2) |
 
@@ -347,12 +347,14 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 - How to ship oxipng (Rust, no C API): a bundled binary via `Process`, or a different lossless PNG optimizer with a C library?
 - Switch the built-in updater to Sparkle once there's a Developer ID (§8.2), or keep ours?
 - The first stable version number (1.0.0 suggested) and when to release it (after Dodo is live, so buyers get the paid build?).
+- Launch film: the website URL for the end card (none yet; it has room for one), and whether the owner wants a ProRes master or other cuts (a square or vertical version for social).
 - WebM and video "max quality": FFmpeg (LGPL build, dynamic linking) or libvpx + libwebm (BSD-3)? Needs the owner's OK (Rule 7). Ties into free vs paid for x264/x265.
 
 ---
 
 ## 14. Changelog
 
+- 2026-11-02: Launch film, first cut, sent to the owner: 31.5 s at 1920×1080, 60 fps, made only from type and the app's UI (no photos, owner's call), Geist and Geist Mono, Emma's voice-over (one ElevenLabs take, 427 credits), Mixkit's "Hazy After Hours" cut so the bass drops on the cut to the canvas, synthesised UI sounds, mastered to −14 LUFS. Rendered from `docs/launch-video/film/` (HTML driven by `seek(t)`, Playwright with 4-frame motion blur, numpy and ffmpeg mix); the MP4 isn't in git.
 - 2026-11-02: Built-in updater (owner approved; no Sparkle until a Developer ID): the app checks the `stable` release's `update.json` 30 s after launch and daily (Rule 4's second exception), offers newer builds in a window that doesn't take focus, and installs Ed25519-signed zips (checked against the key built into the app) by swapping itself and relaunching. CI publishes `stable` only from runs started by hand with a version; pushes refresh `preview` as before. Built on the owner's Mac, merged with the launch-video work and pushed the same day.
 - 2026-11-02: Handoff made portable: `HANDOFF.md` has a "Picking this up in a new account (or from a zip)" section and a precise **Next** line (Dodo sign-up blocked on a website; waiting on the owner's choice and contact email). `CLAUDE.md` now says to refresh the handoff after every push. The owner took a zip of the repo to another account.
 - 2026-11-02: Pricing simplified (owner): free (3 files a day) and **Pro for $9.99 once**; no monthly plan. One Dodo product, Pro never expires, checked weekly for refunds.

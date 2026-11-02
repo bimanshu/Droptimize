@@ -23,3 +23,4 @@ docs/launch-video/film/*.mp4
 docs/launch-video/film/*.wav
 docs/launch-video/film/events.json
 docs/launch-video/film/stills/
+__pycache__/
