@@ -41,11 +41,14 @@ Pure white canvas. Typed text with a caret, a prompt bar that morphs, a horizont
 - **Logo:** nested circles, mint dot `#3DDC97`.
 
 ## Voice-over (ElevenLabs, connected 2026-11-02)
-The owner asked for a "really nice, engaging female voice" and wants to preview it before it's used.
-- **Pick:** **Didi Sherwood, Warm, Perky, Genuine** (`AhjZC0ZjjAe9YVCMX0PH`): young, warm and calm, with a lift when the copy asks for it.
-- **Alternatives:** Sia, Energetic, Confident and Commercial (`qTRV75fy2dUja4REMifv`); Clara V., British and quietly confident (`0ggs85h7hrWz8ExXnsBc`).
-- **Preview so far:** a custom preview line couldn't be generated (ElevenLabs' free generation queue was busy; nothing was charged). The owner was sent the three voices' stock sample clips instead.
-- **Waiting on:** the owner's choice of voice. Then write the VO script and generate it with `eleven_v4`.
+The owner wants an engaging female voice and to preview it before it's used.
+- **First round:** Didi Sherwood (`AhjZC0ZjjAe9YVCMX0PH`), Sia (`qTRV75fy2dUja4REMifv`) and Clara V. (`0ggs85h7hrWz8ExXnsBc`). The owner preferred **Sia's energy**, but found her "too Gen Z, not so professional".
+- **Second round:** Sia's energy, but more grown-up and professional:
+  - **Emma, Professional Commercial** (`9HBoEQ8LqyvVZFYDodnr`), the pick: clear, confident, polished, neutral American, made for product launches.
+  - **Christina, Energetic Commercial** (`BuaKXS4Sv1Mccaw3flfU`).
+  - **Lola, Engaging News & Ads** (`MQCqYs9QBU817XwwHCTz`): warm and composed; works best with `eleven_v4`.
+- **Sent to the owner:** the three stock samples, plus Sia reading our line ("Every photo. Every video. One drop. Droptimize makes them smaller, right where you work. Drop it. Done.", `eleven_v4`, 131 credits, 9.1 s; the second take didn't start, so it wasn't charged).
+- **Waiting on:** the owner's choice. Then generate our line in that voice (one run, 2 takes), then the full VO script.
 
 ## Not done yet
 The tailored prompt (in the structure of `prompt-reference.md`). The owner asked for it after sharing these references, and then switched to choosing the voice.
