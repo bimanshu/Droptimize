@@ -7,6 +7,8 @@ A native macOS app: drag an image or video onto a small floating bubble, let go 
 1. `HANDOFF.md`: where the work stands right now. Continue from its **Next steps**.
 2. `CORE.md`: the spec and the rules. The §3 Rules are decisions, not suggestions.
 
+**Keep `HANDOFF.md` current all the time** (the owner asked for this; they move the project between accounts by zipping the folder): after every change you push, refresh its Snapshot, especially **Next** (what's in progress, what you're waiting on from the owner).
+
 **Whenever you stop (finished, blocked or out of time):**
 
 1. Update the ✱ sections of `HANDOFF.md` so another agent could carry on with nothing else to go on.

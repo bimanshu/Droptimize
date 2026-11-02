@@ -343,6 +343,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-02: Handoff made portable: `HANDOFF.md` has a "Picking this up in a new account (or from a zip)" section and a precise **Next** line (Dodo sign-up blocked on a website; waiting on the owner's choice and contact email). `CLAUDE.md` now says to refresh the handoff after every push. The owner took a zip of the repo to another account.
 - 2026-11-02: Pricing simplified (owner): free (3 files a day) and **Pro for $9.99 once**; no monthly plan. One Dodo product, Pro never expires, checked weekly for refunds.
 - 2026-11-02: Payments switched from Lemon Squeezy to **Dodo Payments** (owner's choice): the app talks to Dodo's public license API (activate, validate, deactivate; JSON, no API secret) and only accepts keys for our two product IDs. Still off until `StoreConfig` holds the product IDs and checkout links.
 - 2026-11-02: The install command quits the running app with a plain signal instead of AppleScript, which needed a "Terminal wants to control Droptimize" permission that could hide behind Terminal and stall the update; downloads now time out with a message and the DMG link.

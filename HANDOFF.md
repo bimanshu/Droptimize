@@ -2,18 +2,29 @@
 
 > **Read this first, then `CORE.md`.** This file says where the work stands right now and exactly what to do next. `CORE.md` says what we're building and the rules.
 > Whoever ends a session updates the ✱ sections before pushing. Keep it current, not historical: history goes in `CORE.md` §14 and the git log.
+> **Keep it updating:** after every change you push (not just at the end), refresh the Snapshot (CI line, **Next**: what you're doing and what you're waiting on from the owner) and any section the change touches. The owner hands this project between accounts and agents at any moment.
+
+## Picking this up in a new account (or from a zip)
+
+The owner sometimes moves the project to another account by zipping this folder. The zip is the whole git repository, history included, minus generated files (`Vendor/`, `*.xcodeproj`, `build/`).
+
+1. Unzip it and `cd` into it. `git log -1` shows which commit you have; `git status` should be clean. You're on branch `claude/fervent-thompson-2620yn`.
+2. **If the new session can reach `github.com/bimanshu/Droptimize`** (it's public), fetch that branch first: GitHub may be newer than the zip. Keep working on that branch and pushing there, and CI keeps publishing the preview the owner installs.
+3. **If the project moves to a different GitHub repository**, the install links change. Replace `bimanshu/Droptimize` in `scripts/install.sh` (`zip_url`), `scripts/dmg-readme.txt`, this file and `CORE.md`, then give the owner the new install command. CI (`.github/workflows/build.yml`) needs no secrets: it uses `GITHUB_TOKEN`. Publishing the `preview` release and the free macOS runners both assume a **public** repo (see Questions 2).
+4. No Mac in the new environment? Install the Swift toolchain (see *How to build, run and test*) and run `scripts/check-linux.sh`, which rebuilds `Vendor/` itself. On a Mac, `xcodegen generate` does the same.
+5. Then carry on from the Snapshot's **Next** line below. It says what's in progress and what the owner owes us.
 
 ## ✱ Snapshot
 
 | | |
 |---|---|
-| Last updated | 2026-11-01 |
+| Last updated | 2026-11-02 |
 | Branch | `claude/fervent-thompson-2620yn` (the only branch so far; no `main` yet, nothing merged, no PR) |
 | Phase | **1: WebP, AVIF, Compress (incl. target sizes), Half size and Remove BG (with background choices) work. 2: video works with AVFoundation only** (Convert MP4 · HEVC · GIF, Compress to 10–100 MB, Resize, Mute, Auto). **Freemium built** (free 3 files a day; Pro $9.99 once via Dodo Payments), switched off until the products exist. The feel and real-world video haven't been tried by a person yet. |
 | CI | [Build workflow](https://github.com/bimanshu/Droptimize/actions/workflows/build.yml): green at `e216772` (Xcode 16.4, macOS 15 runner): **179/179 tests** (131 of them also on Linux; including GIF timing, colors and rotation, the free plan, license-server answers, and drags carrying picture data or Finder files), 0 warnings (warnings fail the build), universal libwebp/libaom/libavif and app, install script tested, preview published with freemium ($9.99 Pro on Dodo Payments, off until `StoreConfig` is set), drag from any app and the signal-based installer. The DMG is ~8.8 MB, mostly libaom (video adds nothing: AVFoundation is part of macOS). The first deps build after a `build-deps.sh` change takes ~3 minutes in CI; otherwise it's cached |
 | Install / update | One Terminal command: **`curl -fsSL https://github.com/bimanshu/Droptimize/releases/download/preview/install.sh \| bash`** (or the [DMG](https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg)). Both come from the [preview release](https://github.com/bimanshu/Droptimize/releases/tag/preview), which CI replaces on every green push. |
-| Owner | Doesn't build with Xcode. Updates with the one-line command above (asked for this instead of re-downloading DMGs). Not technical about Terminal: give exact click-by-click steps. |
-| Next | Owner sets up Dodo Payments and sends the product ID and checkout link (Next steps 1), which switch Pro and the free limit on. Owner tries images, video and the new GIFs on real files (Next steps 2). |
+| Owner | Bimanshu Vatsa, a product designer in India. Doesn't build with Xcode. Updates with the one-line command above (asked for this instead of re-downloading DMGs). Not technical about Terminal: give exact click-by-click steps. Writes short messages, wants recommendations rather than surveys, and when away says "do the recommended stuff, don't ask". Asked for this file to be kept current at all times. |
+| Next | **In progress (2026-11-02): the owner is signing up at Dodo Payments** (as an individual, business name "Droptimize"; told them Product Category = Software, else SaaS or Digital products). **Blocked on Dodo's required Website URL.** We offered to build a one-page site (product, $9.99, contact, privacy, terms, refund policy) on GitHub Pages at `https://bimanshu.github.io/Droptimize`, or to write the policy texts for a site they make in Framer/Wix/Carrd. **Waiting on the owner:** which option, and which contact email to show publicly (don't publish their email without asking). Then: they finish Dodo sign-up, create the $9.99 product with license keys and send its `pdt_…` ID and checkout link → we fill `StoreConfig` (test mode first, Next steps 2). **Offered, not yet accepted:** a Settings window with "Open at login" (Next steps 4). Also open: keep the repo public or not (Questions 2). |
 
 ## ✱ Where things stand
 
@@ -71,13 +82,15 @@
 ## ✱ Next steps (in order)
 
 0. **Make sure CI is green** on the branch. If it's red, open the run, read the failing step's log and fix it. Use `mcp__github__get_job_logs` with `failed_only: true` if you don't have a browser.
-1. **Selling Pro: the owner sets up Dodo Payments** (they create the account; nothing to code until they send the IDs). Steps to give them: sign up at dodopayments.com and complete business verification (needed for live payments; test mode works before that). Create one product, **Droptimize Pro**, a one-time payment of **$9.99**, with **license keys** turned on and an activation limit (3 Macs suggested). Then send: its product ID (`pdt_…`) and its checkout/payment link. **Blocker (2026-11-02):** Dodo's sign-up needs a website URL (they review it before live payments: product, price, contact, privacy, terms, refund policy). The owner can sign up as an individual (no company needed). Offered: a one-page site on GitHub Pages (`https://bimanshu.github.io/Droptimize`), or they build one in Framer/Wix/Carrd and we supply the policy texts; waiting on which, and on the public contact email. Put them in `StoreConfig` with `testMode = true`, buy it with a test card to check activation, a refunded test purchase turning invalid, and Deactivate; then set `testMode = false` and push. That switches the free limit on in the next preview.
-2. **Owner tries the preview DMG** (the Snapshot link). History: on 2026-10-30 they said they couldn't run it on their Mac (reason never confirmed); they were given step-by-step DMG instructions, saw the Phase 0 build's pretend actions, asked for real functionality, and approved libwebp. Ask what they saw with real files, and fix what they report. Run through the *Manual test checklist* below as far as they're willing; tune `Bubble/Motion.swift` from their feedback.
-3. **Phase 1 step 2** (`CORE.md` §11), still to do: the **Auto classification** (photo → lossy WebP; graphic → lossless WebP vs PNG, smaller wins; replace `RGBAImage.looksLikeGraphic`), and the fuller PNG pipeline (pngquant is GPL, so a paid app needs its commercial license or a permissive quantizer; ask before buying one).
-4. **JobQueue** (`CORE.md` §5): drops while a job runs are still ignored (`BubbleController.dragEntered` returns false while working). Make new drops queue, and move cancellation into the queue.
-5. Phase 1 step 3: SSIMULACRA 2 auto-tune (replaces the fixed values in `EncoderTuning`). (Step 4, Remove BG, is done.)
-6. **Video follow-ups:** check HDR iPhone clips (Risk 9); ask the owner how the new GIFs look (tune `VideoTuning.gif*`: frame rate, size, change threshold, dither strength); ask the owner about WebM (FFmpeg or libvpx + libwebm) and then VMAF auto-tune (`CORE.md` §7.3); a notification when a long video finishes.
-7. Smaller items: post a notification for jobs over ~10s; a Settings window (`CORE.md` §10), which could also offer "save results from other apps to…" instead of always Downloads.
+1. **Website for Dodo** (blocks step 2): a one-page site with what Droptimize does, the $9.99 price, a contact email, privacy policy (the app sends only the license key and the Mac's name to Dodo, never files; no analytics), terms, and a refund policy. Offered on GitHub Pages (`https://bimanshu.github.io/Droptimize`, e.g. a `docs/` folder or a `gh-pages` branch, enabled in the repo's Settings → Pages, which the owner must click) or as texts for the owner's own Framer/Wix/Carrd site. Ask before publishing their email.
+2. **Selling Pro: the owner sets up Dodo Payments** (they create the account; nothing to code until they send the IDs). Steps to give them: sign up at dodopayments.com and complete business verification (needed for live payments; test mode works before that). Create one product, **Droptimize Pro**, a one-time payment of **$9.99**, with **license keys** turned on and an activation limit (3 Macs suggested). Then send: its product ID (`pdt_…`) and its checkout/payment link. **Blocker (2026-11-02):** Dodo's sign-up needs a website URL (they review it before live payments: product, price, contact, privacy, terms, refund policy). The owner can sign up as an individual (no company needed). Offered: a one-page site on GitHub Pages (`https://bimanshu.github.io/Droptimize`), or they build one in Framer/Wix/Carrd and we supply the policy texts; waiting on which, and on the public contact email. Put them in `StoreConfig` with `testMode = true`, buy it with a test card to check activation, a refunded test purchase turning invalid, and Deactivate; then set `testMode = false` and push. That switches the free limit on in the next preview.
+3. **Owner tries the preview DMG** (the Snapshot link). History: on 2026-10-30 they said they couldn't run it on their Mac (reason never confirmed); they were given step-by-step DMG instructions, saw the Phase 0 build's pretend actions, asked for real functionality, and approved libwebp. Ask what they saw with real files, and fix what they report. Run through the *Manual test checklist* below as far as they're willing; tune `Bubble/Motion.swift` from their feedback.
+4. **Settings window with "Open at login"** (offered 2026-11-02 as the next build, not yet confirmed): `SMAppService.mainApp.register()` (macOS 13+, no helper app), a toggle on by default after the owner agrees, plus room for later options (where results from other apps go, instead of always Downloads). The menu's Settings… item is there but disabled.
+5. **Phase 1 step 2** (`CORE.md` §11), still to do: the **Auto classification** (photo → lossy WebP; graphic → lossless WebP vs PNG, smaller wins; replace `RGBAImage.looksLikeGraphic`), and the fuller PNG pipeline (pngquant is GPL, so a paid app needs its commercial license or a permissive quantizer; ask before buying one).
+6. **JobQueue** (`CORE.md` §5): drops while a job runs are still ignored (`BubbleController.dragEntered` returns false while working). Make new drops queue, and move cancellation into the queue.
+7. Phase 1 step 3: SSIMULACRA 2 auto-tune (replaces the fixed values in `EncoderTuning`). (Step 4, Remove BG, is done.)
+8. **Video follow-ups:** check HDR iPhone clips (Risk 9); ask the owner how the new GIFs look (tune `VideoTuning.gif*`: frame rate, size, change threshold, dither strength); ask the owner about WebM (FFmpeg or libvpx + libwebm) and then VMAF auto-tune (`CORE.md` §7.3); a notification when a long video finishes.
+9. Smaller items: post a notification for jobs over ~10s; more Settings (`CORE.md` §10).
 
 ## ✱ Risks to check first on a real Mac
 
@@ -140,7 +153,7 @@
 
 ## ✱ Questions for the owner
 
-1. **Set up Dodo Payments** (needs a website first; see Next steps 1) and send the product IDs and links (Next steps 1). How many Macs should one Pro key cover (3 suggested)?
+1. **Set up Dodo Payments** (needs a website first; see Next steps 1) and send the product ID and checkout link (Next steps 2). How many Macs should one Pro key cover (3 suggested)?
 2. **Keep the code public?** The repo is public (that's what makes macOS CI and the release downloads free). Selling a closed-source app from a public repo means anyone can build it or remove the limit. Options: a private code repo plus a public one just for releases, or stay public for now.
 3. Is the label inside the bubble right, or would you rather see it next to the hovered segment?
 4. Is ⌃⌥⌘D OK as the show/hide shortcut?
