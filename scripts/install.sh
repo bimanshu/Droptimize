@@ -15,7 +15,6 @@ set -euo pipefail
 # (it arrives through a pipe).
 main() {
   local app_name="Droptimize"
-  local bundle_id="com.droptimize.app"
   local zip_url="${DROPTIMIZE_ZIP:-https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.zip}"
 
   [ "$(uname -s)" = Darwin ] || fail "this installs a Mac app; run it on a Mac."
@@ -28,9 +27,12 @@ main() {
   trap 'rm -rf "$work"' EXIT
 
   say "Downloading the latest Droptimize…"
-  # Retries cover the few seconds while a new build is being swapped in.
-  curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$zip_url" -o "$work/app.zip" \
-    || fail "couldn't download it. Check your internet connection and try again in a minute."
+  # Retries cover the few seconds while a new build is being swapped in; the time limits make
+  # a blocked or dead connection fail with a message instead of hanging.
+  curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 20 --max-time 600 \
+    "$zip_url" -o "$work/app.zip" \
+    || fail "couldn't download it. Check your internet connection and try again in a minute.
+  Or download it by hand: https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg"
   ditto -x -k "$work/app.zip" "$work/unzipped"
   local new="$work/unzipped/$app_name.app"
   [ -d "$new" ] || fail "the download didn't contain the app."
@@ -50,13 +52,17 @@ main() {
 
   if pgrep -x "$app_name" >/dev/null; then
     say "Quitting the running copy…"
-    osascript -e "tell application id \"$bundle_id\" to quit" >/dev/null 2>&1 || true
+    # A plain quit signal, not AppleScript: asking an app to quit through AppleScript needs
+    # macOS's "Terminal wants to control Droptimize" permission, and that prompt (which can hide
+    # behind Terminal, and comes back for every unsigned build) left the install waiting.
+    # Settings and History are already saved, so nothing is lost.
+    pkill -TERM -x "$app_name" 2>/dev/null || true
     local tries=0
     while pgrep -x "$app_name" >/dev/null && [ "$tries" -lt 10 ]; do
       sleep 0.5
       tries=$((tries + 1))
     done
-    pkill -x "$app_name" 2>/dev/null || true
+    pkill -KILL -x "$app_name" 2>/dev/null || true
   fi
 
   # Copy in beside the old one first, so a failure never leaves you with no app.

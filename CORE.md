@@ -343,6 +343,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-02: The install command quits the running app with a plain signal instead of AppleScript, which needed a "Terminal wants to control Droptimize" permission that could hide behind Terminal and stall the update; downloads now time out with a message and the DMG link.
 - 2026-11-01: Drag from any app (owner asked): Photos, Mail and Messages attachments, Safari and other browsers' images, via file promises or picture data. Their results go to Downloads; the bubble spins while another app hands the files over.
 - 2026-11-01: Freemium (owner's decision): free = 3 files a day, any action; Pro = $5/month or $50 lifetime, sold through Lemon Squeezy with license keys. Built the daily count, the Pro window (menu bar → Upgrade to Pro…), the "no free files left" message (click it for Pro) and the license check, the one network call (Rule 4 amended). Off until the store's IDs are in `StoreConfig`. Free vs paid is settled: closed source, so no GPL/AGPL libraries.
 - 2026-10-31: GIF rebuilt after the owner found ImageIO's output "very bad" (bands, colors breaking, lag): our own GIF encoder (no dependencies) with one palette per clip, dithering, redraw-only-what-changed frames and true timing, fed every frame up to 30 fps (evenly), upright and color-managed by Core Image.
