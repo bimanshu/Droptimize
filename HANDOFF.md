@@ -14,6 +14,11 @@ The owner sometimes moves the project to another account by zipping this folder.
 4. No Mac in the new environment? Install the Swift toolchain (see *How to build, run and test*) and run `scripts/check-linux.sh`, which rebuilds `Vendor/` itself. On a Mac, `xcodegen generate` does the same.
 5. Then carry on from the Snapshot's **Next** line below. It says what's in progress and what the owner owes us.
 
+**Running locally on the owner's Mac** (owner, 2026-11-02: "I'll run it on local", from a zip, without connecting the repo to a cloud session). The zip doesn't update itself: ask the owner for a fresh one from the last session, or `git pull` if this Mac can reach GitHub. On a Mac you're no longer limited to Linux checks:
+- **Building here** needs Xcode (free, Mac App Store, about 10 GB) and Homebrew. Then `brew install xcodegen cmake nasm`, `xcodegen generate`, and `xcodebuild test -project Droptimize.xcodeproj -scheme Droptimize -destination 'platform=macOS'`. For a copy to use, run a Release build (`-configuration Release -derivedDataPath build CODE_SIGN_IDENTITY=-`) and `ditto build/Build/Products/Release/Droptimize.app /Applications/Droptimize.app`; quit the running copy first. Ask before installing Xcode or Homebrew for them.
+- **Publishing** (the preview the owner installs with the Terminal command, and the `stable` releases the in-app updater reads) still happens on GitHub: CI runs when commits are pushed to `github.com/bimanshu/Droptimize`. Pushing from this Mac needs a one-time GitHub sign-in (GitHub Desktop, or `gh auth login` and then `gh auth setup-git`). Walk the owner through it click by click. Without pushes, nothing new reaches their install command or their users.
+- Keep committing on `claude/fervent-thompson-2620yn` and keep this file current; the next session may be back in the cloud.
+
 ## ✱ Snapshot
 
 | | |
