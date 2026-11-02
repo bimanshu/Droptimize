@@ -2,6 +2,13 @@
 
 > The owner asked for this file so any Claude can continue the film exactly where the last one stopped. **Keep it current:** tick steps as they land, and record every decision and file path. Also read `PROMPT.md` (the brief) and `reference-notes.md` (what the references do, the measured sound, the voices).
 
+## Start here (if this file was handed to you on its own)
+1. **Get the project.** GitHub repo `bimanshu/Droptimize`, branch **`claude/fervent-thompson-2620yn`** (the only branch). Clone it, or if the owner gave you a zip of the folder, run `git pull` in it first. Everything for the film is in **`docs/launch-video/`**; paths below are relative to that folder.
+2. **Read, in order:** this file, then `PROMPT.md` (the brief, in the owner's structure), then `reference-notes.md`. The repo's `CLAUDE.md` and `HANDOFF.md` cover the app itself; you don't need them for film work, but keep `HANDOFF.md`'s **Next** line current when you push.
+3. **Where to pick up:** the first cut is done and was sent to the owner (2026-11-02). **Ask the owner for feedback on it** (or act on feedback they give you), then change, re-render and resend. The MP4 isn't in git: rebuild it with *How to rebuild* below (about 8 minutes) before changing anything, so you can compare.
+4. **Set up the tools** (cloud container or Mac): Node with Playwright and Chromium, ffmpeg, and Python 3 with numpy. The fonts and Emma's voice are in the repo; the music downloads from its URL (*Music* below).
+5. **Talking to the owner:** they're a product designer, not technical, and write short messages. Recommend instead of listing options, send files rather than paths, and explain in plain words. Follow *Owner's rules* below to the letter, above all: **no extra ElevenLabs charges and no photos.**
+
 ## Where it stands (2026-11-02)
 
 **First cut finished and sent to the owner; waiting on their feedback.** The owner approved the brief and the VO script ("let's build the vid") and left the missing inputs to us.
