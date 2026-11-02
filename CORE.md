@@ -27,7 +27,7 @@ Working name: **Droptimize** (also considered: Blip, Ripple, Halo, PixDrop). If 
 | Phase 1: image pipeline | Steps 1 and 4 done, step 2 half done (WebP, AVIF, Compress incl. target sizes, Half size, Remove BG with backgrounds, naming, size guard, clipboard) | libwebp; libaom + libavif; own lossless PNG optimizer; ImageIO for JPEG/HEIC until jpegli; Vision for Remove BG. Next: Auto classification and the full PNG pipeline (step 2), auto-tune (step 3) |
 | Phase 1.5: benchmark, polish, launch clip | Not started | |
 | Phase 2: video pipeline | Steps 1–4 done with AVFoundation only (remux, H.264/HEVC, compress to a size, resize, mute, GIF) | No new dependencies. Next: WebM and FFmpeg "max quality" + VMAF, which need the owner's OK on FFmpeg or libvpx (§13) |
-| Phase 3: signing, notarization, distribution | Built-in updater built (local commits, not yet through CI); signing and notarization not started | No Apple Developer account until Droptimize earns (owner, 2026-11-02), so ad-hoc signing and our own signed-update check instead of Sparkle (§8.2) |
+| Phase 3: signing, notarization, distribution | Built-in updater built (pushed 2026-11-02; first stable release waits on the signing secret); signing and notarization not started | No Apple Developer account until Droptimize earns (owner, 2026-11-02), so ad-hoc signing and our own signed-update check instead of Sparkle (§8.2) |
 
 ---
 
@@ -353,7 +353,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
-- 2026-11-02: Built-in updater (owner approved; no Sparkle until a Developer ID): the app checks the `stable` release's `update.json` 30 s after launch and daily (Rule 4's second exception), offers newer builds in a window that doesn't take focus, and installs Ed25519-signed zips (checked against the key built into the app) by swapping itself and relaunching. CI publishes `stable` only from runs started by hand with a version; pushes refresh `preview` as before. Local commits only for now (owner: don't push), so not yet through CI.
+- 2026-11-02: Built-in updater (owner approved; no Sparkle until a Developer ID): the app checks the `stable` release's `update.json` 30 s after launch and daily (Rule 4's second exception), offers newer builds in a window that doesn't take focus, and installs Ed25519-signed zips (checked against the key built into the app) by swapping itself and relaunching. CI publishes `stable` only from runs started by hand with a version; pushes refresh `preview` as before. Built on the owner's Mac, merged with the launch-video work and pushed the same day.
 - 2026-11-02: Handoff made portable: `HANDOFF.md` has a "Picking this up in a new account (or from a zip)" section and a precise **Next** line (Dodo sign-up blocked on a website; waiting on the owner's choice and contact email). `CLAUDE.md` now says to refresh the handoff after every push. The owner took a zip of the repo to another account.
 - 2026-11-02: Pricing simplified (owner): free (3 files a day) and **Pro for $9.99 once**; no monthly plan. One Dodo product, Pro never expires, checked weekly for refunds.
 - 2026-11-02: Payments switched from Lemon Squeezy to **Dodo Payments** (owner's choice): the app talks to Dodo's public license API (activate, validate, deactivate; JSON, no API secret) and only accepts keys for our two product IDs. Still off until `StoreConfig` holds the product IDs and checkout links.
