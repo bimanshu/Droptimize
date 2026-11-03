@@ -10,7 +10,7 @@
 - [x] **Built:** `film/v4.html` (picture), `film/render-v4.js` (stills, cue list, parallel subframes, encode), `film/mix-v4.py` (soundtrack; imports `mix.py`'s tools). All new files, so nothing of v1–v3 changed.
 - [x] **Checked:** one still per beat (111) plus every transition; fixes so far: caption placement clear of cards and panels, windows side by side, the camera keeping the bubble in frame on the pull-back, the dissolve layers, the holds after "Done." and after Remove BG now move, the batch fanning out, a bigger composer, bigger pills and keycaps.
 - [x] **Soundtrack:** music from the track's bar 15 (26.681 s), so its break is film bar 2 and its drop lands on the reveal (3.75 s); the grid lines up exactly (onset fold: 0 ms). Mastered −14.2 LUFS, −1.2 dBTP.
-- [ ] **First render with stand-in photos** (in progress): sent to the owner to judge motion, timing and sound.
+- [x] **First render with stand-in photos** (2026-11-03): `droptimize-launch-v4.mp4`, 51.75 s, 1920×1080 at 60 fps, 3,105 frames, 18.3 MB, −14.3 LUFS, −1.2 dBTP; 8 subframes per frame (24,840 renders, ~23 min with 4 pages, then ~5.5 min to encode). Checked on 22 frames of the final file; sent to the owner. Not in git.
 - [ ] **The owner's photos.** The film uses **stand-ins** (soft placeholder images made with PIL) until the owner uploads theirs. Needed in `film/images/` (git-ignored), any 16:9 size:
   - `photo.webp`: `IMG_2041.HEIC` (v3: a daisy).
   - `hero.webp`: `hero.png`, the image on the web page (v3: a cat under the moon).
