@@ -15,7 +15,7 @@ from mix import SR, decode, db, ramp, crossfade, synth, master, loudness   # noq
 BEAT = 60 / 128
 BAR = 4 * BEAT
 T = lambda bar, beat=1: (bar - 1) * BAR + (beat - 1) * BEAT
-PICTURE, END = T(27), T(27) + 3          # 48.75 s of picture, then 3 s of silence on the end card
+PICTURE, END = T(25), T(25) + 3          # 45 s of picture, then 3 s of silence on the end card
 MUSIC_START = 0.431 + 14 * BAR           # the track's bar 15 downbeat
 HERE = os.path.dirname(os.path.abspath(__file__))
 FULL = os.path.join(HERE, '..', 'audio', 'emma-vo-full.mp3')
@@ -26,13 +26,13 @@ LINES = [
     (FULL, 3.65, 4.80, T(3, 2)),     # Meet Droptimize.
     (EXTRA, 0.03, 3.83, T(4)),       # Drag from anywhere. Finder, Photos, or the web.
     (FULL, 6.21, 9.43, T(6, 3)),     # Drop any photo or video on the bubble. Done.
-    (FULL, 10.63, 13.78, T(10, 3)),  # Convert to WebP or AVIF in one move.
-    (FULL, 14.88, 16.47, T(13, 2)),  # Lift the background right out.
-    (FULL, 17.62, 20.45, T(16, 2)),  # Videos too, down to whatever size you need.
-    (FULL, 21.48, 23.70, T(19, 2)),  # All on your Mac. Nothing uploaded.
-    (EXTRA, 5.84, 7.12, T(20, 4)),   # No internet needed.
-    (FULL, 24.75, 27.77, T(22, 2)),  # Batches in one drop. Already on your clipboard.
-    (FULL, 28.85, 31.22, T(25)),     # Droptimize. Drop it. Done.
+    (FULL, 10.63, 13.78, T(9, 2)),   # Convert to WebP or AVIF in one move.
+    (FULL, 14.88, 16.47, T(12, 2)),  # Lift the background right out.
+    (FULL, 17.62, 20.45, T(14, 2)),  # Videos too, down to whatever size you need.
+    (FULL, 21.48, 23.70, T(17, 2)),  # All on your Mac. Nothing uploaded.
+    (EXTRA, 5.84, 7.12, T(18, 4)),   # No internet needed.
+    (FULL, 24.75, 27.77, T(20, 2)),  # Batches in one drop. Already on your clipboard.
+    (FULL, 28.85, 31.22, T(23)),     # Droptimize. Drop it. Done.
 ]
 
 
@@ -52,13 +52,13 @@ def main():
     lp800 = cut(decode(a.music, 'lowpass=f=800:p=2'))
     lp300 = cut(decode(a.music, 'lowpass=f=300:p=2,lowpass=f=300:p=2'))
     music = crossfade(music, hp, T(2), T(3), 0.03)                  # the break: lift it out, so the drop hits on the reveal
-    music = crossfade(music, lp800, T(21, 4), T(22), 0.03)          # a breath before the batch
-    tail = crossfade(lp800, lp300, T(25) + 0.8, PICTURE, 0.5)       # ending: low-pass sweep after the final hit
-    music = crossfade(music, tail, T(25), PICTURE, 0.08)
-    fade = np.ones(N); a0, a1 = int(T(25) * SR), int((PICTURE - 0.25) * SR)
+    music = crossfade(music, lp800, T(19, 4), T(20), 0.03)          # a breath before the batch
+    tail = crossfade(lp800, lp300, T(23) + 0.8, PICTURE, 0.5)       # ending: low-pass sweep after the final hit
+    music = crossfade(music, tail, T(23), PICTURE, 0.08)
+    fade = np.ones(N); a0, a1 = int(T(23) * SR), int((PICTURE - 0.25) * SR)
     fade[a0:a1] = np.linspace(1, 0, a1 - a0) ** 1.6; fade[a1:] = 0
     music *= fade[:, None]
-    music *= db(-20) / (np.sqrt((music[int(4 * SR):int(44 * SR)] ** 2).mean()) + 1e-9)
+    music *= db(-20) / (np.sqrt((music[int(4 * SR):int(40 * SR)] ** 2).mean()) + 1e-9)
 
     # ── Voice
     src = {p: decode(p, 'highpass=f=90:p=2', ch=1)[:, 0] for p in (FULL, EXTRA)}

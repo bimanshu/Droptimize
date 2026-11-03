@@ -20,7 +20,7 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; backgro
 .num { font-variant-numeric: tabular-nums; }
 img.abs { display: block; object-fit: cover; }
 /* Captions: one size, one weight. Words arrive one at a time; one word sits in a mint box. */
-.cap { font-size: 64px; font-weight: 600; letter-spacing: -0.012em; line-height: 1.16; color: #FFFFFF; white-space: nowrap; text-shadow: 0 2px 28px rgba(4,16,48,0.38); }
+.cap { font-size: 64px; font-weight: 600; letter-spacing: -0.012em; line-height: 1.16; color: #FFFFFF; white-space: nowrap; text-shadow: 0 2px 28px rgba(4,16,48,0.55), 0 1px 3px rgba(4,16,48,0.25); }
 .cap .w[style*="rgba(61"] { text-shadow: none; }
 .cap .w { display: inline-block; white-space: pre; border-radius: 14px; padding: 0 12px; margin: 0 -12px; }
 /* Screen-space type used outside the captions */
@@ -40,7 +40,7 @@ img.abs { display: block; object-fit: cover; }
 const W = 1920, H = 1080;
 const BEAT = 60 / 128, BAR = 4 * BEAT;              // "Minimal Emotion", 128.00 BPM
 const T = (bar, beat = 1, sixteenth = 0) => (bar - 1) * BAR + (beat - 1) * BEAT + sixteenth * BEAT / 4;
-const PICTURE = T(27);                               // 48.75 s of picture
+const PICTURE = T(25);                               // 45 s of picture
 const END = PICTURE + 3;                             // then 3 s of still, silent end card
 const C = { ink: '#0E0E0F', mint: '#3DDC97', white: '#FFFFFF', grey: '#6B6B6F', grey2: '#8A8A8E', line: 'rgba(0,0,0,0.08)' };
 
@@ -119,42 +119,22 @@ function icon(parent, name, size, color, style = {}) { return svg(parent, size, 
 
 // ───────────────────────────── Photos ─────────────────────────────
 // The owner's photos go in images/ (git-ignored). Same names as v3, plus video.webp for launch.mov.
-const PHOTO = { img: 'images/photo.webp', hero: 'images/hero.webp', statue: 'images/product.webp', cutout: 'images/product-cutout.png', video: 'images/video.webp' };
+const PHOTO = { img: 'images/photo.webp', hero: 'images/hero.webp', statue: 'images/product.webp', cutout: 'images/product-cutout.png', video: 'images/video.webp', wallL: 'images/wall-light.jpg', wallD: 'images/wall-dark.jpg' };
 const IMGS = [];
 function photo(parent, key, w, h, style = {}, pos = '50% 50%') {
   const i = el('img', parent, Object.assign({ width: w + 'px', height: h + 'px', objectPosition: pos }, style));
   i.src = PHOTO[key]; i.draggable = false; IMGS.push(i); return i;
 }
 
-// ───────────────────────────── Wallpaper (ours, never Apple's): soft waves, heavily blurred ─────────────────────────────
-function wallpaper(dark) {
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const g = cv.getContext('2d');
-  const base = g.createLinearGradient(0, 0, W, H);
-  base.addColorStop(0, dark ? '#0A1638' : '#2F6BD0'); base.addColorStop(0.55, dark ? '#071029' : '#2457B8'); base.addColorStop(1, dark ? '#040914' : '#163A86');
-  g.fillStyle = base; g.fillRect(0, 0, W, H);
-  g.filter = 'blur(70px)';
-  const band = (pts, width, color, alpha) => {
-    g.globalAlpha = alpha; g.strokeStyle = color; g.lineWidth = width; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(pts[0], pts[1]); g.bezierCurveTo(pts[2], pts[3], pts[4], pts[5], pts[6], pts[7]); g.stroke();
-  };
-  band([-200, 820, 500, 520, 1100, 1100, 2200, 600], 260, dark ? '#0E3A5C' : '#2BB5C0', 0.8);
-  band([-300, 300, 600, 700, 1300, 100, 2300, 380], 180, dark ? '#16306E' : '#CFE6F7', 0.55);
-  band([200, 1200, 800, 760, 1400, 880, 2100, 300], 140, dark ? '#0F4A48' : '#3DDC97', dark ? 0.35 : 0.42);
-  band([-100, 80, 500, 260, 1200, -100, 2100, 120], 220, dark ? '#0A1E4A' : '#7FB2F0', 0.6);
-  g.filter = 'none'; g.globalAlpha = 1;
-  return cv;
-}
-const WALL_L = wallpaper(false), WALL_D = wallpaper(true);
-const wallCtxL = WALL_L.getContext('2d');
-function wallColour(x, y) { const d = wallCtxL.getImageData(clamp(Math.round(x), 0, W - 1), clamp(Math.round(y), 0, H - 1), 1, 1).data; return `rgb(${d[0]},${d[1]},${d[2]})`; }
+// ───────────────────────────── Wallpaper: a real photo (Pexels 7677713, misty ridges at blue hour), graded and softened ─────────────────────────────
+const wallImg = (parent, key, w = W, h = H) => photo(parent, key, w, h);
 
 // ───────────────────────────── Layers ─────────────────────────────
 const wallLayer = el('div', stage, { width: W + 'px', height: H + 'px', willChange: 'transform' });
-WALL_L.className = 'abs'; wallLayer.appendChild(WALL_L);
+const WALL_L = wallImg(wallLayer, 'wallL');
 const desk = el('div', stage, { width: '1440px', height: '900px', transformOrigin: '0 0' });
 const cold = el('div', stage, { width: W + 'px', height: H + 'px', overflow: 'hidden' });
-WALL_D.className = 'abs'; cold.appendChild(WALL_D);
+const WALL_D = wallImg(cold, 'wallD');
 const pills = el('div', stage, { width: W + 'px', height: H + 'px' });
 const priv = el('div', stage, { width: W + 'px', height: H + 'px', background: C.ink, overflow: 'hidden' });
 const keys = el('div', stage, { width: W + 'px', height: H + 'px', overflow: 'hidden' });
@@ -179,7 +159,7 @@ function windowEl(r, title) {
 }
 // Finder: a plain file list
 const wFinder = windowEl(FINDER, 'Downloads');
-const FROWS = [['statue', 'statue.jpg', '9.8 MB'], ['video', 'launch.mov', '840 MB'], [null, 'Screenshot.png', '3.1 MB'], [null, 'poster.png', '7.4 MB'], [null, 'notes.png', '1.2 MB']];
+const FROWS = [['statue', 'pineapple.jpg', '9.8 MB'], ['video', 'launch.mov', '840 MB'], [null, 'Screenshot.png', '3.1 MB'], [null, 'poster.png', '7.4 MB'], [null, 'notes.png', '1.2 MB']];
 el('div', wFinder.body, { left: '20px', top: '40px', fontSize: '10.5px', fontWeight: 500, color: C.grey2 }, 'Name', 'nowrap');
 el('div', wFinder.body, { left: (FINDER.w - 90) + 'px', width: '70px', textAlign: 'right', top: '40px', fontSize: '10.5px', fontWeight: 500, color: C.grey2 }, 'Size', 'nowrap');
 const finderLift = [];
@@ -275,7 +255,7 @@ function optPos(sc, j) {
 
 // ───────────────────────────── Timeline ─────────────────────────────
 // Emma's lines: film time of each line's start, and each word's onset within the line (measured).
-const AT = { 1: T(1, 2), 2: T(3, 2), A: T(4), 3: T(6, 3), 4: T(10, 3), 5: T(13, 2), 6: T(16, 2), 7: T(19, 2), B: T(20, 4), 8: T(22, 2), 9: T(25) };
+const AT = { 1: T(1, 2), 2: T(3, 2), A: T(4), 3: T(6, 3), 4: T(9, 2), 5: T(12, 2), 6: T(14, 2), 7: T(17, 2), B: T(18, 4), 8: T(20, 2), 9: T(23) };
 const DONE_AT = AT[3] + 2.92;                         // her "Done." lands with the check
 const IMG_ENTER = T(6, 3), IMG_DROP = T(7, 3);
 const SCENES = [
@@ -283,23 +263,23 @@ const SCENES = [
     hovers: [[T(6, 4), 0, 'Convert'], [T(7), 1, 'Compress']],
     opts: ['100K', '250K', '500K', '1M', '2M', '…'], optsAt: T(7, 2), optSeg: 1, optHover: [[T(7, 2, 2), 1], [T(7, 2, 3), 2]],
     work: [IMG_DROP, DONE_AT - 0.1], done: DONE_AT, collapse: IMG_DROP + 0.35,
-    result: { at: T(8, 2), thumb: 'img', sizes: [[T(8, 2), '12.4 MB'], [T(8, 3), '486 KB'], [T(8, 4), '−96%']], name: 'IMG_2041-500kb.heic', small: [[T(8, 2), 'IMG_2041-500kb.heic'], [T(8, 4), 'IMG_2041-500kb.heic · 486 KB']], tilt: true }, cardOut: T(9, 3) },
-  { id: 'hero', tile: tHero, grab: T(10, 2), enter: T(10, 4), release: T(12), kind: 'image',
-    hovers: [[T(10, 4) + 0.12, 0, 'Convert']],
-    opts: ['WebP', 'AVIF', 'JPG', 'PNG', 'HEIC'], optsAt: T(10, 4) + 0.18, optSeg: 0, optHover: [[AT[4] + 0.84, 0], [AT[4] + 1.6, 1]],
-    work: [T(12), T(12) + 0.4], done: T(12, 2), collapse: T(12) + 0.3,
-    result: { at: T(12, 2), thumb: 'hero', sizes: [[T(12, 2), '6.1 MB'], [T(12, 2, 2), '412 KB'], [T(12, 3), '−93%']], small: [[T(12, 2), 'hero.avif'], [T(12, 3), 'hero.avif · 412 KB']] }, cardOut: T(13) - 0.25 },
-  { id: 'statue', tile: tStatue, grab: T(12, 4), enter: AT[5], release: T(14, 3), kind: 'image', midDrag: T(13),
+    result: { at: T(8, 2), thumb: 'img', sizes: [[T(8, 2), '12.4 MB'], [T(8, 2, 2), '486 KB'], [T(8, 3), '−96%']], name: 'IMG_2041-500kb.heic', small: [[T(8, 2), 'IMG_2041-500kb.heic'], [T(8, 3), 'IMG_2041-500kb.heic · 486 KB']], tilt: true }, cardOut: T(9) + 0.15 },
+  { id: 'hero', tile: tHero, grab: T(9) + 0.05, enter: T(9, 3), release: T(11), kind: 'image',
+    hovers: [[T(9, 3) + 0.12, 0, 'Convert']],
+    opts: ['WebP', 'AVIF', 'JPG', 'PNG', 'HEIC'], optsAt: T(9, 3) + 0.18, optSeg: 0, optHover: [[AT[4] + 0.84, 0], [AT[4] + 1.6, 1]],
+    work: [T(11), T(11) + 0.4], done: T(11, 2), collapse: T(11) + 0.3,
+    result: { at: T(11, 2), thumb: 'hero', sizes: [[T(11, 2), '6.1 MB'], [T(11, 2, 2), '412 KB'], [T(11, 3), '−93%']], small: [[T(11, 2), 'hero.avif'], [T(11, 3), 'hero.avif · 412 KB']] }, cardOut: T(12) - 0.25 },
+  { id: 'statue', tile: tStatue, grab: T(11, 4), enter: AT[5], release: T(13, 2), kind: 'image', midDrag: T(12),
     hovers: [[AT[5] + 0.23, 3, 'Remove BG']],
-    opts: ['checker', 'white', 'black', 'eyedropper'], optsAt: T(13, 3), optSeg: 3, optHover: [[T(13, 3) + 0.24, 0], [T(14, 2) + 0.05, 1]], labels: ['No background', 'White', 'Black', 'Custom'],
-    work: [T(14, 3), T(14, 3) + 0.45], done: T(14, 4), collapse: T(14, 3) + 0.3, result: null, cardOut: 0 },
-  { id: 'video', tile: tVid, grab: T(16, 2), enter: T(16, 4), release: T(17, 3), kind: 'video', midDrag: T(16, 3),
-    hovers: [[T(16, 4) + 0.235, 0, 'Convert'], [T(17), 1, 'Compress']],
-    opts: ['10M', '25M', '50M', '100M', '…'], optsAt: T(17) + 0.23, optSeg: 1, optHover: [[T(17, 2), 0], [T(17, 2, 2), 1]],
-    quarters: [T(17, 4), T(18), T(18, 2), T(18, 3)], done: T(18, 3), collapse: T(17, 3) + 0.35,
-    result: { at: T(17, 4), thumb: 'video', sizes: [[T(17, 4), '840 MB'], [T(18), '412 MB'], [T(18, 2), '168 MB'], [T(18, 3), '24.1 MB'], [T(18, 3) + 0.3, '−97%']], small: [[T(17, 4), 'launch-25mb.mov'], [T(18, 3) + 0.3, 'launch-25mb.mov · 24.1 MB']] }, cardOut: T(19) - 0.2 },
+    opts: ['checker', 'white', 'black', 'eyedropper'], optsAt: T(12, 3), optSeg: 3, optHover: [[T(12, 3) + 0.24, 0], [T(13) + 0.05, 1]], labels: ['No background', 'White', 'Black', 'Custom'],
+    work: [T(13, 2), T(13, 2) + 0.45], done: T(13, 3), collapse: T(13, 2) + 0.3, result: null, cardOut: 0 },
+  { id: 'video', tile: tVid, grab: T(14, 2), enter: T(14, 4), release: T(15, 3), kind: 'video', midDrag: T(14, 3),
+    hovers: [[T(14, 4) + 0.235, 0, 'Convert'], [T(15), 1, 'Compress']],
+    opts: ['10M', '25M', '50M', '100M', '…'], optsAt: T(15) + 0.23, optSeg: 1, optHover: [[T(15, 2), 0], [T(15, 2, 2), 1]],
+    quarters: [T(15, 4), T(16), T(16, 2), T(16, 3)], done: T(16, 3), collapse: T(15, 3) + 0.35,
+    result: { at: T(15, 4), thumb: 'video', sizes: [[T(15, 4), '840 MB'], [T(16), '412 MB'], [T(16, 2), '168 MB'], [T(16, 3), '24.1 MB'], [T(16, 3) + 0.3, '−97%']], small: [[T(15, 4), 'launch-25mb.mov'], [T(16, 3) + 0.3, 'launch-25mb.mov · 24.1 MB']] }, cardOut: T(17) - 0.2 },
 ];
-const BATCH = { enter: T(22) + 0.23, release: AT[8], stream: i => AT[8] + i * BEAT / 4, done: T(23), card: T(23), cardOut: T(23, 3) - 0.1 };
+const BATCH = { enter: T(20) + 0.23, release: AT[8], stream: i => AT[8] + i * BEAT / 4, done: T(21), card: T(21), cardOut: T(21, 3) - 0.1 };
 
 // Cursor path in desk points: [t, x, y, pressed]
 const cell0 = (() => { const c = cellPos(0); return [PHOTOS.x + c.x + c.w / 2, PHOTOS.y + c.y + c.h / 2]; })();
@@ -308,14 +288,14 @@ const entry = [B.x - 72, B.y - 6];
 const CUR = [
   [0, 1000, 760, 0], [T(5, 3), 1000, 760, 0], [T(6) - 0.12, ...cell0, 0], [T(6), ...cell0, 1], [IMG_ENTER, ...entry, 1],
   [T(6, 4), ...segPos(0), 1], [T(7), ...segPos(1), 1], [T(7, 2, 2), 0, 0, 1], [T(7, 2, 3), 0, 0, 1], [IMG_DROP, 0, 0, 0],
-  [T(8, 2), 1230, 640, 0], [T(10) + 0.2, 1230, 640, 0], [T(10, 2) - 0.1, ...webC, 0], [T(10, 2), ...webC, 1], [T(10, 4), ...entry, 1],
-  [T(10, 4) + 0.12, ...segPos(0), 1], [AT[4] + 0.84, 0, 0, 1], [AT[4] + 1.6, 0, 0, 1], [T(12), 0, 0, 0],
-  [T(12, 3), 1230, 660, 0], [T(13) - 0.01, 1230, 660, 0], [T(13), 1120, 600, 1], [AT[5], ...entry, 1],
-  [AT[5] + 0.23, ...segPos(3), 1], [T(13, 3) + 0.24, 0, 0, 1], [T(14, 2) + 0.05, 0, 0, 1], [T(14, 3), 0, 0, 0],
-  [T(15, 2), 1240, 680, 0], [T(16, 3) - 0.01, 1240, 680, 0], [T(16, 3), 1140, 600, 1], [T(16, 4), ...entry, 1],
-  [T(16, 4) + 0.235, ...segPos(0), 1], [T(17), ...segPos(1), 1], [T(17, 2), 0, 0, 1], [T(17, 2, 2), 0, 0, 1], [T(17, 3), 0, 0, 0],
-  [T(18), 1250, 690, 0], [T(22) - 0.01, 1250, 690, 0], [T(22), 1180, 600, 1], [BATCH.enter, B.x + 2, B.y + 4, 1], [BATCH.release, B.x + 2, B.y + 4, 0],
-  [T(23), 1250, 660, 0], [END, 1250, 660, 0],
+  [T(8, 2), 1230, 640, 0], [T(8, 3), 1230, 640, 0], [T(9) - 0.1, ...webC, 0], [T(9) + 0.05, ...webC, 1], [T(9, 3), ...entry, 1],
+  [T(9, 3) + 0.12, ...segPos(0), 1], [AT[4] + 0.84, 0, 0, 1], [AT[4] + 1.6, 0, 0, 1], [T(11), 0, 0, 0],
+  [T(11, 3), 1230, 660, 0], [T(12) - 0.01, 1230, 660, 0], [T(12), 1120, 600, 1], [AT[5], ...entry, 1],
+  [AT[5] + 0.23, ...segPos(3), 1], [T(12, 3) + 0.24, 0, 0, 1], [T(13) + 0.05, 0, 0, 1], [T(13, 2), 0, 0, 0],
+  [T(13, 4), 1240, 680, 0], [T(14, 3) - 0.01, 1240, 680, 0], [T(14, 3), 1140, 600, 1], [T(14, 4), ...entry, 1],
+  [T(14, 4) + 0.235, ...segPos(0), 1], [T(15), ...segPos(1), 1], [T(15, 2), 0, 0, 1], [T(15, 2, 2), 0, 0, 1], [T(15, 3), 0, 0, 0],
+  [T(16), 1250, 690, 0], [T(20) - 0.01, 1250, 690, 0], [T(20), 1180, 600, 1], [BATCH.enter, B.x + 2, B.y + 4, 1], [BATCH.release, B.x + 2, B.y + 4, 0],
+  [T(21), 1250, 660, 0], [END, 1250, 660, 0],
 ];
 (function fillOptionWaypoints() {
   const fill = (t, xy) => { const k = CUR.find(c => Math.abs(c[0] - t) < 1e-6); if (k) { k[1] = xy[0]; k[2] = xy[1]; } };
@@ -332,11 +312,11 @@ function cursorAt(t) {
 const CAMK = [
   [T(4), 1.3, 760, 470, [0.75, 1], [1.5, 1]], [AT.A + 1.6, 1.38, 640, 455, CAM], [AT.A + 2.3, 1.38, 770, 450, CAM], [AT.A + 3.25, 1.38, 700, 490, CAM],
   [T(6) - 0.15, 2.3, cell0[0], cell0[1], [0.7, 1]], [T(6, 2), 3.0, 1285, 450, [1.0, 1]],
-  [IMG_DROP, 4.6, 1372, 450, [0.7, 1]], [T(8, 2), 3.0, 1270, 450, [0.8, 1]], [T(8, 4), 3.6, 1262, 452, [2.2, 1]],
-  [T(9, 3), 2.2, webC[0], webC[1], [1.0, 1]], [T(10, 3), 3.0, 1285, 450, [1.0, 1]], [T(11), 4.0, 1300, 440, [0.8, 1]], [T(12, 2), 3.0, 1270, 450, [0.8, 1]],
-  [T(13) - 0.2, 2.0, 1080, 450, [0.9, 1]], [T(14, 4), 2.5, 960, 452, [2.4, 1]],
-  [T(16, 1) + 0.3, 3.2, 1290, 450, [0.25, 1]], [T(17, 3), 3.9, 1262, 450, [0.8, 1]], [T(18, 3), 3.4, 1262, 450, [0.9, 1]],
-  [T(21), 3.3, 1300, 450, [0.25, 1]], [T(23), 3.1, 1270, 450, [0.8, 1]],
+  [IMG_DROP, 4.6, 1372, 450, [0.7, 1]], [T(8, 2), 3.0, 1270, 450, [0.8, 1]],
+  [T(8, 4) - 0.1, 2.2, webC[0], webC[1], [1.0, 1]], [T(9) + 0.12, 3.0, 1285, 450, [1.1, 1]], [T(10), 4.0, 1300, 440, [0.8, 1]], [T(11, 2), 3.0, 1270, 450, [0.8, 1]],
+  [T(12) - 0.2, 2.0, 1080, 450, [0.9, 1]], [T(13, 3), 2.4, 980, 452, [1.6, 1]],
+  [T(14, 1) + 0.3, 3.2, 1290, 450, [0.25, 1]], [T(15, 3), 3.9, 1262, 450, [0.8, 1]], [T(16, 3), 3.4, 1262, 450, [0.9, 1]],
+  [T(19), 3.3, 1300, 450, [0.25, 1]], [T(21), 3.1, 1270, 450, [0.8, 1]],
 ];
 const camAt = t => {
   const s0 = 6.0, x0 = 1334, y0 = 450;
@@ -345,8 +325,8 @@ const camAt = t => {
 
 // Scene windows: which layer is on screen
 const SHOT = {
-  cold: [0, T(3)], desk1: [T(3), T(16)], pills: [T(16), T(16, 3)], desk2: [T(16, 3), T(19)], priv: [T(19), T(22)],
-  desk3: [T(22), T(23, 3)], keys: [T(23, 3), T(24)], compose: [T(24), T(25)], end: [T(25), Infinity],
+  cold: [0, T(3)], desk1: [T(3), T(14)], pills: [T(14), T(14, 3)], desk2: [T(14, 3), T(17)], priv: [T(17), T(20)],
+  desk3: [T(20), T(21, 3)], keys: [T(21, 3), T(22)], compose: [T(22), T(23)], end: [T(23), Infinity],
 };
 const inShot = (t, k) => t >= SHOT[k][0] && t < SHOT[k][1];
 
@@ -377,23 +357,22 @@ caption([words('A', [['Drag', 0.0], ['from', 0.48], ['anywhere.', 0.79]])], { x:
 caption([words('A', [['Finder,', 1.73], ['Photos,', 2.42], ['or', 3.23], ['the', 3.31], ['web.', 3.38]])], { x: 960, y: 56, align: 'center', exit: T(6) - 0.1,
   hl: { 'Finder,': [at('A', 1.73), at('A', 2.42)], 'Photos,': [at('A', 2.42), at('A', 3.38)], 'web.': [at('A', 3.38), Infinity] } });
 caption([words(3, [['Drop', 0.02], ['any', 0.39], ['photo', 0.73]]), words(3, [['or', 1.05], ['video', 1.2], ['on', 1.55], ['the', 1.7], ['bubble.', 1.85]])], { x: 140, y: 230, exit: DONE_AT - 0.25, hl: { 'bubble.': [at(3, 1.85), Infinity] } });
-caption([[['Done.', DONE_AT]]], { x: 140, y: 230, exit: T(9, 2) + 0.2, hl: { 'Done.': [DONE_AT, Infinity] } });
-caption([onBeats(T(9, 4), ['Straight', 'off', 'the', 'web.'], BEAT / 2)], { x: 140, y: 80, exit: AT[4] - 0.08, hl: { 'web.': [T(9, 4) + 1.5 * BEAT, Infinity] } });
-caption([words(4, [['Convert', 0.0], ['to', 0.55], ['WebP', 0.84]]), words(4, [['or', 1.41], ['AVIF', 1.6], ['in', 2.28], ['one', 2.45], ['move.', 2.7]])], { x: 140, y: 230, exit: T(12, 2) - 0.1, hl: { 'AVIF': [at(4, 1.6), Infinity] } });
-caption([words(5, [['Lift', 0.01], ['the', 0.29], ['background', 0.41], ['right', 1.05], ['out.', 1.3]])], { x: 580, y: 46, align: 'center', exit: T(15, 3), hl: { 'out.': [at(5, 1.3), Infinity] } });
-caption([words(6, [['Videos', 0.0], ['too,', 0.5]])], { x: 960, y: 200, align: 'center', exit: T(16, 3) - 0.05, hl: { 'Videos': [at(6, 0.0), Infinity] } });
-caption([words(6, [['down', 1.17], ['to', 1.4], ['whatever', 1.55]]), words(6, [['size', 2.0], ['you', 2.3], ['need.', 2.45]])], { x: 140, y: 230, exit: T(17, 4) - 0.1, hl: { 'size': [at(6, 2.0), Infinity] } });
-caption([words(7, [['All', 0.0], ['on', 0.15], ['your', 0.28], ['Mac.', 0.45]]), words(7, [['Nothing', 1.27], ['uploaded.', 1.6]])], { x: 120, y: 360, exit: T(21, 4), hl: { 'Mac.': [at(7, 0.45), Infinity] } });
-caption([words('B', [['No', 0.0], ['internet', 0.2], ['needed.', 0.75]])], { x: 120, y: 560, exit: T(21, 4), hl: { 'internet': [at('B', 0.2), Infinity] }, color: '#FFFFFF' });
+caption([[['Done.', DONE_AT]]], { x: 140, y: 230, exit: T(8, 4) + 0.1, hl: { 'Done.': [DONE_AT, Infinity] } });
+caption([words(4, [['Convert', 0.0], ['to', 0.55], ['WebP', 0.84]]), words(4, [['or', 1.41], ['AVIF', 1.6], ['in', 2.28], ['one', 2.45], ['move.', 2.7]])], { x: 140, y: 230, exit: T(11, 2) - 0.1, hl: { 'AVIF': [at(4, 1.6), Infinity] } });
+caption([words(5, [['Lift', 0.01], ['the', 0.29], ['background', 0.41], ['right', 1.05], ['out.', 1.3]])], { x: 580, y: 46, align: 'center', exit: T(13, 4), hl: { 'out.': [at(5, 1.3), Infinity] } });
+caption([words(6, [['Videos', 0.0], ['too,', 0.5]])], { x: 960, y: 200, align: 'center', exit: T(14, 3) - 0.05, hl: { 'Videos': [at(6, 0.0), Infinity] } });
+caption([words(6, [['down', 1.17], ['to', 1.4], ['whatever', 1.55]]), words(6, [['size', 2.0], ['you', 2.3], ['need.', 2.45]])], { x: 140, y: 230, exit: T(15, 4) - 0.1, hl: { 'size': [at(6, 2.0), Infinity] } });
+caption([words(7, [['All', 0.0], ['on', 0.15], ['your', 0.28], ['Mac.', 0.45]]), words(7, [['Nothing', 1.27], ['uploaded.', 1.6]])], { x: 120, y: 360, exit: T(19, 4), hl: { 'Mac.': [at(7, 0.45), Infinity] } });
+caption([words('B', [['No', 0.0], ['internet', 0.2], ['needed.', 0.75]])], { x: 120, y: 560, exit: T(19, 4), hl: { 'internet': [at('B', 0.2), Infinity] }, color: '#FFFFFF' });
 caption([words(8, [['Batches', 0.0], ['in', 0.58], ['one', 0.75], ['drop.', 1.0]])], { x: 140, y: 230, exit: at(8, 1.35), hl: { 'drop.': [at(8, 1.0), Infinity] } });
-caption([words(8, [['Already', 1.47], ['on', 2.0], ['your', 2.15]]), words(8, [['clipboard.', 2.3]])], { x: 140, y: 230, exit: T(24) - 0.15, hl: { 'clipboard.': [at(8, 2.3), Infinity] } });
+caption([words(8, [['Already', 1.47], ['on', 2.0], ['your', 2.15]]), words(8, [['clipboard.', 2.3]])], { x: 140, y: 230, exit: T(22) - 0.15, hl: { 'clipboard.': [at(8, 2.3), Infinity] } });
 
 // ───────────────────────────── Pixel dissolves ─────────────────────────────
 const PIX = { cols: 24, rows: 14 };
 const pw = W / PIX.cols, ph = H / PIX.rows;
 const pixels = [];
 { const r = rng(7); for (let j = 0; j < PIX.rows; j++) for (let i = 0; i < PIX.cols; i++) pixels.push({ d: el('div', pixLayer, { left: i * pw + 'px', top: j * ph + 'px', width: Math.ceil(pw) + 1 + 'px', height: Math.ceil(ph) + 1 + 'px' }), a: r(), b: r(), i, j }); }
-const DISSOLVES = [{ t: T(3), to: 'light' }, { t: T(19), to: C.ink }, { t: T(22), to: 'light' }];
+const DISSOLVES = [{ t: T(3), to: 'light' }, { t: T(17), to: C.ink }, { t: T(20), to: 'light' }];
 const DUR = 0.22;
 function pixelsAt(t) {
   const d = DISSOLVES.find(x => t >= x.t - DUR && t < x.t + DUR);
@@ -403,7 +382,7 @@ function pixelsAt(t) {
     const on = d.t - DUR + p.a * DUR * 0.85, off = d.t + p.b * DUR * 0.85;
     const vis = t >= on && t < off;
     p.d.style.display = vis ? '' : 'none';
-    if (vis) p.d.style.background = d.to === 'light' ? wallColour((p.i + 0.5) * pw, (p.j + 0.5) * ph) : d.to;
+    if (vis) { if (d.to === 'light') { p.d.style.backgroundImage = `url(${PHOTO.wallL})`; p.d.style.backgroundSize = `${W}px ${H}px`; p.d.style.backgroundPosition = `${-p.i * pw}px ${-p.j * ph}px`; p.d.style.backgroundColor = ''; } else { p.d.style.backgroundImage = 'none'; p.d.style.backgroundColor = d.to; } }
   }
 }
 
@@ -413,7 +392,7 @@ const COLD = [
   { k: 'img', name: 'IMG_2041.HEIC', size: '12.4', unit: 'MB', x: 170, y: 150, w: 400, h: 270, z: 1.0, at: 0.0 },
   { k: 'video', name: 'launch.mov', size: '840', unit: 'MB', x: 1300, y: 110, w: 360, h: 240, z: 0.55, at: T(1, 2) },
   { k: 'hero', name: 'hero.png', size: '6.1', unit: 'MB', x: 250, y: 690, w: 340, h: 230, z: 0.7, at: T(1, 3) },
-  { k: 'statue', name: 'statue.jpg', size: '9.8', unit: 'MB', x: 1260, y: 650, w: 420, h: 280, z: 1.25, at: T(1, 4) },
+  { k: 'statue', name: 'pineapple.jpg', size: '9.8', unit: 'MB', x: 1260, y: 650, w: 420, h: 280, z: 1.25, at: T(1, 4) },
 ].map(c => {
   const g = el('div', cold, { width: c.w + 'px' });
   const im = el('div', g, { width: c.w + 'px', height: c.h + 'px', borderRadius: '18px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }); photo(im, c.k, c.w, c.h);
@@ -432,7 +411,7 @@ const LAP = { x: 760, y: 200, w: 1040, h: 650 };
 const lap = el('div', priv, { left: LAP.x + 'px', top: LAP.y + 'px', width: LAP.w + 'px', height: LAP.h + 80 + 'px' });
 const lapLid = el('div', lap, { width: LAP.w + 'px', height: LAP.h + 'px', borderRadius: '34px', background: '#1A1A1C', boxShadow: '0 0 0 3px #C9CBD0, 0 40px 90px rgba(0,0,0,0.6)' });
 const lapScreen = el('div', lapLid, { left: '20px', top: '20px', width: LAP.w - 40 + 'px', height: LAP.h - 40 + 'px', borderRadius: '16px', overflow: 'hidden' });
-{ const cv = document.createElement('canvas'); cv.width = LAP.w - 40; cv.height = LAP.h - 40; cv.className = 'abs'; cv.getContext('2d').drawImage(WALL_L, 0, 0, cv.width, cv.height); lapScreen.appendChild(cv); }
+wallImg(lapScreen, 'wallL', LAP.w - 40, LAP.h - 40);
 el('div', lapScreen, { width: '100%', height: '44px', background: 'rgba(255,255,255,0.28)' });
 const wifi = svg(lapScreen, 30, 26, `<g fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"><path id="w3" d="M3 9.5a17 17 0 0 1 24 0"/><path id="w2" d="M7 13.5a11 11 0 0 1 16 0"/><path id="w1" d="M11 17.5a5 5 0 0 1 8 0"/></g><circle cx="15" cy="21.5" r="1.8" fill="#FFFFFF"/><path id="wx" d="M5 3 L25 24" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" fill="none" stroke-dasharray="30" stroke-dashoffset="30"/>`, { left: (LAP.w - 40 - 120) + 'px', top: '4px', transform: 'scale(1.4)', transformOrigin: '0 0' });
 const lapBub = el('div', lapScreen, { left: (LAP.w - 40 - 64) + 'px', top: (LAP.h - 40) / 2 - 26 + 'px', width: '52px', height: '52px', borderRadius: '26px', background: 'rgba(255,255,255,0.93)', boxShadow: '0 3px 10px rgba(0,0,0,0.25)' });
@@ -449,7 +428,7 @@ el('div', lap, { left: '-60px', top: LAP.h + 'px', width: LAP.w + 120 + 'px', he
 el('div', lap, { left: LAP.w / 2 - 80 + 'px', top: LAP.h + 'px', width: '160px', height: '8px', borderRadius: '0 0 8px 8px', background: '#9A9DA4' });
 
 // Keycaps, close up (on the dark wallpaper)
-{ const cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.className = 'abs'; cv.getContext('2d').drawImage(WALL_D, 0, 0); keys.appendChild(cv); }
+wallImg(keys, 'wallD');
 function keycap(x, main, sub) {
   const k = el('div', keys, { left: x + 'px', top: '330px', width: '380px', height: '380px', borderRadius: '56px', background: '#18181B', boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.06)' });
   if (sub) { el('div', k, { right: '48px', left: 'auto', top: '40px', color: '#FFFFFF', fontSize: '84px', fontWeight: 400 }, main, 'nowrap'); el('div', k, { left: '44px', top: '280px', color: '#FFFFFF', fontSize: '50px', fontWeight: 450 }, sub, 'nowrap'); }
@@ -496,34 +475,34 @@ for (const s of SCENES) {
   ev(s.done, 'done');
   if (s.result) s.result.sizes.slice(1).forEach(([t]) => ev(t, 'count'));
 }
-ev(T(16, 2), 'click'); ev(T(14, 3) + 0.1, 'fill');
+ev(T(14, 2), 'click'); ev(T(13, 2) + 0.1, 'fill');
 ev(BATCH.enter, 'wake'); ev(BATCH.release, 'drop');
 for (let i = 0; i < 10; i++) ev(BATCH.stream(i), 'count');
 ev(BATCH.done, 'done');
-ev(T(23, 3), 'key'); ev(T(23, 4), 'key'); ev(T(24), 'paste'); ev(T(24, 3), 'click'); ev(T(24, 3) + 0.05, 'swish');
+ev(T(21, 3), 'key'); ev(T(21, 4), 'key'); ev(T(22), 'paste'); ev(T(22, 3), 'click'); ev(T(22, 3) + 0.05, 'swish');
 ev(AT.B + 0.2, 'tick');
-ev(T(25) - 0.2, 'whoosh'); ev(T(25), 'hit');
+ev(T(23) - 0.2, 'whoosh'); ev(T(23), 'hit');
 EVENTS.sort((a, b) => a[0] - b[0]);
 
 // ───────────────────────────── seek(t) ─────────────────────────────
 function seek(t) {
   const deskOn = inShot(t, 'desk1') || inShot(t, 'desk2') || inShot(t, 'desk3');
   // Blur-dissolves around the pills, the keycaps and the composer
-  const deskFade = 1 - life(t, T(16) - 0.12, T(16, 3) - 0.08, [0.25, 1]) - life(t, T(23, 3) - 0.1, Infinity, [0.25, 1]);
+  const deskFade = 1 - life(t, T(14) - 0.12, T(14, 3) - 0.08, [0.25, 1]) - life(t, T(21, 3) - 0.1, Infinity, [0.25, 1]);
   const cam = camAt(t);
 
   // ── Wallpaper (light): behind the desk, the pills and the composer; drifts with the camera, slower
-  const wallOn = deskOn || inShot(t, 'pills') || inShot(t, 'compose') || (t >= T(16) - 0.2 && t < T(16, 3) + 0.2);
+  const wallOn = deskOn || inShot(t, 'pills') || inShot(t, 'compose') || (t >= T(14) - 0.2 && t < T(14, 3) + 0.2);
   if (wallOn) {
     const ws = 1.12 + 0.02 * (cam.S - 3), wx = -(cam.cx - 1100) * 0.08 * cam.S, wy = -(cam.cy - 450) * 0.08 * cam.S;
     put(wallLayer, { x: wx, y: wy, s: ws });
   } else put(wallLayer, { o: 0 });
 
   // ── Desk
-  if (deskOn || (t >= T(16) - 0.2 && t < T(16, 3) + 0.25) || (t >= T(23, 3) - 0.2 && t < T(23, 3) + 0.3)) {
+  if (deskOn || (t >= T(14) - 0.2 && t < T(14, 3) + 0.25) || (t >= T(21, 3) - 0.2 && t < T(21, 3) + 0.3)) {
     show(desk, true);
     desk.style.transform = `translate(${W / 2}px, ${H / 2}px) scale(${cam.S}) translate(${-cam.cx}px, ${-cam.cy}px)`;
-    const fade = clamp(deskFade) * (t >= T(16, 3) && t < T(16, 3) + 0.25 ? step(t - T(16, 3), [0.25, 1]) : 1);
+    const fade = clamp(deskFade) * (t >= T(14, 3) && t < T(14, 3) + 0.25 ? step(t - T(14, 3), [0.25, 1]) : 1);
     desk.style.opacity = fade;
     desk.style.filter = fade < 0.99 ? `blur(${(14 * (1 - fade)).toFixed(1)}px)` : 'none';
     deskScene(t, cam);
@@ -532,19 +511,19 @@ function seek(t) {
   // ── Cold open
   if (t < T(3)) { show(cold, true); coldScene(t); } else show(cold, false);
   // ── Pills
-  if (t >= T(16) - 0.12 && t < T(16, 3) + 0.3) { show(pills, true); pillScene(t); } else show(pills, false);
+  if (t >= T(14) - 0.12 && t < T(14, 3) + 0.3) { show(pills, true); pillScene(t); } else show(pills, false);
   // ── Private
-  if (t >= T(19) && t < T(22)) { show(priv, true); privScene(t); } else show(priv, false);
+  if (t >= T(17) && t < T(20)) { show(priv, true); privScene(t); } else show(priv, false);
   // ── Keycaps, composer, end
-  if (t >= T(23, 3) - 0.12 && t < T(24) + 0.3) { show(keys, true); keyScene(t); } else show(keys, false);
-  if (t >= T(24) - 0.1 && t < T(25) + 0.4) { show(compose, true); composeScene(t); } else show(compose, false);
-  if (t >= T(25) - 0.15) { show(endL, true); endScene(t); } else show(endL, false);
+  if (t >= T(21, 3) - 0.12 && t < T(22) + 0.3) { show(keys, true); keyScene(t); } else show(keys, false);
+  if (t >= T(22) - 0.1 && t < T(23) + 0.4) { show(compose, true); composeScene(t); } else show(compose, false);
+  if (t >= T(23) - 0.15) { show(endL, true); endScene(t); } else show(endL, false);
   // Screen cursor (pills only)
-  if (t >= T(16) && t < T(16, 3)) {
-    const p = inOut((t - T(16)) / (T(16, 2) - T(16) - 0.05));
+  if (t >= T(14) && t < T(14, 3)) {
+    const p = inOut((t - T(14)) / (T(14, 2) - T(14) - 0.05));
     const x = lerp(1560, 1320, p), y = lerp(960, 600, p);
-    const pr = t >= T(16, 2) && t < T(16, 2) + 0.12;
-    put(scrCursor, { x, y, s: pr ? 0.9 : 1, ox: 0.1, oy: 0.05, o: life(t, T(16), T(16, 3) - 0.1, [0.2, 1]) });
+    const pr = t >= T(14, 2) && t < T(14, 2) + 0.12;
+    put(scrCursor, { x, y, s: pr ? 0.9 : 1, ox: 0.1, oy: 0.05, o: life(t, T(14), T(14, 3) - 0.1, [0.2, 1]) });
   } else put(scrCursor, { o: 0 });
 
   captionsAt(t);
@@ -560,30 +539,30 @@ function deskScene(t, cam) {
   WINDOWS.forEach((w, i) => {
     let o, blur;
     if (i === 2) { // the web window comes back for Convert
-      o = life(t, T(4) + 0.47 + i * 0.235, T(6) + 0.1, [0.45, 1], [0.35, 1]) + life(t, T(9, 3), T(10, 4) - 0.1, [0.5, 1], [0.35, 1]);
+      o = life(t, T(4) + 0.47 + i * 0.235, T(6) + 0.1, [0.45, 1], [0.35, 1]) + life(t, T(8, 4) - 0.1, T(9) + 0.3, [0.5, 1], [0.3, 1]);
     } else if (i === 1) o = life(t, T(4) + 0.47 + i * 0.235, T(6, 2) + 0.1, [0.45, 1], [0.35, 1]);
     else o = life(t, T(4) + 0.47, T(6), [0.45, 1], [0.35, 1]);
     const focused = t < focusOn[0] ? 0.4 : (step(t - focusOn[i], [0.25, 1]) - (focusOn[i + 1] ? step(t - focusOn[i + 1], [0.25, 1]) : 0));
-    const focus = (i === 1 && t >= T(6) - 0.2 && t < T(7)) || (i === 2 && t >= T(9, 3)) ? 1 : clamp(focused);
+    const focus = (i === 1 && t >= T(6) - 0.2 && t < T(7)) || (i === 2 && t >= T(8, 4) - 0.1) ? 1 : clamp(focused);
     blur = lerp(9, 0, focus);
     const lift = (i === 0 && t >= focusOn[0] && t < focusOn[1] + 0.3) || (i === 1 && t >= focusOn[1] && t < T(6)) || (i === 2 && t >= focusOn[2] && t < T(6));
     put(w.g, { y: 14 * (1 - clamp(o)), o: clamp(o), blur: dof(blur + 12 * (1 - clamp(o))), s: 1 + 0.02 * focus });
     put(w.ring, { o: clamp(focus) * (t < T(6) ? 1 : 0) * clamp(o) });
     if (i === 0) finderLift.forEach((e, k) => put(e, { y: k === 1 ? -5 * (lift ? step(t - focusOn[0], SPRING) : 0) : 0, o: k === 0 ? (lift ? 1 : 0) : 1 }));
     if (i === 1) put(cells[0], { x: cellPos(0).x, y: cellPos(0).y - 5 * (lift ? step(t - focusOn[1], SPRING) : 0), o: t >= T(6) && t < T(8) ? 0.25 : 1 });
-    if (i === 2) put(webImg, { x: 24, y: 52 - 5 * (lift ? step(t - focusOn[2], SPRING) : 0), o: t >= T(10, 2) && t < T(12) ? 0.25 : 1 });
+    if (i === 2) put(webImg, { x: 24, y: 52 - 5 * (lift ? step(t - focusOn[2], SPRING) : 0), o: t >= T(9) + 0.05 && t < T(11) ? 0.25 : 1 });
   });
   cells[0].style.left = '0px'; cells[0].style.top = '0px'; webImg.style.left = '0px'; webImg.style.top = '0px';
 
   // Remove BG preview panel
   {
-    const p = life(t, T(13) + 0.1, T(16), [0.5, 0.9], [0.35, 1]);
+    const p = life(t, T(12) + 0.1, T(14) - 0.1, [0.5, 0.9], [0.35, 1]);
     put(pv, { o: clamp(p), s: lerp(0.92, 1, clamp(p)), y: 20 * (1 - clamp(p)) });
     const lift = step(t - (AT[5] + 1.0), [0.6, 1]);
     put(pvPhoto, { o: 1 - lift });
-    const fillR = 700 * step(t - (T(14, 3) + 0.05), [0.55, 1]);
+    const fillR = 700 * step(t - (T(13, 2) + 0.05), [0.55, 1]);
     pvFill.style.clipPath = `circle(${fillR.toFixed(1)}px at ${PV.w + 30}px ${PV.h / 2}px)`;
-    put(pvFill, { o: t >= T(14, 3) ? 1 : 0 });
+    put(pvFill, { o: t >= T(13, 2) ? 1 : 0 });
     put(pvCut, { y: -10 * lift, s: 1 + 0.02 * lift });
     pvCut.style.filter = lift > 0.02 ? `drop-shadow(0 ${(14 * lift).toFixed(1)}px ${(18 * lift).toFixed(1)}px rgba(0,0,0,${(0.35 * lift).toFixed(2)}))` : 'none';
   }
@@ -648,7 +627,7 @@ function deskScene(t, cam) {
   // Batch: a stack of ten on the cursor, then one by one into the bubble
   {
     const c = cursorAt(t);
-    const held = t >= T(22) - 0.05 && t < BATCH.release;
+    const held = t >= T(20) - 0.05 && t < BATCH.release;
     put(stack, { x: c.x - 60, y: c.y - 46, s: held ? 1 - 0.3 * step(t - BATCH.enter, SPRING) : 1, o: held ? 1 : 0 });
     batchFlyers.forEach((f, i) => {
       const t0 = BATCH.stream(i);
@@ -665,7 +644,7 @@ function deskScene(t, cam) {
   // Cursor
   {
     const c = cursorAt(t);
-    const vis = t >= T(5, 3) && !(t >= T(18, 3) + 0.3 && t < T(22) - 0.05);
+    const vis = t >= T(5, 3) && !(t >= T(16, 3) + 0.3 && t < T(20) - 0.05);
     put(cursor, { x: c.x - 3, y: c.y - 2, s: c.pressed ? 0.9 : 1, o: vis ? life(t, T(5, 3), Infinity, [0.25, 1]) : 0, ox: 0.1, oy: 0.05 });
   }
 }
@@ -777,22 +756,22 @@ function coldScene(t) {
 
 // ── Photos / Videos pills
 function pillScene(t) {
-  const inP = life(t, T(16) - 0.1, T(16, 3) - 0.05, [0.35, 1], [0.3, 1]);
-  const zoom = step(t - (T(16, 3) - 0.12), [0.3, 1]);
-  put(pills, { o: clamp(inP), s: lerp(0.94, 1, clamp(step(t - T(16), [0.4, 1]))) * (1 + 1.4 * zoom), blur: 10 * (1 - clamp(inP)) + 12 * zoom });
-  const L = track(t, 18, [[T(16, 2), 658]], [0.28, 0.85]), R = track(t, 622, [[T(16, 2), 1262]], [0.42, 0.9]);
+  const inP = life(t, T(14) - 0.1, T(14, 3) - 0.05, [0.35, 1], [0.3, 1]);
+  const zoom = step(t - (T(14, 3) - 0.12), [0.3, 1]);
+  put(pills, { o: clamp(inP), s: lerp(0.94, 1, clamp(step(t - T(14), [0.4, 1]))) * (1 + 1.4 * zoom), blur: 10 * (1 - clamp(inP)) + 12 * zoom });
+  const L = track(t, 18, [[T(14, 2), 658]], [0.28, 0.85]), R = track(t, 622, [[T(14, 2), 1262]], [0.42, 0.9]);
   pillSel.style.width = (R - L) + 'px'; put(pillSel, { x: L });
-  const v = step(t - T(16, 2), [0.25, 1]);
+  const v = step(t - T(14, 2), [0.25, 1]);
   pillWords[0].style.color = mix('#FFFFFF', '#0E0E0F', v); pillWords[1].style.color = mix('#0E0E0F', '#FFFFFF', v);
 }
 
 // ── Private: the laptop
 function privScene(t) {
-  const pull = step(t - T(19), [0.9, 1]);
+  const pull = step(t - T(17), [0.9, 1]);
   const s = lerp(2.6, 1, pull);
   put(lap, { s, ox: 0.6, oy: 0.4, x: lerp(-260, 0, pull) });
   LAPF.forEach((f, i) => {
-    const tc = T(19, 3) + i * BEAT;
+    const tc = T(17, 3) + i * BEAT;
     const k = step(t - tc, [0.25, 1]);
     put(f.a, { o: 1 - k, y: -8 * k }); put(f.b, { o: k, y: 8 * (1 - k) });
     put(f.g, { x: 0, y: 0, o: 1 });
@@ -805,31 +784,31 @@ function privScene(t) {
 
 // ── Keycaps
 function keyScene(t) {
-  const inK = life(t, T(23, 3) - 0.1, T(24) - 0.05, [0.3, 1], [0.3, 1]);
-  put(keys, { o: clamp(inK), blur: 12 * (1 - clamp(inK)), s: lerp(1.05, 1, clamp(step(t - T(23, 3), [0.6, 1]))) });
+  const inK = life(t, T(21, 3) - 0.1, T(22) - 0.05, [0.3, 1], [0.3, 1]);
+  put(keys, { o: clamp(inK), blur: 12 * (1 - clamp(inK)), s: lerp(1.05, 1, clamp(step(t - T(21, 3), [0.6, 1]))) });
   const press = (tk, k) => { const d = step(t - tk, [0.1, 1]) - step(t - tk - 0.32, [0.15, 1]); put(k, { y: 12 * d, o: 1 }); k.style.boxShadow = `0 ${18 - 14 * d}px 0 #050506, 0 ${30 - 10 * d}px 60px rgba(0,0,0,0.55), inset 0 0 0 2px rgba(255,255,255,0.06)`; };
-  press(T(23, 3), kCmd); press(T(23, 4), kV);
+  press(T(21, 3), kCmd); press(T(21, 4), kV);
   kCmd.style.left = '820px'; kV.style.left = '1270px';
 }
 
 // ── Composer
 function composeScene(t) {
-  const inC = life(t, T(24) - 0.1, Infinity, [0.4, 0.9]);
-  const zoom = step(t - (T(25) - 0.12), [0.35, 1]);
+  const inC = life(t, T(22) - 0.1, Infinity, [0.4, 0.9]);
+  const zoom = step(t - (T(23) - 0.12), [0.35, 1]);
   put(compose, { o: clamp(inC) * (1 - zoom), y: 30 * (1 - clamp(inC)), s: 1 + 2.2 * zoom, blur: 10 * (1 - clamp(inC)) + 20 * zoom, ox: 0.66, oy: 0.4 });
-  const paste = step(t - T(24), SPRING);
-  put(pasted, { s: lerp(0.5, 1, paste), o: t >= T(24) && t < T(24, 3) ? clamp(paste * 2) : 0, ox: 0, oy: 0.5 });
-  put(placeholder, { x: (t >= T(24) && t < T(24, 3)) ? 230 * paste : 0, o: 1 });
-  const sendP = step(t - T(24, 3), [0.4, 0.85]);
-  put(sent, { o: t >= T(24, 3) ? clamp(sendP * 1.5) : 0, y: 120 * (1 - sendP), s: lerp(0.4, 1, sendP), ox: 0.1, oy: 1 });
-  put(sendBtn, { s: 1 - 0.1 * (step(t - T(24, 3), [0.1, 1]) - step(t - T(24, 3) - 0.15, [0.2, 1])) });
+  const paste = step(t - T(22), SPRING);
+  put(pasted, { s: lerp(0.5, 1, paste), o: t >= T(22) && t < T(22, 3) ? clamp(paste * 2) : 0, ox: 0, oy: 0.5 });
+  put(placeholder, { x: (t >= T(22) && t < T(22, 3)) ? 230 * paste : 0, o: 1 });
+  const sendP = step(t - T(22, 3), [0.4, 0.85]);
+  put(sent, { o: t >= T(22, 3) ? clamp(sendP * 1.5) : 0, y: 120 * (1 - sendP), s: lerp(0.4, 1, sendP), ox: 0.1, oy: 1 });
+  put(sendBtn, { s: 1 - 0.1 * (step(t - T(22, 3), [0.1, 1]) - step(t - T(22, 3) - 0.15, [0.2, 1])) });
 }
 
 // ── End card
 function endScene(t) {
-  const bg = step(t - (T(25) - 0.15), [0.3, 1]);
+  const bg = step(t - (T(23) - 0.15), [0.3, 1]);
   put(endL, { o: bg });
-  const lp = step(t - T(25), [0.7, 1]);
+  const lp = step(t - T(23), [0.7, 1]);
   put(endLogo, { o: lp, s: lerp(0.86, 1, lp), blur: 16 * (1 - lp) });
   put(endGlow, { o: lp * (0.85 + 0.15 * Math.sin(Math.min(t, PICTURE) * 1.4)), s: lerp(0.7, 1, lp) });
   const tp = step(t - (AT[9] + 0.02), [0.5, 1]);
