@@ -14,7 +14,7 @@
 - [x] **Owner's feedback on the first cut (2026-11-03):** "this is cool".
   1. **"At 0:14 after Done there's a big gap to the next voice, and a mismatch between video and voice":** 4.3 s with no voice, and a caption ("Straight off the web.") that Emma never says. Fixed: Convert moved up a bar and a beat (her line now 1.9 s after "Done."), the held bar after Remove BG came out (the film is 24 bars, 45 s), and **no caption appears without her voice** any more. The longest gap between lines is now 2.8 s.
   2. **"Add real images; I don't like the background illustration":** the owner said to use any Unsplash or Pexels photos, "but not the most common, pick a non-common image". Unsplash's search sits behind a bot check (not bypassed); Pexels pages were found by web search and the files fetched from `images.pexels.com`. Picked: misty blue-hour ridges (the desktop background, replacing the drawn waves), a dog on a beach at dusk, a rainy street at night, sea cliffs from above, and a pineapple on navy (the Remove BG subject, renamed `pineapple.jpg`; the statue is gone). **`film/prepare-images-v4.py`** downloads and prepares them (crops, the background's grade, and the pineapple's cut-out keyed by hue, since there's no Apple Vision here). Pexels licence: free commercial use, no credit needed; page links are in the script.
-- [ ] **Second render** (real photos, new timing): in progress.
+- [x] **Second render** (2026-11-03): `droptimize-launch-v4b.mp4`, 48.0 s (45 s + 3 s still), 1920×1080 at 60 fps, 2,880 frames, 23.3 MB, −14.2 LUFS, −1.3 dBTP; checked on 20 frames of the final file and the soundtrack rebuilt byte-identical from the final cue list. Sent to the owner. Not in git.
 - [ ] **Owner's feedback** on the second cut.
 
 ## Still waiting on the owner
