@@ -2,9 +2,9 @@
 
     python3 prepare-images-v4.py
 
-All five are from Pexels (free for commercial use, no credit required; owner: "use any Unsplash or Pexels,
-but not the most common images"). Pages:
-  wall   7677713   https://www.pexels.com/photo/a-mountain-range-during-blue-hour-7677713/   (the desktop background)
+All four are from Pexels (free for commercial use, no credit required; owner: "use any Unsplash or Pexels,
+but not the most common images"). The desktop background is the drawn gradient in v4.html (the owner tried a
+mountain photo, Pexels 7677713, and went back to the gradient, 2026-11-03). Pages:
   img    7323809   https://www.pexels.com/photo/wet-golden-retriever-dog-walking-along-the-beach-7323809/   (IMG_2041.HEIC)
   hero   30315841  https://www.pexels.com/photo/moody-urban-street-at-night-with-rainfall-30315841/   (hero.png, the web page image)
   video  18166239  https://www.pexels.com/photo/aerial-view-of-cliffs-and-beach-on-the-ocean-coast-18166239/   (launch.mov)
@@ -18,7 +18,7 @@ from PIL import Image, ImageEnhance, ImageFilter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.environ.get('OUT') or os.path.join(HERE, 'images')
-PHOTOS = {'wall': 7677713, 'img': 7323809, 'hero': 30315841, 'video': 18166239, 'pine': 947879}
+PHOTOS = {'img': 7323809, 'hero': 30315841, 'video': 18166239, 'pine': 947879}
 
 
 def fetch(key, pid):
@@ -33,15 +33,6 @@ def crop169(im, cy=0.5, out=(1672, 941)):
     if th > h: th, tw = h, int(h * 16 / 9)
     x, y = (w - tw) // 2, int((h - th) * cy)
     return im.crop((x, y, x + tw, y + th)).resize(out, Image.LANCZOS)
-
-
-def wallpaper(im):
-    """Graded darker toward the top, where the white captions sit; a soft version and a dark one."""
-    a = np.asarray(crop169(im, 0.45, (1920, 1080))).astype(np.float32) / 255
-    a *= (0.62 + 0.18 * np.linspace(0, 1, a.shape[0]))[:, None, None]
-    light = ImageEnhance.Color(Image.fromarray((np.clip(a, 0, 1) * 255).astype(np.uint8))).enhance(1.12).filter(ImageFilter.GaussianBlur(4))
-    light.save(os.path.join(OUT, 'wall-light.jpg'), quality=93)
-    ImageEnhance.Brightness(light).enhance(0.36).filter(ImageFilter.GaussianBlur(10)).save(os.path.join(OUT, 'wall-dark.jpg'), quality=93)
 
 
 def flood(mask_open, seeds):
@@ -87,7 +78,6 @@ def cutout(pine):
 def main():
     os.makedirs(OUT, exist_ok=True)
     src = {k: fetch(k, pid) for k, pid in PHOTOS.items()}
-    wallpaper(src['wall'])
     crop169(src['img']).save(os.path.join(OUT, 'photo.webp'), quality=92)
     crop169(src['hero'], 0.62).save(os.path.join(OUT, 'hero.webp'), quality=92)
     crop169(src['video']).save(os.path.join(OUT, 'video.webp'), quality=92)

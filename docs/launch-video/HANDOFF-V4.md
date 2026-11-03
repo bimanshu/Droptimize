@@ -24,7 +24,8 @@
   | 4 | Rising Forest, Diego Nava (471) | 123.94 | 41.304 | uplifting house; a breakdown, then the drop on the reveal |
   | 5 | Minimal Techno 01, A. M. (162) | 127.98 | 41.460 | driving tech house; steady |
   The earlier track was Minimal Emotion (160), 128.00, 26.681. Downloads: `https://assets.mixkit.co/music/<id>/<id>.mp3`.
-- [ ] **Owner's feedback** on the second cut.
+- [ ] **Gradient back (owner, 2026-11-03):** "I liked the previous gradient bg, can we move back to that bg, nothing else should change". Done in `v4.html` (only the background lines changed; the files' photos, timing, Digital Clouds and the voice are the same); render `droptimize-launch-v4d.mp4` in progress.
+- [ ] **Owner's feedback** on the gradient version.
 
 ## Still waiting on the owner
 1. **Push v3 from the office Mac** (it isn't on GitHub: `encode.swift`, `cutout.swift`, the v3 `index.html` and `HANDOFF-VIDEO.md`). v4 doesn't need it.
@@ -32,7 +33,7 @@
 
 ## How v4 is built (from `docs/launch-video/film/`)
 ```bash
-python3 prepare-images-v4.py                               # the five photos into images/ (git-ignored)
+python3 prepare-images-v4.py                               # the four photos into images/ (git-ignored)
 curl -fsSL -o 175.mp3 https://assets.mixkit.co/music/175/175.mp3
 node render-v4.js stills stills/ 3.8 13.3 24.6              # check moments (no times: one per beat)
 node render-v4.js events events-v4.json
@@ -44,7 +45,7 @@ ffmpeg -i video-v4.mp4 -i mix-v4.wav -map 0:v -map 1:a -c:v copy -c:a aac -b:a 2
 
 ## Design notes (v4)
 - **Desk:** a Mac desktop in points (1440 × 900); the camera maps points to pixels (`CAMK`: time, scale, centre, springs; scale and pan can have different springs so the bubble stays in frame). The bubble is docked at (1404, 450); menu geometry and option labels are the app's own (`ActionOptions.swift`: 100K…2M, WebP/AVIF/JPG/PNG/HEIC, checkerboard/white/black/eyedropper, 10M…100M; video segments Convert/Compress/Resize/Mute).
-- **Screen scenes:** cold open, Photos/Videos pills, the laptop, the keycaps, the composer and the end card are drawn in pixels; pixel dissolves at 3.75, 30.0 and 35.625 s (the squares show pieces of the background photo); blur dissolves and zoom-throughs elsewhere.
+- **Screen scenes:** cold open, Photos/Videos pills, the laptop, the keycaps, the composer and the end card are drawn in pixels; pixel dissolves at 3.75, 30.0 and 35.625 s (the squares take the gradient's colours); blur dissolves and zoom-throughs elsewhere.
 - **Captions:** Geist 600, 64 px, word by word from Emma's measured word onsets (`words(...)` in `v4.html`), one word in a mint box; menu scenes put them high on the left, clear of the card.
-- **Wallpaper:** a real photo (Pexels 7677713), graded darker at the top so white captions read, softened; a dark version for the opening and the keycaps. Never Apple's.
+- **Wallpaper:** the drawn gradient (canvas waves in blue, teal and a touch of mint, blurred), a dark version for the opening and the keycaps; never Apple's. The owner tried a landscape photo in the second cut and asked for the gradient back (2026-11-03: "I liked the previous gradient bg… nothing else should change").
 - **Glow:** only the first result card's edge and the end-card logo.

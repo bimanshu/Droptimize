@@ -20,7 +20,7 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; backgro
 .num { font-variant-numeric: tabular-nums; }
 img.abs { display: block; object-fit: cover; }
 /* Captions: one size, one weight. Words arrive one at a time; one word sits in a mint box. */
-.cap { font-size: 64px; font-weight: 600; letter-spacing: -0.012em; line-height: 1.16; color: #FFFFFF; white-space: nowrap; text-shadow: 0 2px 28px rgba(4,16,48,0.55), 0 1px 3px rgba(4,16,48,0.25); }
+.cap { font-size: 64px; font-weight: 600; letter-spacing: -0.012em; line-height: 1.16; color: #FFFFFF; white-space: nowrap; text-shadow: 0 2px 28px rgba(4,16,48,0.38); }
 .cap .w[style*="rgba(61"] { text-shadow: none; }
 .cap .w { display: inline-block; white-space: pre; border-radius: 14px; padding: 0 12px; margin: 0 -12px; }
 /* Screen-space type used outside the captions */
@@ -119,22 +119,42 @@ function icon(parent, name, size, color, style = {}) { return svg(parent, size, 
 
 // ───────────────────────────── Photos ─────────────────────────────
 // The owner's photos go in images/ (git-ignored). Same names as v3, plus video.webp for launch.mov.
-const PHOTO = { img: 'images/photo.webp', hero: 'images/hero.webp', statue: 'images/product.webp', cutout: 'images/product-cutout.png', video: 'images/video.webp', wallL: 'images/wall-light.jpg', wallD: 'images/wall-dark.jpg' };
+const PHOTO = { img: 'images/photo.webp', hero: 'images/hero.webp', statue: 'images/product.webp', cutout: 'images/product-cutout.png', video: 'images/video.webp' };
 const IMGS = [];
 function photo(parent, key, w, h, style = {}, pos = '50% 50%') {
   const i = el('img', parent, Object.assign({ width: w + 'px', height: h + 'px', objectPosition: pos }, style));
   i.src = PHOTO[key]; i.draggable = false; IMGS.push(i); return i;
 }
 
-// ───────────────────────────── Wallpaper: a real photo (Pexels 7677713, misty ridges at blue hour), graded and softened ─────────────────────────────
-const wallImg = (parent, key, w = W, h = H) => photo(parent, key, w, h);
+// ───────────────────────────── Wallpaper (ours, never Apple's): soft waves, heavily blurred ─────────────────────────────
+function wallpaper(dark) {
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  const base = g.createLinearGradient(0, 0, W, H);
+  base.addColorStop(0, dark ? '#0A1638' : '#2F6BD0'); base.addColorStop(0.55, dark ? '#071029' : '#2457B8'); base.addColorStop(1, dark ? '#040914' : '#163A86');
+  g.fillStyle = base; g.fillRect(0, 0, W, H);
+  g.filter = 'blur(70px)';
+  const band = (pts, width, color, alpha) => {
+    g.globalAlpha = alpha; g.strokeStyle = color; g.lineWidth = width; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(pts[0], pts[1]); g.bezierCurveTo(pts[2], pts[3], pts[4], pts[5], pts[6], pts[7]); g.stroke();
+  };
+  band([-200, 820, 500, 520, 1100, 1100, 2200, 600], 260, dark ? '#0E3A5C' : '#2BB5C0', 0.8);
+  band([-300, 300, 600, 700, 1300, 100, 2300, 380], 180, dark ? '#16306E' : '#CFE6F7', 0.55);
+  band([200, 1200, 800, 760, 1400, 880, 2100, 300], 140, dark ? '#0F4A48' : '#3DDC97', dark ? 0.35 : 0.42);
+  band([-100, 80, 500, 260, 1200, -100, 2100, 120], 220, dark ? '#0A1E4A' : '#7FB2F0', 0.6);
+  g.filter = 'none'; g.globalAlpha = 1;
+  return cv;
+}
+const WALL_L = wallpaper(false), WALL_D = wallpaper(true);
+const wallCtxL = WALL_L.getContext('2d');
+function wallColour(x, y) { const d = wallCtxL.getImageData(clamp(Math.round(x), 0, W - 1), clamp(Math.round(y), 0, H - 1), 1, 1).data; return `rgb(${d[0]},${d[1]},${d[2]})`; }
 
 // ───────────────────────────── Layers ─────────────────────────────
 const wallLayer = el('div', stage, { width: W + 'px', height: H + 'px', willChange: 'transform' });
-const WALL_L = wallImg(wallLayer, 'wallL');
+WALL_L.className = 'abs'; wallLayer.appendChild(WALL_L);
 const desk = el('div', stage, { width: '1440px', height: '900px', transformOrigin: '0 0' });
 const cold = el('div', stage, { width: W + 'px', height: H + 'px', overflow: 'hidden' });
-const WALL_D = wallImg(cold, 'wallD');
+WALL_D.className = 'abs'; cold.appendChild(WALL_D);
 const pills = el('div', stage, { width: W + 'px', height: H + 'px' });
 const priv = el('div', stage, { width: W + 'px', height: H + 'px', background: C.ink, overflow: 'hidden' });
 const keys = el('div', stage, { width: W + 'px', height: H + 'px', overflow: 'hidden' });
@@ -382,7 +402,7 @@ function pixelsAt(t) {
     const on = d.t - DUR + p.a * DUR * 0.85, off = d.t + p.b * DUR * 0.85;
     const vis = t >= on && t < off;
     p.d.style.display = vis ? '' : 'none';
-    if (vis) { if (d.to === 'light') { p.d.style.backgroundImage = `url(${PHOTO.wallL})`; p.d.style.backgroundSize = `${W}px ${H}px`; p.d.style.backgroundPosition = `${-p.i * pw}px ${-p.j * ph}px`; p.d.style.backgroundColor = ''; } else { p.d.style.backgroundImage = 'none'; p.d.style.backgroundColor = d.to; } }
+    if (vis) p.d.style.background = d.to === 'light' ? wallColour((p.i + 0.5) * pw, (p.j + 0.5) * ph) : d.to;
   }
 }
 
@@ -411,7 +431,7 @@ const LAP = { x: 760, y: 200, w: 1040, h: 650 };
 const lap = el('div', priv, { left: LAP.x + 'px', top: LAP.y + 'px', width: LAP.w + 'px', height: LAP.h + 80 + 'px' });
 const lapLid = el('div', lap, { width: LAP.w + 'px', height: LAP.h + 'px', borderRadius: '34px', background: '#1A1A1C', boxShadow: '0 0 0 3px #C9CBD0, 0 40px 90px rgba(0,0,0,0.6)' });
 const lapScreen = el('div', lapLid, { left: '20px', top: '20px', width: LAP.w - 40 + 'px', height: LAP.h - 40 + 'px', borderRadius: '16px', overflow: 'hidden' });
-wallImg(lapScreen, 'wallL', LAP.w - 40, LAP.h - 40);
+{ const cv = document.createElement('canvas'); cv.width = LAP.w - 40; cv.height = LAP.h - 40; cv.className = 'abs'; cv.getContext('2d').drawImage(WALL_L, 0, 0, cv.width, cv.height); lapScreen.appendChild(cv); }
 el('div', lapScreen, { width: '100%', height: '44px', background: 'rgba(255,255,255,0.28)' });
 const wifi = svg(lapScreen, 30, 26, `<g fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"><path id="w3" d="M3 9.5a17 17 0 0 1 24 0"/><path id="w2" d="M7 13.5a11 11 0 0 1 16 0"/><path id="w1" d="M11 17.5a5 5 0 0 1 8 0"/></g><circle cx="15" cy="21.5" r="1.8" fill="#FFFFFF"/><path id="wx" d="M5 3 L25 24" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" fill="none" stroke-dasharray="30" stroke-dashoffset="30"/>`, { left: (LAP.w - 40 - 120) + 'px', top: '4px', transform: 'scale(1.4)', transformOrigin: '0 0' });
 const lapBub = el('div', lapScreen, { left: (LAP.w - 40 - 64) + 'px', top: (LAP.h - 40) / 2 - 26 + 'px', width: '52px', height: '52px', borderRadius: '26px', background: 'rgba(255,255,255,0.93)', boxShadow: '0 3px 10px rgba(0,0,0,0.25)' });
@@ -428,7 +448,7 @@ el('div', lap, { left: '-60px', top: LAP.h + 'px', width: LAP.w + 120 + 'px', he
 el('div', lap, { left: LAP.w / 2 - 80 + 'px', top: LAP.h + 'px', width: '160px', height: '8px', borderRadius: '0 0 8px 8px', background: '#9A9DA4' });
 
 // Keycaps, close up (on the dark wallpaper)
-wallImg(keys, 'wallD');
+{ const cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.className = 'abs'; cv.getContext('2d').drawImage(WALL_D, 0, 0); keys.appendChild(cv); }
 function keycap(x, main, sub) {
   const k = el('div', keys, { left: x + 'px', top: '330px', width: '380px', height: '380px', borderRadius: '56px', background: '#18181B', boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.06)' });
   if (sub) { el('div', k, { right: '48px', left: 'auto', top: '40px', color: '#FFFFFF', fontSize: '84px', fontWeight: 400 }, main, 'nowrap'); el('div', k, { left: '44px', top: '280px', color: '#FFFFFF', fontSize: '50px', fontWeight: 450 }, sub, 'nowrap'); }

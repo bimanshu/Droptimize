@@ -354,6 +354,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-03: Launch film v4: back to the drawn gradient background (owner preferred it to the landscape photo); the files keep their real photos.
 - 2026-11-03: Launch film v4's music is now Mixkit "Digital Clouds" (owner's pick of five previewed in the film; `mix-v4.py` takes any track's tempo and start point, so trying music needs no re-render).
 - 2026-11-03: Launch film v4, second cut: the owner's notes on the first ("a big gap after Done", a caption Emma never says, "I don't like the background illustration") fixed: 45 s with no long gaps and no unspoken captions; real Pexels photos (less common picks), including a landscape as the desktop background and a pineapple cut out for Remove BG.
 - 2026-11-03: Launch film v4 (owner: make it like Shotbase's product film): macro camera over the real UI with depth of field, captions timed to Emma's words, pixel dissolves, Mixkit's "Minimal Emotion" at 128 BPM, 48.75 s plus a 3 s still end card. Two new lines from Emma (drag from anywhere; no internet needed; one take, 80 credits). Built as new files beside v1–v3 (`docs/launch-video/film/v4.html`, `render-v4.js`, `mix-v4.py`); handoff in `docs/launch-video/HANDOFF-V4.md`. Uses stand-in photos until the owner sends theirs.
