@@ -20,12 +20,14 @@ if (mode === 'encode') {             // no browser needed
   ff.on('close', c => process.exit(c));
   return;
 }
-const page_url = 'file://' + path.join(__dirname, 'v4.html');
+const REEL = process.env.REEL === '1';            // REEL=1: the vertical reel (v4-reel.html, made by make-reel-v4.py)
+const page_url = 'file://' + path.join(__dirname, REEL ? 'v4-reel.html' : 'v4.html');
+const VIEW = REEL ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 };
 
 (async () => {
   if (mode === 'encode') return;
   const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
+  const page = await browser.newPage({ viewport: VIEW, deviceScaleFactor: 1 });
   await page.goto(page_url);
   await page.evaluate(() => window.ready);
   const END = await page.evaluate(() => window.END);
@@ -44,7 +46,7 @@ const page_url = 'file://' + path.join(__dirname, 'v4.html');
     fs.mkdirSync(out, { recursive: true });
     const t0 = Date.now(); let done = 0;
     const work = async (k) => {
-      const p = k === 0 ? page : await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
+      const p = k === 0 ? page : await browser.newPage({ viewport: VIEW, deviceScaleFactor: 1 });
       if (k) { await p.goto(page_url); await p.evaluate(() => window.ready); }
       for (let i = k; i < frames; i += pages) {
         const f = path.join(out, `f${String(i).padStart(6, '0')}.jpg`);
