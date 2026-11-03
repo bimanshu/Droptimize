@@ -354,6 +354,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-03: Launch film v4 approved by the owner; a 1080 × 1920 reel version generated from it (`make-reel-v4.py`), and captions kept clear of every element (owner saw text colliding; `audit-captions-v4.js` now reports none).
 - 2026-11-03: Launch film v4: back to the drawn gradient background (owner preferred it to the landscape photo); the files keep their real photos.
 - 2026-11-03: Launch film v4's music is now Mixkit "Digital Clouds" (owner's pick of five previewed in the film; `mix-v4.py` takes any track's tempo and start point, so trying music needs no re-render).
 - 2026-11-03: Launch film v4, second cut: the owner's notes on the first ("a big gap after Done", a caption Emma never says, "I don't like the background illustration") fixed: 45 s with no long gaps and no unspoken captions; real Pexels photos (less common picks), including a landscape as the desktop background and a pineapple cut out for Remove BG.

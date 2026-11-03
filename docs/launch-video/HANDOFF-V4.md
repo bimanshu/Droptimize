@@ -25,7 +25,11 @@
   | 5 | Minimal Techno 01, A. M. (162) | 127.98 | 41.460 | driving tech house; steady |
   The earlier track was Minimal Emotion (160), 128.00, 26.681. Downloads: `https://assets.mixkit.co/music/<id>/<id>.mp3`.
 - [ ] **Gradient back (owner, 2026-11-03):** "I liked the previous gradient bg, can we move back to that bg, nothing else should change". Done in `v4.html` (only the background lines changed; the files' photos, timing, Digital Clouds and the voice are the same); rendered and sent: `droptimize-launch-v4d.mp4` (1080p60, 48 s, 23.6 MB, −14.2 LUFS, −1.4 dBTP; 16 frames checked). **This is the current cut.** Not in git; rebuild with the commands below (`prepare-images-v4.py`, `mix-v4.py` with its default Digital Clouds, `render-v4.js frames` / `encode`, then the mux).
-- [ ] **Owner's feedback** on the gradient version.
+- [x] **Owner's OK on the gradient version** ("Yup this works"), then two asks (2026-11-03):
+  1. **"The same in a reel format":** `film/v4-reel.html`, 1080 × 1920, **generated** by `film/make-reel-v4.py` from `v4.html` (57 exact layout edits; it stops if one no longer matches). Same timing, voice, music and photos. The layout: the windows stacked in a column, captions above the UI at 72 px (one at 60 px to fit a line), the menu framed under them, result cards framed with the bubble, the Remove BG panel above the bubble, and the laptop, keycaps (side by side), composer (at 80%) and end card re-centred. **Edit `v4.html`, then re-run `make-reel-v4.py`**; never edit `v4-reel.html` by hand.
+  2. **"The text collides with elements at some places":** the mint box ate the spaces around its word and nearly touched the line above; some captions sat against the dragged image, the options or a window. Fixed in `v4.html` (so in both): word spacing +0.1em and a box no taller than the type; menus further right; windows lower; the camera pushes in on the ring only after the menu folds; the Remove BG panel lower and its caption gone before the push. **`film/audit-captions-v4.js`** (`[REEL=1] node audit-captions-v4.js`) measures every caption word against every visible element every 0.1 s: **0 overlaps** in both. Run it after any change to layout or timing.
+- [ ] **Renders of both** (landscape `droptimize-launch-v4e.mp4`, reel `droptimize-reel.mp4`): in progress.
+- [ ] **Owner's feedback** on both.
 
 ## Still waiting on the owner
 1. **Push v3 from the office Mac** (it isn't on GitHub: `encode.swift`, `cutout.swift`, the v3 `index.html` and `HANDOFF-VIDEO.md`). v4 doesn't need it.
@@ -41,6 +45,10 @@ python3 mix-v4.py --music 175.mp3 --events events-v4.json --out mix-v4.wav   # ~
 node render-v4.js frames sub/ 4 8                           # 23,040 subframes (8 per frame), 4 pages, resumable, ~22 min
 node render-v4.js encode sub/ video-v4.mp4 8                # blends each frame's 8 subframes → 60 fps H.264
 ffmpeg -i video-v4.mp4 -i mix-v4.wav -map 0:v -map 1:a -c:v copy -c:a aac -b:a 256k -movflags +faststart droptimize-launch-v4.mp4
+# the reel (same soundtrack)
+python3 make-reel-v4.py && REEL=1 node audit-captions-v4.js
+REEL=1 node render-v4.js frames sub-reel/ 4 8 && REEL=1 node render-v4.js encode sub-reel/ video-reel.mp4 8
+ffmpeg -i video-reel.mp4 -i mix-v4.wav -map 0:v -map 1:a -c:v copy -c:a aac -b:a 256k -movflags +faststart droptimize-reel.mp4
 ```
 
 ## Design notes (v4)
