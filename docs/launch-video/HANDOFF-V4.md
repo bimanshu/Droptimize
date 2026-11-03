@@ -15,6 +15,15 @@
   1. **"At 0:14 after Done there's a big gap to the next voice, and a mismatch between video and voice":** 4.3 s with no voice, and a caption ("Straight off the web.") that Emma never says. Fixed: Convert moved up a bar and a beat (her line now 1.9 s after "Done."), the held bar after Remove BG came out (the film is 24 bars, 45 s), and **no caption appears without her voice** any more. The longest gap between lines is now 2.8 s.
   2. **"Add real images; I don't like the background illustration":** the owner said to use any Unsplash or Pexels photos, "but not the most common, pick a non-common image". Unsplash's search sits behind a bot check (not bypassed); Pexels pages were found by web search and the files fetched from `images.pexels.com`. Picked: misty blue-hour ridges (the desktop background, replacing the drawn waves), a dog on a beach at dusk, a rainy street at night, sea cliffs from above, and a pineapple on navy (the Remove BG subject, renamed `pineapple.jpg`; the statue is gone). **`film/prepare-images-v4.py`** downloads and prepares them (crops, the background's grade, and the pineapple's cut-out keyed by hue, since there's no Apple Vision here). Pexels licence: free commercial use, no credit needed; page links are in the script.
 - [x] **Second render** (2026-11-03): `droptimize-launch-v4b.mp4`, 48.0 s (45 s + 3 s still), 1920×1080 at 60 fps, 2,880 frames, 23.3 MB, −14.2 LUFS, −1.3 dBTP; checked on 20 frames of the final file and the soundtrack rebuilt byte-identical from the final cue list. Sent to the owner. Not in git.
+- [ ] **Music exploration (owner: "can we explore some other music tracks", 2026-11-03).** Five Mixkit tracks (same free licence) previewed **in the film** as 720p cuts (only the soundtrack changes, so no re-render: `mix-v4.py --bpm <tempo> --start <source s>` then mux with the rendered video). Each is stretched to 128 BPM and started so a lift lands on the reveal (3.75 s); all sit within 15 ms of the grid:
+  | # | Track (Mixkit id) | Measured BPM | `--start` (s) | Character |
+  |---|---|---|---|---|
+  | 1 | Slow Trance Morning, A. M. (123) | 123.98 | 42.531 | melodic, dreamy; steady bass, no big drop |
+  | 2 | Digital Clouds, A. M. (175) | 129.00 | 26.134 | airy chillout; bass lifts on the reveal; a dip in the dark scene |
+  | 3 | Cat Walk, Arulo (371) | 130.02 | 9.860 | groovy house; the bass enters right on the reveal |
+  | 4 | Rising Forest, Diego Nava (471) | 123.94 | 41.304 | uplifting house; a breakdown, then the drop on the reveal |
+  | 5 | Minimal Techno 01, A. M. (162) | 127.98 | 41.460 | driving tech house; steady |
+  Current: Minimal Emotion (160), 128.00, 26.681. Waiting on the owner's pick; then rebuild the mix with that track's two numbers, mux at 1080p (`droptimize-launch-v4b.mp4` recipe) and resend. Downloads: `https://assets.mixkit.co/music/<id>/<id>.mp3`.
 - [ ] **Owner's feedback** on the second cut.
 
 ## Still waiting on the owner

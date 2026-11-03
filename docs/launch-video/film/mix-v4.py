@@ -3,6 +3,7 @@ cross-fades, ducking maths, mastering) with the v4 music, edit points and voice 
 
     node render-v4.js events events-v4.json
     python3 mix-v4.py --music 160.mp3 --events events-v4.json --out mix-v4.wav
+    python3 mix-v4.py --music 371.mp3 --bpm 130.02 --start 9.86 ...   # any other track: its tempo and the source time of film 0
 
 Music: Mixkit 160 "Minimal Emotion" (128.00 BPM, first beat 0.431 s): film t = 0 is its bar 15 downbeat,
 so the track's break (its bar 16) is film bar 2 and its drop (bar 17) lands on film 3.1, the reveal.
@@ -39,18 +40,22 @@ LINES = [
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--music', required=True); ap.add_argument('--events', required=True); ap.add_argument('--out', required=True)
+    ap.add_argument('--bpm', type=float, default=128.0, help="the track's measured tempo; it's time-stretched to 128")
+    ap.add_argument('--start', type=float, default=MUSIC_START, help='source time (s) of the downbeat that starts the film')
     a = ap.parse_args()
     N = int(END * SR)
 
-    # ── Music: no stretch (it's already 128.00 BPM); cut so bar 15 starts the film
-    start = int(MUSIC_START * SR)
+    # ── Music: stretched to 128 BPM if needed (Minimal Emotion already is); cut so the chosen downbeat starts the film
+    rate = 128.0 / a.bpm
+    tempo = f'atempo={rate:.6f},' if abs(rate - 1) > 1e-4 else ''
+    start = int(a.start / rate * SR)
     def cut(x):
         y = np.zeros((N, 2), np.float32); seg = x[start:start + int(PICTURE * SR)]
         y[:len(seg)] = seg; return y
-    music = cut(decode(a.music))
-    hp = cut(decode(a.music, 'highpass=f=250:p=2,highpass=f=250:p=2'))
-    lp800 = cut(decode(a.music, 'lowpass=f=800:p=2'))
-    lp300 = cut(decode(a.music, 'lowpass=f=300:p=2,lowpass=f=300:p=2'))
+    music = cut(decode(a.music, tempo.rstrip(',') or None))
+    hp = cut(decode(a.music, tempo + 'highpass=f=250:p=2,highpass=f=250:p=2'))
+    lp800 = cut(decode(a.music, tempo + 'lowpass=f=800:p=2'))
+    lp300 = cut(decode(a.music, tempo + 'lowpass=f=300:p=2,lowpass=f=300:p=2'))
     music = crossfade(music, hp, T(2), T(3), 0.03)                  # the break: lift it out, so the drop hits on the reveal
     music = crossfade(music, lp800, T(19, 4), T(20), 0.03)          # a breath before the batch
     tail = crossfade(lp800, lp300, T(23) + 0.8, PICTURE, 0.5)       # ending: low-pass sweep after the final hit
@@ -97,7 +102,7 @@ def main():
     pcm = (np.clip(mix, -1, 1) * 32767).astype('<i2')
     import subprocess
     subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 's16le', '-ar', str(SR), '-ac', '2', '-i', '-', a.out], input=pcm.tobytes(), check=True)
-    print(f'music from {MUSIC_START:.3f}s of the track; mastered {gain:+.1f} dB, {level:.1f} LUFS, true peak {peak:.1f} dBTP; wrote {a.out}')
+    print(f'music from {a.start:.3f}s of the track at {a.bpm} BPM; mastered {gain:+.1f} dB, {level:.1f} LUFS, true peak {peak:.1f} dBTP; wrote {a.out}')
 
 
 if __name__ == '__main__':
