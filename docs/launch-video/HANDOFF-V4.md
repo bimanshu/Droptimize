@@ -24,7 +24,7 @@
   | 4 | Rising Forest, Diego Nava (471) | 123.94 | 41.304 | uplifting house; a breakdown, then the drop on the reveal |
   | 5 | Minimal Techno 01, A. M. (162) | 127.98 | 41.460 | driving tech house; steady |
   The earlier track was Minimal Emotion (160), 128.00, 26.681. Downloads: `https://assets.mixkit.co/music/<id>/<id>.mp3`.
-- [ ] **Gradient back (owner, 2026-11-03):** "I liked the previous gradient bg, can we move back to that bg, nothing else should change". Done in `v4.html` (only the background lines changed; the files' photos, timing, Digital Clouds and the voice are the same); render `droptimize-launch-v4d.mp4` in progress.
+- [ ] **Gradient back (owner, 2026-11-03):** "I liked the previous gradient bg, can we move back to that bg, nothing else should change". Done in `v4.html` (only the background lines changed; the files' photos, timing, Digital Clouds and the voice are the same); rendered and sent: `droptimize-launch-v4d.mp4` (1080p60, 48 s, 23.6 MB, −14.2 LUFS, −1.4 dBTP; 16 frames checked). **This is the current cut.** Not in git; rebuild with the commands below (`prepare-images-v4.py`, `mix-v4.py` with its default Digital Clouds, `render-v4.js frames` / `encode`, then the mux).
 - [ ] **Owner's feedback** on the gradient version.
 
 ## Still waiting on the owner
