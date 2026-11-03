@@ -2,11 +2,13 @@
 cross-fades, ducking maths, mastering) with the v4 music, edit points and voice placements.
 
     node render-v4.js events events-v4.json
-    python3 mix-v4.py --music 160.mp3 --events events-v4.json --out mix-v4.wav
-    python3 mix-v4.py --music 371.mp3 --bpm 130.02 --start 9.86 ...   # any other track: its tempo and the source time of film 0
+    python3 mix-v4.py --music 175.mp3 --events events-v4.json --out mix-v4.wav
+    python3 mix-v4.py --music 160.mp3 --bpm 128 --start 26.681 ...   # any other track: its tempo and the source time of film 0
 
-Music: Mixkit 160 "Minimal Emotion" (128.00 BPM, first beat 0.431 s): film t = 0 is its bar 15 downbeat,
-so the track's break (its bar 16) is film bar 2 and its drop (bar 17) lands on film 3.1, the reveal.
+Music (owner's pick, 2026-11-03): Mixkit 175 "Digital Clouds" by Alejandro Magaña (A. M.), measured 129.00 BPM,
+stretched to 128; film t = 0 is its bar 15 downbeat (26.134 s), so its bass lift (bar 17) lands on film 3.1, the
+reveal, and its quieter bars 33-36 fall in the dark "Never leaves your Mac" scene. Earlier: Mixkit 160
+"Minimal Emotion" (128.00 BPM, --start 26.681).
 """
 import argparse, json, os, sys
 import numpy as np
@@ -17,7 +19,7 @@ BEAT = 60 / 128
 BAR = 4 * BEAT
 T = lambda bar, beat=1: (bar - 1) * BAR + (beat - 1) * BEAT
 PICTURE, END = T(25), T(25) + 3          # 45 s of picture, then 3 s of silence on the end card
-MUSIC_START = 0.431 + 14 * BAR           # the track's bar 15 downbeat
+MUSIC_BPM, MUSIC_START = 129.0, 26.134  # Digital Clouds: its bar 15 downbeat (source time)
 HERE = os.path.dirname(os.path.abspath(__file__))
 FULL = os.path.join(HERE, '..', 'audio', 'emma-vo-full.mp3')
 EXTRA = os.path.join(HERE, '..', 'audio', 'emma-vo-extra.mp3')
@@ -40,7 +42,7 @@ LINES = [
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--music', required=True); ap.add_argument('--events', required=True); ap.add_argument('--out', required=True)
-    ap.add_argument('--bpm', type=float, default=128.0, help="the track's measured tempo; it's time-stretched to 128")
+    ap.add_argument('--bpm', type=float, default=MUSIC_BPM, help="the track's measured tempo; it's time-stretched to 128")
     ap.add_argument('--start', type=float, default=MUSIC_START, help='source time (s) of the downbeat that starts the film')
     a = ap.parse_args()
     N = int(END * SR)
