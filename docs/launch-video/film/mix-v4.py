@@ -18,8 +18,8 @@ from mix import SR, decode, db, ramp, crossfade, synth, master, loudness   # noq
 BEAT = 60 / 128
 BAR = 4 * BEAT
 T = lambda bar, beat=1: (bar - 1) * BAR + (beat - 1) * BEAT
-PICTURE, END = T(28), T(28) + 3          # 50.6 s of picture, then 3 s of silence on the end card
-MUSIC_BPM, MUSIC_START = 129.0, 22.413  # Digital Clouds: its bar 13 downbeat (source time), so its bar 17 lift lands on the drop, film bar 5
+PICTURE, END = T(29), T(29) + 3          # 52.5 s of picture, then 3 s of silence on the end card
+MUSIC_BPM, MUSIC_START = 129.0, 20.553  # Digital Clouds: its bar 12 downbeat (source time), so its bar 17 lift lands on the drop, film bar 6
 HERE = os.path.dirname(os.path.abspath(__file__))
 FULL = os.path.join(HERE, '..', 'audio', 'emma-vo-full.mp3')
 EXTRA = os.path.join(HERE, '..', 'audio', 'emma-vo-extra.mp3')
@@ -27,24 +27,19 @@ ROUTINE = os.path.join(HERE, '..', 'audio', 'emma-vo-routine.mp3')   # the old-w
 SRC_GAIN = {ROUTINE: 10 ** (2.4 / 20)}     # that take is 2.4 dB quieter than the others (−23.7 vs −21.3 LUFS)
 # Emma's lines: (source file, start, end in the source, film time). Starts match v4.html's AT table.
 LINES = [
-    (ROUTINE, 0.09, 1.04, 0.06),     # Need a smaller file?
-    (ROUTINE, 1.62, 2.30, 1.42),     # Find a website.
-    (ROUTINE, 2.89, 3.39, 2.50),     # Upload.
-    (ROUTINE, 3.93, 4.35, 3.42),     # Wait.
-    (ROUTINE, 4.89, 5.37, 4.27),     # Download.
-    (ROUTINE, 5.85, 6.51, 5.17),     # Unzip.
-    (ROUTINE, 6.95, 8.20, 6.12),     # Every single time.
-    (ROUTINE, 9.40, 10.74, T(5) + 0.12),   # Or just drop it. ("drop" with the release on the bubble)
-    (FULL, 3.65, 4.80, T(6, 2)),     # Meet Droptimize.
-    (EXTRA, 0.03, 3.83, T(7)),       # Drag from anywhere. Finder, Photos, or the web.
-    (FULL, 6.21, 9.43, T(9, 3)),     # Drop any photo or video on the bubble. Done.
-    (FULL, 10.63, 13.78, T(12, 2)),  # Convert to WebP or AVIF in one move.
-    (FULL, 14.88, 16.47, T(15, 2)),  # Lift the background right out.
-    (FULL, 17.62, 20.45, T(17, 2)),  # Videos too, down to whatever size you need.
-    (FULL, 21.48, 23.70, T(20, 2)),  # All on your Mac. Nothing uploaded.
-    (EXTRA, 5.84, 7.12, T(21, 4)),   # No internet needed.
-    (FULL, 24.75, 27.77, T(23, 2)),  # Batches in one drop. Already on your clipboard.
-    (FULL, 28.85, 31.22, T(26)),     # Droptimize. Drop it. Done.
+    (ROUTINE, 0.09, 8.74, 0.10),     # Need a smaller file? Find a website. Upload. Wait. Download. Unzip. Every single time.
+                                     #   one piece, exactly as she read it (cutting it into phrases clipped the m of "time")
+    (ROUTINE, 9.40, 10.74, T(6) + 0.12),   # Or just drop it. ("drop" with the release on the bubble)
+    (FULL, 3.65, 4.80, T(7, 2)),     # Meet Droptimize.
+    (EXTRA, 0.03, 3.83, T(8)),       # Drag from anywhere. Finder, Photos, or the web.
+    (FULL, 6.21, 9.43, T(10, 3)),     # Drop any photo or video on the bubble. Done.
+    (FULL, 10.63, 13.78, T(13, 2)),  # Convert to WebP or AVIF in one move.
+    (FULL, 14.88, 16.47, T(16, 2)),  # Lift the background right out.
+    (FULL, 17.62, 20.45, T(18, 2)),  # Videos too, down to whatever size you need.
+    (FULL, 21.48, 23.70, T(21, 2)),  # All on your Mac. Nothing uploaded.
+    (EXTRA, 5.84, 7.12, T(22, 4)),   # No internet needed.
+    (FULL, 24.75, 27.77, T(24, 2)),  # Batches in one drop. Already on your clipboard.
+    (FULL, 28.85, 31.22, T(27)),     # Droptimize. Drop it. Done.
 ]
 
 
@@ -66,11 +61,11 @@ def main():
     music = cut(decode(a.music, tempo.rstrip(',') or None))
     lp800 = cut(decode(a.music, tempo + 'lowpass=f=800:p=2'))
     lp300 = cut(decode(a.music, tempo + 'lowpass=f=300:p=2,lowpass=f=300:p=2'))
-    music = crossfade(music, lp800, 0, T(5), 0.06)                 # the old way, muffled; it opens up on the drop
-    music = crossfade(music, lp800, T(22, 4), T(23), 0.03)          # a breath before the batch
-    tail = crossfade(lp800, lp300, T(26) + 0.8, PICTURE, 0.5)       # ending: low-pass sweep after the final hit
-    music = crossfade(music, tail, T(26), PICTURE, 0.08)
-    fade = np.ones(N); a0, a1 = int(T(26) * SR), int((PICTURE - 0.25) * SR)
+    music = crossfade(music, lp800, 0, T(6), 0.06)                 # the old way, muffled; it opens up on the drop
+    music = crossfade(music, lp800, T(23, 4), T(24), 0.03)          # a breath before the batch
+    tail = crossfade(lp800, lp300, T(27) + 0.8, PICTURE, 0.5)       # ending: low-pass sweep after the final hit
+    music = crossfade(music, tail, T(27), PICTURE, 0.08)
+    fade = np.ones(N); a0, a1 = int(T(27) * SR), int((PICTURE - 0.25) * SR)
     fade[a0:a1] = np.linspace(1, 0, a1 - a0) ** 1.6; fade[a1:] = 0
     music *= fade[:, None]
     music *= db(-20) / (np.sqrt((music[int(8 * SR):int(46 * SR)] ** 2).mean()) + 1e-9)
