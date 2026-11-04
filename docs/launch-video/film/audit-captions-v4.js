@@ -23,7 +23,8 @@ const view = REEL ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 
     const capLayer = roots.find(r => r.querySelector && r.querySelector('.cap'));
     const words = [...capLayer.querySelectorAll('.cap .w')];
     // UI elements: leaf-ish boxes (windows, tiles, menu, cards, panels, keys, laptop…), not full-frame backgrounds
-    const ui = [...stage.querySelectorAll('.abs, svg, img')].filter(e => !capLayer.contains(e) && e !== capLayer);
+    // (the pixel-dissolve squares are a transition wiping the whole frame, not UI: skip them)
+    const ui = [...stage.querySelectorAll('.abs, svg, img')].filter(e => !capLayer.contains(e) && e !== capLayer && !(e.parentElement && e.parentElement.children.length > 200));
     const out = [];
     for (let t = 0; t <= END; t += 0.1) {
       window.seek(t);

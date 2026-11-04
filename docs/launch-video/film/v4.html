@@ -40,7 +40,7 @@ img.abs { display: block; object-fit: cover; }
 const W = 1920, H = 1080;
 const BEAT = 60 / 128, BAR = 4 * BEAT;              // "Minimal Emotion", 128.00 BPM
 const T = (bar, beat = 1, sixteenth = 0) => (bar - 1) * BAR + (beat - 1) * BEAT + sixteenth * BEAT / 4;
-const PICTURE = T(25);                               // 45 s of picture
+const PICTURE = T(28);                               // 50.6 s of picture
 const END = PICTURE + 3;                             // then 3 s of still, silent end card
 const C = { ink: '#0E0E0F', mint: '#3DDC97', white: '#FFFFFF', grey: '#6B6B6F', grey2: '#8A8A8E', line: 'rgba(0,0,0,0.08)' };
 
@@ -220,7 +220,7 @@ function dragTile(key, w = 76, h = 56) {
   const g = el('div', desk, { width: w + 'px', height: h + 'px', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 8px 22px rgba(0,0,0,0.3)' });
   photo(g, key, w, h); return { g, w, h };
 }
-const tImg = dragTile('img'), tHero = dragTile('hero'), tStatue = dragTile('statue'), tVid = dragTile('video');
+const tDrop = dragTile('img'), tImg = dragTile('img'), tHero = dragTile('hero'), tStatue = dragTile('statue'), tVid = dragTile('video');
 icon(tVid.g, 'play', 28, '#FFFFFF', { left: '24px', top: '14px' });
 // The ten-file stack for the batch
 const stack = el('div', desk, { width: '90px', height: '70px' });
@@ -275,51 +275,55 @@ function optPos(sc, j) {
 
 // ───────────────────────────── Timeline ─────────────────────────────
 // Emma's lines: film time of each line's start, and each word's onset within the line (measured).
-const AT = { 1: T(1, 2), 2: T(3, 2), A: T(4), 3: T(6, 3), 4: T(9, 2), 5: T(12, 2), 6: T(14, 2), 7: T(17, 2), B: T(18, 4), 8: T(20, 2), 9: T(23) };
+const AT = { n1: 0.06, n2: 1.42, n3: 2.50, n4: 3.42, n5: 4.27, n6: 5.17, n7: 6.12, n8: T(5) + 0.12, 2: T(6, 2), A: T(7), 3: T(9, 3), 4: T(12, 2), 5: T(15, 2), 6: T(17, 2), 7: T(20, 2), B: T(21, 4), 8: T(23, 2), 9: T(26) };
 const DONE_AT = AT[3] + 2.92;                         // her "Done." lands with the check
-const IMG_ENTER = T(6, 3), IMG_DROP = T(7, 3);
+const IMG_ENTER = T(9, 3), IMG_DROP = T(10, 3);
 const SCENES = [
-  { id: 'img', tile: tImg, grab: T(6), enter: IMG_ENTER, release: IMG_DROP, kind: 'image',
-    hovers: [[T(6, 4), 0, 'Convert'], [T(7), 1, 'Compress']],
-    opts: ['100K', '250K', '500K', '1M', '2M', '…'], optsAt: T(7, 2), optSeg: 1, optHover: [[T(7, 2, 2), 1], [T(7, 2, 3), 2]],
+  { id: 'drop', tile: tDrop, grab: T(5) - 0.5, midDrag: T(5), enter: T(5) + 0.14, release: T(5, 3), kind: 'image',
+    hovers: [[T(5) + 0.3, -1, 'Auto']], opts: [], optsAt: Infinity, optSeg: 0, optHover: [],
+    work: [T(5, 3), T(5, 4)], done: T(5, 4) + 0.1, collapse: T(5, 3) + 0.3, result: null, cardOut: 0 },
+  { id: 'img', tile: tImg, grab: T(9), enter: IMG_ENTER, release: IMG_DROP, kind: 'image',
+    hovers: [[T(9, 4), 0, 'Convert'], [T(10), 1, 'Compress']],
+    opts: ['100K', '250K', '500K', '1M', '2M', '…'], optsAt: T(10, 2), optSeg: 1, optHover: [[T(10, 2, 2), 1], [T(10, 2, 3), 2]],
     work: [IMG_DROP, DONE_AT - 0.1], done: DONE_AT, collapse: IMG_DROP + 0.35,
-    result: { at: T(8, 2), thumb: 'img', sizes: [[T(8, 2), '12.4 MB'], [T(8, 2, 2), '486 KB'], [T(8, 3), '−96%']], name: 'IMG_2041-500kb.heic', small: [[T(8, 2), 'IMG_2041-500kb.heic'], [T(8, 3), 'IMG_2041-500kb.heic · 486 KB']], tilt: true }, cardOut: T(9) + 0.15 },
-  { id: 'hero', tile: tHero, grab: T(9) + 0.05, enter: T(9, 3), release: T(11), kind: 'image',
-    hovers: [[T(9, 3) + 0.12, 0, 'Convert']],
-    opts: ['WebP', 'AVIF', 'JPG', 'PNG', 'HEIC'], optsAt: T(9, 3) + 0.18, optSeg: 0, optHover: [[AT[4] + 0.84, 0], [AT[4] + 1.6, 1]],
-    work: [T(11), T(11) + 0.4], done: T(11, 2), collapse: T(11) + 0.3,
-    result: { at: T(11, 2), thumb: 'hero', sizes: [[T(11, 2), '6.1 MB'], [T(11, 2, 2), '412 KB'], [T(11, 3), '−93%']], small: [[T(11, 2), 'hero.avif'], [T(11, 3), 'hero.avif · 412 KB']] }, cardOut: T(12) - 0.25 },
-  { id: 'statue', tile: tStatue, grab: T(11, 4), enter: AT[5], release: T(13, 2), kind: 'image', midDrag: T(12),
+    result: { at: T(11, 2), thumb: 'img', sizes: [[T(11, 2), '12.4 MB'], [T(11, 2, 2), '486 KB'], [T(11, 3), '−96%']], name: 'IMG_2041-500kb.heic', small: [[T(11, 2), 'IMG_2041-500kb.heic'], [T(11, 3), 'IMG_2041-500kb.heic · 486 KB']], tilt: true }, cardOut: T(12) + 0.15 },
+  { id: 'hero', tile: tHero, grab: T(12) + 0.05, enter: T(12, 3), release: T(14), kind: 'image',
+    hovers: [[T(12, 3) + 0.12, 0, 'Convert']],
+    opts: ['WebP', 'AVIF', 'JPG', 'PNG', 'HEIC'], optsAt: T(12, 3) + 0.18, optSeg: 0, optHover: [[AT[4] + 0.84, 0], [AT[4] + 1.6, 1]],
+    work: [T(14), T(14) + 0.4], done: T(14, 2), collapse: T(14) + 0.3,
+    result: { at: T(14, 2), thumb: 'hero', sizes: [[T(14, 2), '6.1 MB'], [T(14, 2, 2), '412 KB'], [T(14, 3), '−93%']], small: [[T(14, 2), 'hero.avif'], [T(14, 3), 'hero.avif · 412 KB']] }, cardOut: T(15) - 0.25 },
+  { id: 'statue', tile: tStatue, grab: T(14, 4), enter: AT[5], release: T(16, 2), kind: 'image', midDrag: T(15),
     hovers: [[AT[5] + 0.23, 3, 'Remove BG']],
-    opts: ['checker', 'white', 'black', 'eyedropper'], optsAt: T(12, 3), optSeg: 3, optHover: [[T(12, 3) + 0.24, 0], [T(13) + 0.05, 1]], labels: ['No background', 'White', 'Black', 'Custom'],
-    work: [T(13, 2), T(13, 2) + 0.45], done: T(13, 3), collapse: T(13, 2) + 0.3, result: null, cardOut: 0 },
-  { id: 'video', tile: tVid, grab: T(14, 2), enter: T(14, 4), release: T(15, 3), kind: 'video', midDrag: T(14, 3),
-    hovers: [[T(14, 4) + 0.235, 0, 'Convert'], [T(15), 1, 'Compress']],
-    opts: ['10M', '25M', '50M', '100M', '…'], optsAt: T(15) + 0.23, optSeg: 1, optHover: [[T(15, 2), 0], [T(15, 2, 2), 1]],
-    quarters: [T(15, 4), T(16), T(16, 2), T(16, 3)], done: T(16, 3), collapse: T(15, 3) + 0.35,
-    result: { at: T(15, 4), thumb: 'video', sizes: [[T(15, 4), '840 MB'], [T(16), '412 MB'], [T(16, 2), '168 MB'], [T(16, 3), '24.1 MB'], [T(16, 3) + 0.3, '−97%']], small: [[T(15, 4), 'launch-25mb.mov'], [T(16, 3) + 0.3, 'launch-25mb.mov · 24.1 MB']] }, cardOut: T(17) - 0.2 },
+    opts: ['checker', 'white', 'black', 'eyedropper'], optsAt: T(15, 3), optSeg: 3, optHover: [[T(15, 3) + 0.24, 0], [T(16) + 0.05, 1]], labels: ['No background', 'White', 'Black', 'Custom'],
+    work: [T(16, 2), T(16, 2) + 0.45], done: T(16, 3), collapse: T(16, 2) + 0.3, result: null, cardOut: 0 },
+  { id: 'video', tile: tVid, grab: T(17, 2), enter: T(17, 4), release: T(18, 3), kind: 'video', midDrag: T(17, 3),
+    hovers: [[T(17, 4) + 0.235, 0, 'Convert'], [T(18), 1, 'Compress']],
+    opts: ['10M', '25M', '50M', '100M', '…'], optsAt: T(18) + 0.23, optSeg: 1, optHover: [[T(18, 2), 0], [T(18, 2, 2), 1]],
+    quarters: [T(18, 4), T(19), T(19, 2), T(19, 3)], done: T(19, 3), collapse: T(18, 3) + 0.35,
+    result: { at: T(18, 4), thumb: 'video', sizes: [[T(18, 4), '840 MB'], [T(19), '412 MB'], [T(19, 2), '168 MB'], [T(19, 3), '24.1 MB'], [T(19, 3) + 0.3, '−97%']], small: [[T(18, 4), 'launch-25mb.mov'], [T(19, 3) + 0.3, 'launch-25mb.mov · 24.1 MB']] }, cardOut: T(20) - 0.2 },
 ];
-const BATCH = { enter: T(20) + 0.23, release: AT[8], stream: i => AT[8] + i * BEAT / 4, done: T(21), card: T(21), cardOut: T(21, 3) - 0.1 };
+const BATCH = { enter: T(23) + 0.23, release: AT[8], stream: i => AT[8] + i * BEAT / 4, done: T(24), card: T(24), cardOut: T(24, 3) - 0.1 };
 
 // Cursor path in desk points: [t, x, y, pressed]
 const cell0 = (() => { const c = cellPos(0); return [PHOTOS.x + c.x + c.w / 2, PHOTOS.y + c.y + c.h / 2]; })();
 const webC = [WEB.x + 24 + 150, WEB.y + 52 + 100];
 const entry = [B.x - 72, B.y - 6];
 const CUR = [
-  [0, 1000, 760, 0], [T(5, 3), 1000, 760, 0], [T(6) - 0.12, ...cell0, 0], [T(6), ...cell0, 1], [IMG_ENTER, ...entry, 1],
-  [T(6, 4), ...segPos(0), 1], [T(7), ...segPos(1), 1], [T(7, 2, 2), 0, 0, 1], [T(7, 2, 3), 0, 0, 1], [IMG_DROP, 0, 0, 0],
-  [T(8, 2), 1230, 640, 0], [T(8, 3), 1230, 640, 0], [T(9) - 0.1, ...webC, 0], [T(9) + 0.05, ...webC, 1], [T(9, 3), ...entry, 1],
-  [T(9, 3) + 0.12, ...segPos(0), 1], [AT[4] + 0.84, 0, 0, 1], [AT[4] + 1.6, 0, 0, 1], [T(11), 0, 0, 0],
-  [T(11, 3), 1230, 660, 0], [T(12) - 0.01, 1230, 660, 0], [T(12), 1120, 600, 1], [AT[5], ...entry, 1],
-  [AT[5] + 0.23, ...segPos(3), 1], [T(12, 3) + 0.24, 0, 0, 1], [T(13) + 0.05, 0, 0, 1], [T(13, 2), 0, 0, 0],
-  [T(13, 4), 1240, 680, 0], [T(14, 3) - 0.01, 1240, 680, 0], [T(14, 3), 1140, 600, 1], [T(14, 4), ...entry, 1],
-  [T(14, 4) + 0.235, ...segPos(0), 1], [T(15), ...segPos(1), 1], [T(15, 2), 0, 0, 1], [T(15, 2, 2), 0, 0, 1], [T(15, 3), 0, 0, 0],
-  [T(16), 1250, 690, 0], [T(20) - 0.01, 1250, 690, 0], [T(20), 1180, 600, 1], [BATCH.enter, B.x + 2, B.y + 4, 1], [BATCH.release, B.x + 2, B.y + 4, 0],
-  [T(21), 1250, 660, 0], [END, 1250, 660, 0],
+  [0, 1000, 760, 0], [T(5) - 0.01, B.x - 150, B.y + 70, 1], [T(5) + 0.14, ...entry, 1], [T(5, 2), B.x + 2, B.y + 3, 1], [T(5, 3), B.x + 2, B.y + 3, 0], [T(5, 4) + 0.4, B.x - 40, B.y + 90, 0],
+  [T(8, 3) - 0.01, 1000, 760, 0], [T(8, 3), 1000, 760, 0], [T(9) - 0.12, ...cell0, 0], [T(9), ...cell0, 1], [IMG_ENTER, ...entry, 1],
+  [T(9, 4), ...segPos(0), 1], [T(10), ...segPos(1), 1], [T(10, 2, 2), 0, 0, 1], [T(10, 2, 3), 0, 0, 1], [IMG_DROP, 0, 0, 0],
+  [T(11, 2), 1230, 640, 0], [T(11, 3), 1230, 640, 0], [T(12) - 0.1, ...webC, 0], [T(12) + 0.05, ...webC, 1], [T(12, 3), ...entry, 1],
+  [T(12, 3) + 0.12, ...segPos(0), 1], [AT[4] + 0.84, 0, 0, 1], [AT[4] + 1.6, 0, 0, 1], [T(14), 0, 0, 0],
+  [T(14, 3), 1230, 660, 0], [T(15) - 0.01, 1230, 660, 0], [T(15), 1120, 600, 1], [AT[5], ...entry, 1],
+  [AT[5] + 0.23, ...segPos(3), 1], [T(15, 3) + 0.24, 0, 0, 1], [T(16) + 0.05, 0, 0, 1], [T(16, 2), 0, 0, 0],
+  [T(16, 4), 1240, 680, 0], [T(17, 3) - 0.01, 1240, 680, 0], [T(17, 3), 1140, 600, 1], [T(17, 4), ...entry, 1],
+  [T(17, 4) + 0.235, ...segPos(0), 1], [T(18), ...segPos(1), 1], [T(18, 2), 0, 0, 1], [T(18, 2, 2), 0, 0, 1], [T(18, 3), 0, 0, 0],
+  [T(19), 1250, 690, 0], [T(23) - 0.01, 1250, 690, 0], [T(23), 1180, 600, 1], [BATCH.enter, B.x + 2, B.y + 4, 1], [BATCH.release, B.x + 2, B.y + 4, 0],
+  [T(24), 1250, 660, 0], [END, 1250, 660, 0],
 ];
 (function fillOptionWaypoints() {
   const fill = (t, xy) => { const k = CUR.find(c => Math.abs(c[0] - t) < 1e-6); if (k) { k[1] = xy[0]; k[2] = xy[1]; } };
-  for (const s of SCENES) { for (const [t, j] of s.optHover) fill(t, optPos(s, j)); fill(s.release, optPos(s, s.optHover[s.optHover.length - 1][1])); }
+  for (const s of SCENES) { for (const [t, j] of s.optHover) fill(t, optPos(s, j)); if (s.optHover.length) fill(s.release, optPos(s, s.optHover[s.optHover.length - 1][1])); }
 })();
 function cursorAt(t) {
   let i = 0; while (i < CUR.length - 1 && CUR[i + 1][0] <= t) i++;
@@ -330,13 +334,14 @@ function cursorAt(t) {
 
 // Camera (desk): scale (px per pt) and centre (pt). Springs, no overshoot.
 const CAMK = [
-  [T(4), 1.3, 760, 490, [0.75, 1], [1.5, 1]], [AT.A + 1.6, 1.38, 640, 475, CAM], [AT.A + 2.3, 1.38, 770, 470, CAM], [AT.A + 3.25, 1.38, 700, 495, CAM],
-  [T(6) - 0.15, 2.3, cell0[0], cell0[1], [0.7, 1]], [T(6, 2), 3.0, 1240, 450, [1.0, 1]],
-  [IMG_DROP + 0.45, 4.6, 1372, 450, [0.7, 1]], [T(8, 2), 3.0, 1270, 450, [0.8, 1]],
-  [T(8, 4) - 0.1, 2.2, webC[0], webC[1], [1.0, 1]], [T(9) + 0.12, 3.0, 1240, 450, [1.1, 1]], [T(10), 4.0, 1250, 440, [0.8, 1]], [T(11, 2), 3.0, 1270, 450, [0.8, 1]],
-  [T(12) - 0.2, 2.0, 1080, 440, [0.9, 1]], [T(13, 3), 2.4, 980, 452, [1.6, 1]],
-  [T(14, 1) + 0.3, 3.2, 1250, 450, [0.25, 1]], [T(15, 3), 3.9, 1262, 450, [0.8, 1]], [T(16, 3), 3.4, 1262, 450, [0.9, 1]],
-  [T(19), 3.3, 1300, 450, [0.25, 1]], [T(21), 3.1, 1270, 450, [0.8, 1]],
+  [T(5), 3.2, 1310, 455, [0.02, 1]], [T(6), 6.0, 1334, 450, [0.8, 1]],
+  [T(7), 1.3, 760, 490, [0.75, 1], [1.5, 1]], [AT.A + 1.6, 1.38, 640, 475, CAM], [AT.A + 2.3, 1.38, 770, 470, CAM], [AT.A + 3.25, 1.38, 700, 495, CAM],
+  [T(9) - 0.15, 2.3, cell0[0], cell0[1], [0.7, 1]], [T(9, 2), 3.0, 1240, 450, [1.0, 1]],
+  [IMG_DROP + 0.45, 4.6, 1372, 450, [0.7, 1]], [T(11, 2), 3.0, 1270, 450, [0.8, 1]],
+  [T(11, 4) - 0.1, 2.2, webC[0], webC[1], [1.0, 1]], [T(12) + 0.12, 3.0, 1240, 450, [1.1, 1]], [T(13), 4.0, 1250, 440, [0.8, 1]], [T(14, 2), 3.0, 1270, 450, [0.8, 1]],
+  [T(15) - 0.2, 2.0, 1080, 440, [0.9, 1]], [T(16, 3), 2.4, 980, 452, [1.6, 1]],
+  [T(17, 1) + 0.3, 3.2, 1250, 450, [0.25, 1]], [T(18, 3), 3.9, 1262, 450, [0.8, 1]], [T(19, 3), 3.4, 1262, 450, [0.9, 1]],
+  [T(22), 3.3, 1300, 450, [0.25, 1]], [T(24), 3.1, 1270, 450, [0.8, 1]],
 ];
 const camAt = t => {
   const s0 = 6.0, x0 = 1334, y0 = 450;
@@ -345,8 +350,8 @@ const camAt = t => {
 
 // Scene windows: which layer is on screen
 const SHOT = {
-  cold: [0, T(3)], desk1: [T(3), T(14)], pills: [T(14), T(14, 3)], desk2: [T(14, 3), T(17)], priv: [T(17), T(20)],
-  desk3: [T(20), T(21, 3)], keys: [T(21, 3), T(22)], compose: [T(22), T(23)], end: [T(23), Infinity],
+  cold: [0, T(5)], desk1: [T(5), T(17)], pills: [T(17), T(17, 3)], desk2: [T(17, 3), T(20)], priv: [T(20), T(23)],
+  desk3: [T(23), T(24, 3)], keys: [T(24, 3), T(25)], compose: [T(25), T(26)], end: [T(26), Infinity],
 };
 const inShot = (t, k) => t >= SHOT[k][0] && t < SHOT[k][1];
 
@@ -372,28 +377,36 @@ function caption(lines, { x, y, align = 'left', exit, hl = {}, color = '#FFFFFF'
 const at = (k, rel) => AT[k] + rel;
 const words = (k, list) => list.map(([w, r]) => [w, at(k, r)]);
 const onBeats = (t0, list, gap = BEAT / 2) => list.map((w, i) => [w, t0 + i * gap]);
-caption([words(1, [['Your', 0.01], ['files', 0.26], ['are', 0.6], ['too', 0.86], ['heavy.', 1.15]])], { x: 960, y: 500, align: 'center', exit: T(2, 4), hl: { 'heavy.': [at(1, 1.15), Infinity] } });
-caption([words(2, [['Meet', 0.01], ['Droptimize.', 0.32]])], { x: 140, y: 500, exit: T(4) - 0.1, hl: { 'Droptimize.': [at(2, 0.32), Infinity] } });
+const RCAP = { x: 960, y: 872, align: 'center' };                           // routine captions, under the window
+caption([words('n1', [['Need', 0.0], ['a', 0.14], ['smaller', 0.33], ['file?', 0.69]])], { ...RCAP, exit: AT.n2 - 0.1, hl: { 'smaller': [at('n1', 0.33), Infinity] } });
+caption([words('n2', [['Find', 0.03], ['a', 0.2], ['website.', 0.45]])], { ...RCAP, exit: AT.n3 - 0.1, hl: { 'website.': [at('n2', 0.45), Infinity] } });
+caption([words('n3', [['Upload.', 0.0]])], { ...RCAP, exit: AT.n4 - 0.1 });
+caption([words('n4', [['Wait.', 0.0]])], { ...RCAP, exit: AT.n5 - 0.1 });
+caption([words('n5', [['Download.', 0.0]])], { ...RCAP, exit: AT.n6 - 0.1 });
+caption([words('n6', [['Unzip.', 0.0]])], { ...RCAP, exit: AT.n7 - 0.1 });
+caption([words('n7', [['Every', 0.03], ['single', 0.33], ['time.', 0.78]])], { ...RCAP, exit: T(5) - 0.2, hl: { 'Every': [at('n7', 0.03), Infinity] } });
+caption([words('n8', [['Or', 0.03], ['just', 0.6], ['drop', 0.87], ['it.', 1.11]])], { x: 140, y: 470, exit: T(6) - 0.1, hl: { 'drop': [at('n8', 0.87), Infinity] } });
+caption([words(2, [['Meet', 0.01], ['Droptimize.', 0.32]])], { x: 140, y: 500, exit: T(7) - 0.1, hl: { 'Droptimize.': [at(2, 0.32), Infinity] } });
 caption([words('A', [['Drag', 0.0], ['from', 0.48], ['anywhere.', 0.79]])], { x: 960, y: 56, align: 'center', exit: AT.A + 1.6, hl: { 'anywhere.': [at('A', 0.79), Infinity] } });
-caption([words('A', [['Finder,', 1.73], ['Photos,', 2.42], ['or', 3.23], ['the', 3.31], ['web.', 3.38]])], { x: 960, y: 56, align: 'center', exit: T(6) - 0.1,
+caption([words('A', [['Finder,', 1.73], ['Photos,', 2.42], ['or', 3.23], ['the', 3.31], ['web.', 3.38]])], { x: 960, y: 56, align: 'center', exit: T(9) - 0.1,
   hl: { 'Finder,': [at('A', 1.73), at('A', 2.42)], 'Photos,': [at('A', 2.42), at('A', 3.38)], 'web.': [at('A', 3.38), Infinity] } });
 caption([words(3, [['Drop', 0.02], ['any', 0.39], ['photo', 0.73]]), words(3, [['or', 1.05], ['video', 1.2], ['on', 1.55], ['the', 1.7], ['bubble.', 1.85]])], { x: 140, y: 230, exit: DONE_AT - 0.25, hl: { 'bubble.': [at(3, 1.85), Infinity] } });
-caption([[['Done.', DONE_AT]]], { x: 140, y: 230, exit: T(8, 4) + 0.1, hl: { 'Done.': [DONE_AT, Infinity] } });
-caption([words(4, [['Convert', 0.0], ['to', 0.55], ['WebP', 0.84]]), words(4, [['or', 1.41], ['AVIF', 1.6], ['in', 2.28], ['one', 2.45], ['move.', 2.7]])], { x: 140, y: 230, exit: T(11, 2) - 0.1, hl: { 'AVIF': [at(4, 1.6), Infinity] } });
-caption([words(5, [['Lift', 0.01], ['the', 0.29], ['background', 0.41], ['right', 1.05], ['out.', 1.3]])], { x: 580, y: 46, align: 'center', exit: T(13, 2) + 0.2, hl: { 'out.': [at(5, 1.3), Infinity] } });
-caption([words(6, [['Videos', 0.0], ['too,', 0.5]])], { x: 960, y: 200, align: 'center', exit: T(14, 3) - 0.05, hl: { 'Videos': [at(6, 0.0), Infinity] } });
-caption([words(6, [['down', 1.17], ['to', 1.4], ['whatever', 1.55]]), words(6, [['size', 2.0], ['you', 2.3], ['need.', 2.45]])], { x: 140, y: 230, exit: T(15, 4) - 0.1, hl: { 'size': [at(6, 2.0), Infinity] } });
-caption([words(7, [['All', 0.0], ['on', 0.15], ['your', 0.28], ['Mac.', 0.45]]), words(7, [['Nothing', 1.27], ['uploaded.', 1.6]])], { x: 120, y: 360, exit: T(19, 4), hl: { 'Mac.': [at(7, 0.45), Infinity] } });
-caption([words('B', [['No', 0.0], ['internet', 0.2], ['needed.', 0.75]])], { x: 120, y: 560, exit: T(19, 4), hl: { 'internet': [at('B', 0.2), Infinity] }, color: '#FFFFFF' });
+caption([[['Done.', DONE_AT]]], { x: 140, y: 230, exit: T(11, 4) + 0.1, hl: { 'Done.': [DONE_AT, Infinity] } });
+caption([words(4, [['Convert', 0.0], ['to', 0.55], ['WebP', 0.84]]), words(4, [['or', 1.41], ['AVIF', 1.6], ['in', 2.28], ['one', 2.45], ['move.', 2.7]])], { x: 140, y: 230, exit: T(14, 2) - 0.1, hl: { 'AVIF': [at(4, 1.6), Infinity] } });
+caption([words(5, [['Lift', 0.01], ['the', 0.29], ['background', 0.41], ['right', 1.05], ['out.', 1.3]])], { x: 580, y: 46, align: 'center', exit: T(16, 2) + 0.2, hl: { 'out.': [at(5, 1.3), Infinity] } });
+caption([words(6, [['Videos', 0.0], ['too,', 0.5]])], { x: 960, y: 200, align: 'center', exit: T(17, 3) - 0.05, hl: { 'Videos': [at(6, 0.0), Infinity] } });
+caption([words(6, [['down', 1.17], ['to', 1.4], ['whatever', 1.55]]), words(6, [['size', 2.0], ['you', 2.3], ['need.', 2.45]])], { x: 140, y: 230, exit: T(18, 4) - 0.1, hl: { 'size': [at(6, 2.0), Infinity] } });
+caption([words(7, [['All', 0.0], ['on', 0.15], ['your', 0.28], ['Mac.', 0.45]]), words(7, [['Nothing', 1.27], ['uploaded.', 1.6]])], { x: 120, y: 360, exit: T(22, 4), hl: { 'Mac.': [at(7, 0.45), Infinity] } });
+caption([words('B', [['No', 0.0], ['internet', 0.2], ['needed.', 0.75]])], { x: 120, y: 560, exit: T(22, 4), hl: { 'internet': [at('B', 0.2), Infinity] }, color: '#FFFFFF' });
 caption([words(8, [['Batches', 0.0], ['in', 0.58], ['one', 0.75], ['drop.', 1.0]])], { x: 140, y: 230, exit: at(8, 1.35), hl: { 'drop.': [at(8, 1.0), Infinity] } });
-caption([words(8, [['Already', 1.47], ['on', 2.0], ['your', 2.15]]), words(8, [['clipboard.', 2.3]])], { x: 140, y: 230, exit: T(22) - 0.15, hl: { 'clipboard.': [at(8, 2.3), Infinity] } });
+caption([words(8, [['Already', 1.47], ['on', 2.0], ['your', 2.15]]), words(8, [['clipboard.', 2.3]])], { x: 140, y: 230, exit: T(25) - 0.15, hl: { 'clipboard.': [at(8, 2.3), Infinity] } });
 
 // ───────────────────────────── Pixel dissolves ─────────────────────────────
 const PIX = { cols: 24, rows: 14 };
 const pw = W / PIX.cols, ph = H / PIX.rows;
 const pixels = [];
 { const r = rng(7); for (let j = 0; j < PIX.rows; j++) for (let i = 0; i < PIX.cols; i++) pixels.push({ d: el('div', pixLayer, { left: i * pw + 'px', top: j * ph + 'px', width: Math.ceil(pw) + 1 + 'px', height: Math.ceil(ph) + 1 + 'px' }), a: r(), b: r(), i, j }); }
-const DISSOLVES = [{ t: T(3), to: 'light' }, { t: T(17), to: C.ink }, { t: T(20), to: 'light' }];
+const DISSOLVES = [{ t: T(5), to: 'light' }, { t: T(20), to: C.ink }, { t: T(23), to: 'light' }];
 const DUR = 0.22;
 function pixelsAt(t) {
   const d = DISSOLVES.find(x => t >= x.t - DUR && t < x.t + DUR);
@@ -408,19 +421,92 @@ function pixelsAt(t) {
 }
 
 // ───────────────────────────── Screen scenes ─────────────────────────────
-// Cold open: four heavy files, at different depths, on the dark wallpaper
-const COLD = [
-  { k: 'img', name: 'IMG_2041.HEIC', size: '12.4', unit: 'MB', x: 170, y: 150, w: 400, h: 270, z: 1.0, at: 0.0 },
-  { k: 'video', name: 'launch.mov', size: '840', unit: 'MB', x: 1300, y: 110, w: 360, h: 240, z: 0.55, at: T(1, 2) },
-  { k: 'hero', name: 'hero.png', size: '6.1', unit: 'MB', x: 250, y: 690, w: 340, h: 230, z: 0.7, at: T(1, 3) },
-  { k: 'statue', name: 'pineapple.jpg', size: '9.8', unit: 'MB', x: 1260, y: 650, w: 420, h: 280, z: 1.25, at: T(1, 4) },
-].map(c => {
-  const g = el('div', cold, { width: c.w + 'px' });
-  const im = el('div', g, { width: c.w + 'px', height: c.h + 'px', borderRadius: '18px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }); photo(im, c.k, c.w, c.h);
-  el('div', g, { top: c.h + 18 + 'px', color: 'rgba(255,255,255,0.62)' }, c.name, 't-file nowrap');
-  el('div', g, { top: c.h + 54 + 'px', color: '#FFFFFF' }, `${c.size}<span style="font-weight:500;color:rgba(255,255,255,0.7)"> ${c.unit}</span>`, 't-lead nowrap num');
-  return Object.assign(c, { g });
+// The old way (bars 1–4): the web-converter routine Droptimize removes (owner, 2026-11-04). Plain, unbranded UI.
+const RT = AT, RS = 1, RLOOP = { s: 0.62, y: -150 }, CHIP = { w: 200, gap: 40, y: 640, size: 26 };
+const RW = { x: 360, y: 70, w: 1200, h: 740 };
+const rWrap = el('div', cold, { left: RW.x + 'px', top: RW.y + 'px', width: RW.w + 'px', height: RW.h + 'px' });
+const rWin = el('div', rWrap, { width: RW.w + 'px', height: RW.h + 'px', borderRadius: '24px', background: '#FFFFFF', overflow: 'hidden', boxShadow: '0 40px 100px rgba(0,0,0,0.55)' });
+const rBar = el('div', rWin, { width: '100%', height: '60px', background: '#F4F4F6', borderBottom: '1px solid rgba(0,0,0,0.07)' });
+[28, 52, 76].forEach(x => el('div', rBar, { left: x - 7 + 'px', top: '23px', width: '14px', height: '14px', borderRadius: '7px', background: '#D3D3D8' }));
+const rTitle = el('div', rBar, { width: '100%', top: '17px', textAlign: 'center', fontSize: '20px', fontWeight: 500, color: C.grey }, '', 'nowrap');
+const rAddr = el('div', rBar, { left: '260px', top: '13px', width: '680px', height: '34px', borderRadius: '17px', background: '#E8E8EC' });
+const rAddrText = el('div', rAddr, { left: '22px', top: '6px', fontSize: '18px', fontWeight: 450, color: '#4A4A4F' }, '', 'nowrap');
+const rBody = el('div', rWin, { top: '60px', width: RW.w + 'px', height: RW.h - 60 + 'px' });
+const pane = () => el('div', rBody, { width: RW.w + 'px', height: RW.h - 60 + 'px' });
+const pill = (p, x, y, w, h = 12, c = '#E6E6EA') => el('div', p, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', borderRadius: h / 2 + 'px', background: c });
+const label = (p, x, y, str, size, weight = 500, color = C.ink, extra = {}) => el('div', p, Object.assign({ left: x + 'px', top: y + 'px', fontSize: size + 'px', fontWeight: weight, color }, extra), str, 'nowrap');
+const ZIP = `<svg width="58" height="44" viewBox="0 0 58 44"><rect x="15" y="2" width="28" height="40" rx="4" fill="#C9CBD3"/><path d="M29 2v21" stroke="#8D909B" stroke-width="3" stroke-dasharray="3 3"/><rect x="25" y="22" width="8" height="10" rx="2" fill="#8D909B"/></svg>`;
+const FOLDER = `<svg width="58" height="44" viewBox="0 0 58 44"><path d="M8 8h15l4 4h23a3 3 0 0 1 3 3v22a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V11a3 3 0 0 1 3-3z" fill="#7DB2F2"/></svg>`;
+function finderPane(rows) {
+  const p = pane();
+  el('div', p, { width: '250px', height: '100%', background: '#F6F6F8', borderRight: '1px solid rgba(0,0,0,0.06)' });
+  [40, 84, 128, 172, 236, 280].forEach((y, i) => pill(p, 34, y, [120, 96, 140, 110, 90, 130][i], 12, '#DEDEE3'));
+  label(p, 290, 24, 'Name', 17, 500, C.grey2); label(p, 1040, 24, 'Size', 17, 500, C.grey2, { width: '120px', textAlign: 'right' });
+  const out = rows.map(([kind, name, size]) => {
+    const row = el('div', p, { left: '270px', top: '60px', width: '910px', height: '58px', borderRadius: '10px' });
+    const ic = el('div', row, { left: '18px', top: '7px', width: '58px', height: '44px', borderRadius: '6px', overflow: 'hidden' });
+    if (kind === 'img') photo(ic, 'img', 58, 44);
+    else if (kind === 'zip') ic.innerHTML = ZIP;
+    else el('div', ic, { left: '14px', top: '4px', width: '30px', height: '36px', borderRadius: '4px', background: '#DCDCE2' });
+    label(row, 96, 14, name, 24, 500);
+    label(row, 770, 14, size, 24, 450, C.grey, { width: '120px', textAlign: 'right' });
+    return { row, ic };
+  });
+  return { p, rows: out };
+}
+const fPics = finderPane([['img', 'IMG_2041.HEIC', '12.4 MB'], ['doc', 'IMG_2042.HEIC', '11.8 MB'], ['doc', 'IMG_2043.HEIC', '13.0 MB'], ['doc', 'IMG_2044.HEIC', '12.1 MB']]);
+const fDown = finderPane([['zip', 'converted-files.zip', '11.9 MB'], ['img', 'IMG_2041.jpg', '11.9 MB'], ['doc', 'invoice.pdf', '220 KB'], ['doc', 'Screenshot.png', '2.4 MB']]);
+// Search
+const fSearch = pane();
+const sField = el('div', fSearch, { left: '220px', top: '60px', width: '760px', height: '68px', borderRadius: '34px', border: '1.5px solid #D8D8DE', background: '#FFFFFF', boxShadow: '0 4px 14px rgba(0,0,0,0.06)' });
+svg(sField, 26, 26, `<circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="#8A8A8E" stroke-width="2"/><path d="M15.5 15.5L21 21" stroke="#8A8A8E" stroke-width="2" stroke-linecap="round"/>`, { left: '24px', top: '20px' }, '0 0 24 24');
+const sText = label(sField, 64, 18, '', 25, 450);
+const QUERY = 'heic to jpg converter';
+const sResults = ['Free online image converter', 'Convert HEIC to JPG online', 'Image converter, fast and free'].map((r, i) => {
+  const g = el('div', fSearch, { left: '220px', top: 176 + i * 150 + 'px', width: '760px', height: '130px' });
+  el('div', g, { width: '28px', height: '28px', borderRadius: '14px', background: '#E3E3E8' }); pill(g, 40, 9, 220, 10, '#D5D5DA');
+  label(g, 0, 42, r, 30, 600, '#2457B8'); pill(g, 0, 94, 700, 10); pill(g, 0, 114, 560, 10);
+  return g;
 });
+// A generic converter site
+const fSite = pane();
+el('div', fSite, { left: '40px', top: '28px', width: '44px', height: '44px', borderRadius: '10px', background: '#D9DCE4' });
+label(fSite, 100, 30, 'Image Converter', 30, 700);
+const signUp = el('div', fSite, { left: '1010px', top: '30px', width: '150px', height: '42px', borderRadius: '21px', background: '#EDEDF1' });
+label(signUp, 0, 9, 'Sign up', 19, 600, '#4A4A4F', { width: '150px', textAlign: 'center' });
+const zone = el('div', fSite, { left: '40px', top: '104px', width: '760px', height: '440px', borderRadius: '22px', border: '3px dashed #C9C9D2', background: '#FAFAFC' });
+const zHint = el('div', zone, { width: '760px', height: '440px' });
+label(zHint, 0, 140, 'Drop files here', 30, 600, '#3A3A3E', { width: '754px', textAlign: 'center' });
+const chooseBtn = el('div', zHint, { left: '267px', top: '200px', width: '220px', height: '58px', borderRadius: '29px', background: '#3B6FD8' });
+label(chooseBtn, 0, 15, 'Choose files', 23, 600, '#FFFFFF', { width: '220px', textAlign: 'center' });
+const chip = el('div', zone, { left: '57px', top: '70px', width: '640px', height: '200px', borderRadius: '16px', background: '#FFFFFF', boxShadow: '0 6px 20px rgba(0,0,0,0.08)' });
+const chipThumb = el('div', chip, { left: '24px', top: '24px', width: '120px', height: '90px', borderRadius: '10px', overflow: 'hidden' }); photo(chipThumb, 'img', 120, 90);
+label(chip, 164, 30, 'IMG_2041.HEIC', 26, 600);
+const chipStatus = label(chip, 164, 72, '', 21, 500, C.grey, { fontVariantNumeric: 'tabular-nums' });
+const spinner = svg(chip, 40, 40, `<circle cx="20" cy="20" r="15" fill="none" stroke="#E4E4E9" stroke-width="5"/><path d="M20 5a15 15 0 0 1 15 15" fill="none" stroke="#3B6FD8" stroke-width="5" stroke-linecap="round"/>`, { left: '574px', top: '34px' });
+pill(chip, 24, 148, 592, 14, '#ECECF0');
+const chipFill = el('div', chip, { left: '24px', top: '148px', width: '0px', height: '14px', borderRadius: '7px', background: '#3B6FD8' });
+const dlBtn = el('div', zone, { left: '227px', top: '310px', width: '300px', height: '64px', borderRadius: '32px', background: '#1F9D55' });
+label(dlBtn, 0, 17, 'Download', 25, 600, '#FFFFFF', { width: '300px', textAlign: 'center' });
+const ad1 = el('div', fSite, { left: '830px', top: '104px', width: '330px', height: '200px', borderRadius: '16px', background: '#EFEFF3' });
+label(ad1, 16, 12, 'Ad', 15, 700, '#8A8A8E'); pill(ad1, 16, 110, 240, 14, '#DCDCE2'); pill(ad1, 16, 140, 180, 14, '#DCDCE2');
+const ad2 = el('div', fSite, { left: '830px', top: '324px', width: '330px', height: '220px', borderRadius: '16px', background: '#EFEFF3' });
+label(ad2, 16, 12, 'Sponsored', 15, 700, '#8A8A8E'); pill(ad2, 16, 120, 260, 14, '#DCDCE2'); pill(ad2, 16, 150, 200, 14, '#DCDCE2'); pill(ad2, 16, 180, 140, 14, '#DCDCE2');
+const tray = el('div', rWin, { left: '826px', top: '70px', width: '350px', height: '108px', borderRadius: '16px', background: '#FFFFFF', boxShadow: '0 12px 34px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.05)' });
+el('div', tray, { left: '14px', top: '22px', width: '58px', height: '44px' }).innerHTML = ZIP;
+label(tray, 84, 18, 'converted-files.zip', 21, 600); label(tray, 84, 48, '11.9 MB', 18, 450, C.grey);
+pill(tray, 84, 80, 240, 8, '#ECECF0'); const trayFill = el('div', tray, { left: '84px', top: '80px', width: '0px', height: '8px', borderRadius: '4px', background: '#3B6FD8' });
+// "Every single time.": the steps, round and round
+const STEPS = ['Search', 'Upload', 'Wait', 'Download', 'Unzip'];
+const chipsX0 = (W - (STEPS.length * CHIP.w + (STEPS.length - 1) * CHIP.gap)) / 2;
+const stepChips = STEPS.map((n, i) => {
+  const c = el('div', cold, { left: chipsX0 + i * (CHIP.w + CHIP.gap) + 'px', top: CHIP.y + 'px', width: CHIP.w + 'px', height: CHIP.size * 2.4 + 'px', borderRadius: CHIP.size * 1.2 + 'px', background: 'rgba(255,255,255,0.14)', boxShadow: 'inset 0 0 0 1.5px rgba(255,255,255,0.22)' });
+  const tx = label(c, 0, CHIP.size * 0.62, n, CHIP.size, 600, '#FFFFFF', { width: CHIP.w + 'px', textAlign: 'center' });
+  if (i < STEPS.length - 1) label(cold, chipsX0 + i * (CHIP.w + CHIP.gap) + CHIP.w + CHIP.gap / 2 - 9, CHIP.y + CHIP.size * 0.58, '→', CHIP.size, 500, 'rgba(255,255,255,0.55)').classList.add('stepArrow');
+  return { c, tx };
+});
+const stepArrows = [...cold.querySelectorAll('.stepArrow')];
+const loopArc = svg(cold, STEPS.length * CHIP.w + (STEPS.length - 1) * CHIP.gap, 70, `<path d="M${(STEPS.length - 0.5) * (CHIP.w + CHIP.gap) - CHIP.gap / 2} 6 C ${(STEPS.length - 0.5) * (CHIP.w + CHIP.gap)} 64, ${CHIP.w / 2} 64, ${CHIP.w / 2} 6" fill="none" stroke="rgba(61,220,151,0.9)" stroke-width="3" stroke-linecap="round" stroke-dasharray="1200" stroke-dashoffset="1200"/><path d="M${CHIP.w / 2 - 9} 16 L${CHIP.w / 2} 4 L${CHIP.w / 2 + 9} 16" fill="none" stroke="rgba(61,220,151,0.9)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`, { left: chipsX0 + 'px', top: CHIP.y + CHIP.size * 2.4 + 6 + 'px' });
 
 // Photos / Videos pills (Shotbase's giant pills)
 const pillBox = el('div', pills, { left: '320px', top: '400px', width: '1280px', height: '300px', borderRadius: '150px', background: 'rgba(255,255,255,0.9)', boxShadow: '0 30px 80px rgba(6,20,60,0.35)' });
@@ -481,7 +567,14 @@ const endPrice = el('div', endL, { width: W + 'px', top: '720px', textAlign: 'ce
 // ───────────────────────────── Sound cues for mix.py ─────────────────────────────
 const EVENTS = [];
 const ev = (t, kind) => EVENTS.push([+t.toFixed(4), kind]);
-COLD.forEach(c => ev(c.at, 'cut'));
+ev(AT.n1 + 0.25, 'click');
+for (let i = 0; i < QUERY.length; i += 2) ev(AT.n2 + 0.05 + i * 0.03, 'key');
+[0, 1, 2].forEach(i => ev(AT.n2 + 0.7 + i * 0.06, 'tick'));
+ev(AT.n3 + 0.02, 'grab'); ev(AT.n3 + 0.4, 'progress'); ev(AT.n3 + 0.75, 'progress');
+ev(AT.n4 + 0.25, 'tick'); ev(AT.n4 + 0.6, 'tick');
+ev(AT.n5 + 0.12, 'click'); ev(AT.n5 + 0.7, 'done');
+ev(AT.n6 + 0.05, 'click'); ev(AT.n6 + 0.16, 'click'); ev(AT.n6 + 0.3, 'paste');
+for (let i = 0; i < 8; i++) ev(AT.n7 + 0.3 + i * 0.13, 'fanSmall');
 DISSOLVES.forEach(d => ev(d.t - DUR, 'swish'));
 [AT.A + 1.73, AT.A + 2.42, AT.A + 3.38].forEach(t => ev(t, 'tick'));
 for (const s of SCENES) {
@@ -496,55 +589,55 @@ for (const s of SCENES) {
   ev(s.done, 'done');
   if (s.result) s.result.sizes.slice(1).forEach(([t]) => ev(t, 'count'));
 }
-ev(T(14, 2), 'click'); ev(T(13, 2) + 0.1, 'fill');
+ev(T(17, 2), 'click'); ev(T(16, 2) + 0.1, 'fill');
 ev(BATCH.enter, 'wake'); ev(BATCH.release, 'drop');
 for (let i = 0; i < 10; i++) ev(BATCH.stream(i), 'count');
 ev(BATCH.done, 'done');
-ev(T(21, 3), 'key'); ev(T(21, 4), 'key'); ev(T(22), 'paste'); ev(T(22, 3), 'click'); ev(T(22, 3) + 0.05, 'swish');
+ev(T(24, 3), 'key'); ev(T(24, 4), 'key'); ev(T(25), 'paste'); ev(T(25, 3), 'click'); ev(T(25, 3) + 0.05, 'swish');
 ev(AT.B + 0.2, 'tick');
-ev(T(23) - 0.2, 'whoosh'); ev(T(23), 'hit');
+ev(T(26) - 0.2, 'whoosh'); ev(T(26), 'hit');
 EVENTS.sort((a, b) => a[0] - b[0]);
 
 // ───────────────────────────── seek(t) ─────────────────────────────
 function seek(t) {
   const deskOn = inShot(t, 'desk1') || inShot(t, 'desk2') || inShot(t, 'desk3');
   // Blur-dissolves around the pills, the keycaps and the composer
-  const deskFade = 1 - life(t, T(14) - 0.12, T(14, 3) - 0.08, [0.25, 1]) - life(t, T(21, 3) - 0.1, Infinity, [0.25, 1]);
+  const deskFade = 1 - life(t, T(17) - 0.12, T(17, 3) - 0.08, [0.25, 1]) - life(t, T(24, 3) - 0.1, Infinity, [0.25, 1]);
   const cam = camAt(t);
 
   // ── Wallpaper (light): behind the desk, the pills and the composer; drifts with the camera, slower
-  const wallOn = deskOn || inShot(t, 'pills') || inShot(t, 'compose') || (t >= T(14) - 0.2 && t < T(14, 3) + 0.2);
+  const wallOn = deskOn || inShot(t, 'pills') || inShot(t, 'compose') || (t >= T(17) - 0.2 && t < T(17, 3) + 0.2);
   if (wallOn) {
     const ws = 1.12 + 0.02 * (cam.S - 3), wx = -(cam.cx - 1100) * 0.08 * cam.S, wy = -(cam.cy - 450) * 0.08 * cam.S;
     put(wallLayer, { x: wx, y: wy, s: ws });
   } else put(wallLayer, { o: 0 });
 
   // ── Desk
-  if (deskOn || (t >= T(14) - 0.2 && t < T(14, 3) + 0.25) || (t >= T(21, 3) - 0.2 && t < T(21, 3) + 0.3)) {
+  if (deskOn || (t >= T(17) - 0.2 && t < T(17, 3) + 0.25) || (t >= T(24, 3) - 0.2 && t < T(24, 3) + 0.3)) {
     show(desk, true);
     desk.style.transform = `translate(${W / 2}px, ${H / 2}px) scale(${cam.S}) translate(${-cam.cx}px, ${-cam.cy}px)`;
-    const fade = clamp(deskFade) * (t >= T(14, 3) && t < T(14, 3) + 0.25 ? step(t - T(14, 3), [0.25, 1]) : 1);
+    const fade = clamp(deskFade) * (t >= T(17, 3) && t < T(17, 3) + 0.25 ? step(t - T(17, 3), [0.25, 1]) : 1);
     desk.style.opacity = fade;
     desk.style.filter = fade < 0.99 ? `blur(${(14 * (1 - fade)).toFixed(1)}px)` : 'none';
     deskScene(t, cam);
   } else show(desk, false);
 
   // ── Cold open
-  if (t < T(3)) { show(cold, true); coldScene(t); } else show(cold, false);
+  if (t < T(5)) { show(cold, true); routineScene(t); } else show(cold, false);
   // ── Pills
-  if (t >= T(14) - 0.12 && t < T(14, 3) + 0.3) { show(pills, true); pillScene(t); } else show(pills, false);
+  if (t >= T(17) - 0.12 && t < T(17, 3) + 0.3) { show(pills, true); pillScene(t); } else show(pills, false);
   // ── Private
-  if (t >= T(17) && t < T(20)) { show(priv, true); privScene(t); } else show(priv, false);
+  if (t >= T(20) && t < T(23)) { show(priv, true); privScene(t); } else show(priv, false);
   // ── Keycaps, composer, end
-  if (t >= T(21, 3) - 0.12 && t < T(22) + 0.3) { show(keys, true); keyScene(t); } else show(keys, false);
-  if (t >= T(22) - 0.1 && t < T(23) + 0.4) { show(compose, true); composeScene(t); } else show(compose, false);
-  if (t >= T(23) - 0.15) { show(endL, true); endScene(t); } else show(endL, false);
+  if (t >= T(24, 3) - 0.12 && t < T(25) + 0.3) { show(keys, true); keyScene(t); } else show(keys, false);
+  if (t >= T(25) - 0.1 && t < T(26) + 0.4) { show(compose, true); composeScene(t); } else show(compose, false);
+  if (t >= T(26) - 0.15) { show(endL, true); endScene(t); } else show(endL, false);
   // Screen cursor (pills only)
-  if (t >= T(14) && t < T(14, 3)) {
-    const p = inOut((t - T(14)) / (T(14, 2) - T(14) - 0.05));
+  if (t >= T(17) && t < T(17, 3)) {
+    const p = inOut((t - T(17)) / (T(17, 2) - T(17) - 0.05));
     const x = lerp(1560, 1320, p), y = lerp(960, 600, p);
-    const pr = t >= T(14, 2) && t < T(14, 2) + 0.12;
-    put(scrCursor, { x, y, s: pr ? 0.9 : 1, ox: 0.1, oy: 0.05, o: life(t, T(14), T(14, 3) - 0.1, [0.2, 1]) });
+    const pr = t >= T(17, 2) && t < T(17, 2) + 0.12;
+    put(scrCursor, { x, y, s: pr ? 0.9 : 1, ox: 0.1, oy: 0.05, o: life(t, T(17), T(17, 3) - 0.1, [0.2, 1]) });
   } else put(scrCursor, { o: 0 });
 
   captionsAt(t);
@@ -560,30 +653,30 @@ function deskScene(t, cam) {
   WINDOWS.forEach((w, i) => {
     let o, blur;
     if (i === 2) { // the web window comes back for Convert
-      o = life(t, T(4) + 0.47 + i * 0.235, T(6) + 0.1, [0.45, 1], [0.35, 1]) + life(t, T(8, 4) - 0.1, T(9) + 0.3, [0.5, 1], [0.3, 1]);
-    } else if (i === 1) o = life(t, T(4) + 0.47 + i * 0.235, T(6, 2) + 0.1, [0.45, 1], [0.35, 1]);
-    else o = life(t, T(4) + 0.47, T(6), [0.45, 1], [0.35, 1]);
+      o = life(t, T(7) + 0.47 + i * 0.235, T(9) + 0.1, [0.45, 1], [0.35, 1]) + life(t, T(11, 4) - 0.1, T(12) + 0.3, [0.5, 1], [0.3, 1]);
+    } else if (i === 1) o = life(t, T(7) + 0.47 + i * 0.235, T(9, 2) + 0.1, [0.45, 1], [0.35, 1]);
+    else o = life(t, T(7) + 0.47, T(9), [0.45, 1], [0.35, 1]);
     const focused = t < focusOn[0] ? 0.4 : (step(t - focusOn[i], [0.25, 1]) - (focusOn[i + 1] ? step(t - focusOn[i + 1], [0.25, 1]) : 0));
-    const focus = (i === 1 && t >= T(6) - 0.2 && t < T(7)) || (i === 2 && t >= T(8, 4) - 0.1) ? 1 : clamp(focused);
+    const focus = (i === 1 && t >= T(9) - 0.2 && t < T(10)) || (i === 2 && t >= T(11, 4) - 0.1) ? 1 : clamp(focused);
     blur = lerp(9, 0, focus);
-    const lift = (i === 0 && t >= focusOn[0] && t < focusOn[1] + 0.3) || (i === 1 && t >= focusOn[1] && t < T(6)) || (i === 2 && t >= focusOn[2] && t < T(6));
+    const lift = (i === 0 && t >= focusOn[0] && t < focusOn[1] + 0.3) || (i === 1 && t >= focusOn[1] && t < T(9)) || (i === 2 && t >= focusOn[2] && t < T(9));
     put(w.g, { y: 14 * (1 - clamp(o)), o: clamp(o), blur: dof(blur + 12 * (1 - clamp(o))), s: 1 + 0.02 * focus });
-    put(w.ring, { o: clamp(focus) * (t < T(6) ? 1 : 0) * clamp(o) });
+    put(w.ring, { o: clamp(focus) * (t < T(9) ? 1 : 0) * clamp(o) });
     if (i === 0) finderLift.forEach((e, k) => put(e, { y: k === 1 ? -5 * (lift ? step(t - focusOn[0], SPRING) : 0) : 0, o: k === 0 ? (lift ? 1 : 0) : 1 }));
-    if (i === 1) put(cells[0], { x: cellPos(0).x, y: cellPos(0).y - 5 * (lift ? step(t - focusOn[1], SPRING) : 0), o: t >= T(6) && t < T(8) ? 0.25 : 1 });
-    if (i === 2) put(webImg, { x: 24, y: 52 - 5 * (lift ? step(t - focusOn[2], SPRING) : 0), o: t >= T(9) + 0.05 && t < T(11) ? 0.25 : 1 });
+    if (i === 1) put(cells[0], { x: cellPos(0).x, y: cellPos(0).y - 5 * (lift ? step(t - focusOn[1], SPRING) : 0), o: t >= T(9) && t < T(11) ? 0.25 : 1 });
+    if (i === 2) put(webImg, { x: 24, y: 52 - 5 * (lift ? step(t - focusOn[2], SPRING) : 0), o: t >= T(12) + 0.05 && t < T(14) ? 0.25 : 1 });
   });
   cells[0].style.left = '0px'; cells[0].style.top = '0px'; webImg.style.left = '0px'; webImg.style.top = '0px';
 
   // Remove BG preview panel
   {
-    const p = life(t, T(12) + 0.1, T(14) - 0.1, [0.5, 0.9], [0.35, 1]);
+    const p = life(t, T(15) + 0.1, T(17) - 0.1, [0.5, 0.9], [0.35, 1]);
     put(pv, { o: clamp(p), s: lerp(0.92, 1, clamp(p)), y: 20 * (1 - clamp(p)) });
     const lift = step(t - (AT[5] + 1.0), [0.6, 1]);
     put(pvPhoto, { o: 1 - lift });
-    const fillR = 700 * step(t - (T(13, 2) + 0.05), [0.55, 1]);
+    const fillR = 700 * step(t - (T(16, 2) + 0.05), [0.55, 1]);
     pvFill.style.clipPath = `circle(${fillR.toFixed(1)}px at ${PV.w + 30}px ${PV.h / 2}px)`;
-    put(pvFill, { o: t >= T(13, 2) ? 1 : 0 });
+    put(pvFill, { o: t >= T(16, 2) ? 1 : 0 });
     put(pvCut, { y: -10 * lift, s: 1 + 0.02 * lift });
     pvCut.style.filter = lift > 0.02 ? `drop-shadow(0 ${(14 * lift).toFixed(1)}px ${(18 * lift).toFixed(1)}px rgba(0,0,0,${(0.35 * lift).toFixed(2)}))` : 'none';
   }
@@ -594,8 +687,8 @@ function deskScene(t, cam) {
   awake.push([BATCH.enter, 1.2], [BATCH.done, 1.0]);
   awake.sort((a, b) => a[0] - b[0]);
   let bs = track(t, 1, awake, SPRING);
-  [T(3), T(3, 2), T(3, 3), T(3, 4)].forEach(tb => { bs += 0.035 * (step(t - tb, [0.12, 1]) - step(t - tb - 0.12, [0.25, 1])); });
-  const op = lerp(0.6, 1, clamp(step(t - AT[2], HOVER)));
+  [T(6), T(6, 2), T(6, 3), T(6, 4)].forEach(tb => { bs += 0.035 * (step(t - tb, [0.12, 1]) - step(t - tb - 0.12, [0.25, 1])); });
+  const op = lerp(0.6, 1, clamp(step(t - (T(5) + 0.15), HOVER)));
   put(bub, { s: bs, o: op });
   const lab = bubbleLabel(t);
   bubLabel.textContent = lab.text;
@@ -648,7 +741,7 @@ function deskScene(t, cam) {
   // Batch: a stack of ten on the cursor, then one by one into the bubble
   {
     const c = cursorAt(t);
-    const held = t >= T(20) - 0.05 && t < BATCH.release;
+    const held = t >= T(23) - 0.05 && t < BATCH.release;
     put(stack, { x: c.x - 60, y: c.y - 46, s: held ? 1 - 0.3 * step(t - BATCH.enter, SPRING) : 1, o: held ? 1 : 0 });
     batchFlyers.forEach((f, i) => {
       const t0 = BATCH.stream(i);
@@ -665,8 +758,8 @@ function deskScene(t, cam) {
   // Cursor
   {
     const c = cursorAt(t);
-    const vis = t >= T(5, 3) && !(t >= T(16, 3) + 0.3 && t < T(20) - 0.05);
-    put(cursor, { x: c.x - 3, y: c.y - 2, s: c.pressed ? 0.9 : 1, o: vis ? life(t, T(5, 3), Infinity, [0.25, 1]) : 0, ox: 0.1, oy: 0.05 });
+    const vis = ((t >= T(5) && t < T(5, 4) + 0.5) || t >= T(8, 3)) && !(t >= T(19, 3) + 0.3 && t < T(23) - 0.05);
+    put(cursor, { x: c.x - 3, y: c.y - 2, s: c.pressed ? 0.9 : 1, o: vis ? life(t, T(8, 3), Infinity, [0.25, 1]) : 0, ox: 0.1, oy: 0.05 });
   }
 }
 
@@ -760,39 +853,81 @@ function progressAt(t) {
   return { p: 0, o: 0 };
 }
 
-// ── Cold open
-function coldScene(t) {
-  const drift = t;                                   // slow dolly: near files move more
-  COLD.forEach(c => {
-    const p = step(t - c.at, [0.5, 1]);
-    const spread = step(t - T(2), [1.6, 1]);          // the break: files drift apart
-    const cx = c.x + c.w / 2 - 960, cy = c.y + c.h / 2 - 540;
-    const x = c.x - drift * 18 * c.z + cx * 0.08 * spread, y = c.y + cy * 0.08 * spread - 10 * (1 - p);
-    const blur = Math.abs(c.z - 1) * 9 + 14 * (1 - p);
-    put(c.g, { x, y, s: 1 + 0.04 * drift / 3.75 * c.z, o: p, blur, ox: 0, oy: 0 });
-    c.g.style.left = '0px'; c.g.style.top = '0px';
-  });
+// ── The old way
+function routineScene(t) {
   put(WALL_D, { s: 1.1 + 0.02 * t, x: -t * 6 });
+  const A = RT, inR = (a, b) => t >= a && t < b;
+  const enter = step(t, [0.5, 1]), loop = step(t - A.n7, [0.45, 1]);
+  const push = [A.n2, A.n3, A.n5, A.n6].reduce((v, k) => v + 0.012 * step(t - k, [0.4, 1]), 0);
+  put(rWrap, { s: RS * (0.96 + 0.04 * enter + push) * lerp(1, RLOOP.s, loop), y: lerp(0, RLOOP.y, loop) + 24 * (1 - enter), o: enter, blur: 12 * (1 - enter), ox: 0.5, oy: 0.5 });
+  const st = t < A.n2 ? 'pics' : t < A.n3 ? 'search' : t < A.n6 ? 'site' : 'down';
+  show(fPics.p, st === 'pics'); show(fDown.p, st === 'down'); show(fSearch, st === 'search'); show(fSite, st === 'site');
+  rTitle.textContent = st === 'pics' ? 'Pictures' : st === 'down' ? 'Downloads' : '';
+  show(rAddr, st === 'search' || st === 'site');
+  // Pictures: the photo gets selected
+  fPics.rows.forEach((r, i) => { r.row.style.top = 60 + i * 64 + 'px'; r.row.style.background = i === 0 && t >= A.n1 + 0.25 ? 'rgba(59,111,216,0.14)' : 'transparent'; });
+  // Search: type the query, then the results drop in
+  const k = clamp(Math.floor((t - (A.n2 + 0.05)) / 0.03), 0, QUERY.length);
+  sText.textContent = QUERY.slice(0, k) + (st === 'search' && Math.floor(t * 3) % 2 === 0 ? '|' : ' ');
+  rAddrText.textContent = st === 'search' ? QUERY.slice(0, k) : 'Image Converter: free online';
+  sResults.forEach((g, i) => { const p = step(t - (A.n2 + 0.7 + i * 0.06), [0.3, 1]); put(g, { o: p, y: 10 * (1 - p) }); });
+  // The site: upload, wait, download
+  const up = clamp((t - A.n3) / (A.n4 - A.n3)) * 0.37 + clamp((t - A.n4) / (A.n5 - A.n4)) * 0.15;
+  const got = t >= A.n3 + 0.05;
+  put(zHint, { o: got ? 1 - step(t - A.n3, [0.25, 1]) : 1 });
+  const chipIn = step(t - A.n3, [0.35, 0.85]);
+  put(chip, { o: got ? clamp(chipIn) : 0, s: lerp(0.9, 1, clamp(chipIn)), x: -60 * (1 - clamp(chipIn)) });
+  chipFill.style.width = (592 * (t >= A.n5 ? 1 : up)).toFixed(1) + 'px';
+  chipStatus.textContent = t < A.n4 ? `Uploading… ${Math.round(up * 100)}%` : t < A.n5 ? 'Converting… please wait' : 'Done';
+  put(spinner, { o: inR(A.n3, A.n5) ? 1 : 0, r: (t * 400) % 360 });
+  const dl = step(t - A.n5, [0.3, 0.9]), press = step(t - A.n5 - 0.12, [0.08, 1]) - step(t - A.n5 - 0.24, [0.15, 1]);
+  put(dlBtn, { o: t >= A.n5 ? clamp(dl) : 0, s: (0.9 + 0.1 * clamp(dl)) * (1 - 0.05 * press) });
+  const tr = step(t - A.n5 - 0.22, [0.3, 0.9]);
+  put(tray, { o: inR(A.n5 + 0.22, A.n6) ? clamp(tr) : 0, y: -12 * (1 - clamp(tr)) });
+  trayFill.style.width = (240 * clamp((t - A.n5 - 0.3) / 0.45)).toFixed(1) + 'px';
+  put(ad1, { o: 1 }); put(ad2, { o: 1 });
+  // Downloads: unzip, and the file appears
+  const unz = t >= A.n6 + 0.3;
+  fDown.rows[0].ic.innerHTML = unz ? FOLDER : ZIP;
+  fDown.rows[0].row.querySelector('div:nth-child(2)').textContent = unz ? 'converted-files' : 'converted-files.zip';
+  const child = step(t - A.n6 - 0.3, [0.3, 0.9]);
+  fDown.rows.forEach((r, i) => {
+    const y = 60 + i * 64 - (i >= 1 ? 64 * (1 - child) : 0);
+    r.row.style.top = (i === 1 ? y : y) + 'px';
+    r.row.style.background = (i === 0 && t >= A.n6 && !unz) || (i === 1 && unz) ? 'rgba(59,111,216,0.14)' : 'transparent';
+    if (i === 1) { put(r.row, { o: child, x: 40 }); r.row.style.left = '270px'; }
+  });
+  // Every single time: the steps go round
+  stepChips.forEach((c, i) => {
+    const p = step(t - (A.n7 + 0.05 + i * 0.05), [0.3, 0.9]);
+    const hot = t >= A.n7 + 0.3 && Math.floor((t - A.n7 - 0.3) / 0.13) % STEPS.length === i;
+    c.c.style.background = hot ? C.mint : 'rgba(255,255,255,0.14)'; c.tx.style.color = hot ? C.ink : '#FFFFFF';
+    put(c.c, { o: p, y: 14 * (1 - p) });
+  });
+  stepArrows.forEach((a, i) => put(a, { o: step(t - (A.n7 + 0.1 + i * 0.05), [0.3, 1]) }));
+  const arc = step(t - (A.n7 + 0.3), [0.6, 1]);
+  loopArc.querySelector('path').setAttribute('stroke-dashoffset', (1200 * (1 - arc)).toFixed(0));
+  put(loopArc, { o: t >= A.n7 + 0.25 ? 1 : 0 });
 }
 
 // ── Photos / Videos pills
 function pillScene(t) {
-  const inP = life(t, T(14) - 0.1, T(14, 3) - 0.05, [0.35, 1], [0.3, 1]);
-  const zoom = step(t - (T(14, 3) - 0.12), [0.3, 1]);
-  put(pills, { o: clamp(inP), s: lerp(0.94, 1, clamp(step(t - T(14), [0.4, 1]))) * (1 + 1.4 * zoom), blur: 10 * (1 - clamp(inP)) + 12 * zoom });
-  const L = track(t, 18, [[T(14, 2), 658]], [0.28, 0.85]), R = track(t, 622, [[T(14, 2), 1262]], [0.42, 0.9]);
+  const inP = life(t, T(17) - 0.1, T(17, 3) - 0.05, [0.35, 1], [0.3, 1]);
+  const zoom = step(t - (T(17, 3) - 0.12), [0.3, 1]);
+  put(pills, { o: clamp(inP), s: lerp(0.94, 1, clamp(step(t - T(17), [0.4, 1]))) * (1 + 1.4 * zoom), blur: 10 * (1 - clamp(inP)) + 12 * zoom });
+  const L = track(t, 18, [[T(17, 2), 658]], [0.28, 0.85]), R = track(t, 622, [[T(17, 2), 1262]], [0.42, 0.9]);
   pillSel.style.width = (R - L) + 'px'; put(pillSel, { x: L });
-  const v = step(t - T(14, 2), [0.25, 1]);
+  const v = step(t - T(17, 2), [0.25, 1]);
   pillWords[0].style.color = mix('#FFFFFF', '#0E0E0F', v); pillWords[1].style.color = mix('#0E0E0F', '#FFFFFF', v);
 }
 
 // ── Private: the laptop
 function privScene(t) {
-  const pull = step(t - T(17), [0.9, 1]);
+  const pull = step(t - T(20), [0.9, 1]);
   const s = lerp(2.6, 1, pull);
   put(lap, { s, ox: 0.6, oy: 0.4, x: lerp(-260, 0, pull) });
   LAPF.forEach((f, i) => {
-    const tc = T(17, 3) + i * BEAT;
+    const tc = T(20, 3) + i * BEAT;
     const k = step(t - tc, [0.25, 1]);
     put(f.a, { o: 1 - k, y: -8 * k }); put(f.b, { o: k, y: 8 * (1 - k) });
     put(f.g, { x: 0, y: 0, o: 1 });
@@ -805,31 +940,31 @@ function privScene(t) {
 
 // ── Keycaps
 function keyScene(t) {
-  const inK = life(t, T(21, 3) - 0.1, T(22) - 0.05, [0.3, 1], [0.3, 1]);
-  put(keys, { o: clamp(inK), blur: 12 * (1 - clamp(inK)), s: lerp(1.05, 1, clamp(step(t - T(21, 3), [0.6, 1]))) });
+  const inK = life(t, T(24, 3) - 0.1, T(25) - 0.05, [0.3, 1], [0.3, 1]);
+  put(keys, { o: clamp(inK), blur: 12 * (1 - clamp(inK)), s: lerp(1.05, 1, clamp(step(t - T(24, 3), [0.6, 1]))) });
   const press = (tk, k) => { const d = step(t - tk, [0.1, 1]) - step(t - tk - 0.32, [0.15, 1]); put(k, { y: 12 * d, o: 1 }); k.style.boxShadow = `0 ${18 - 14 * d}px 0 #050506, 0 ${30 - 10 * d}px 60px rgba(0,0,0,0.55), inset 0 0 0 2px rgba(255,255,255,0.06)`; };
-  press(T(21, 3), kCmd); press(T(21, 4), kV);
+  press(T(24, 3), kCmd); press(T(24, 4), kV);
   kCmd.style.left = '820px'; kV.style.left = '1270px';
 }
 
 // ── Composer
 function composeScene(t) {
-  const inC = life(t, T(22) - 0.1, Infinity, [0.4, 0.9]);
-  const zoom = step(t - (T(23) - 0.12), [0.35, 1]);
+  const inC = life(t, T(25) - 0.1, Infinity, [0.4, 0.9]);
+  const zoom = step(t - (T(26) - 0.12), [0.35, 1]);
   put(compose, { o: clamp(inC) * (1 - zoom), y: 30 * (1 - clamp(inC)), s: 1 + 2.2 * zoom, blur: 10 * (1 - clamp(inC)) + 20 * zoom, ox: 0.66, oy: 0.4 });
-  const paste = step(t - T(22), SPRING);
-  put(pasted, { s: lerp(0.5, 1, paste), o: t >= T(22) && t < T(22, 3) ? clamp(paste * 2) : 0, ox: 0, oy: 0.5 });
-  put(placeholder, { x: (t >= T(22) && t < T(22, 3)) ? 230 * paste : 0, o: 1 });
-  const sendP = step(t - T(22, 3), [0.4, 0.85]);
-  put(sent, { o: t >= T(22, 3) ? clamp(sendP * 1.5) : 0, y: 120 * (1 - sendP), s: lerp(0.4, 1, sendP), ox: 0.1, oy: 1 });
-  put(sendBtn, { s: 1 - 0.1 * (step(t - T(22, 3), [0.1, 1]) - step(t - T(22, 3) - 0.15, [0.2, 1])) });
+  const paste = step(t - T(25), SPRING);
+  put(pasted, { s: lerp(0.5, 1, paste), o: t >= T(25) && t < T(25, 3) ? clamp(paste * 2) : 0, ox: 0, oy: 0.5 });
+  put(placeholder, { x: (t >= T(25) && t < T(25, 3)) ? 230 * paste : 0, o: 1 });
+  const sendP = step(t - T(25, 3), [0.4, 0.85]);
+  put(sent, { o: t >= T(25, 3) ? clamp(sendP * 1.5) : 0, y: 120 * (1 - sendP), s: lerp(0.4, 1, sendP), ox: 0.1, oy: 1 });
+  put(sendBtn, { s: 1 - 0.1 * (step(t - T(25, 3), [0.1, 1]) - step(t - T(25, 3) - 0.15, [0.2, 1])) });
 }
 
 // ── End card
 function endScene(t) {
-  const bg = step(t - (T(23) - 0.15), [0.3, 1]);
+  const bg = step(t - (T(26) - 0.15), [0.3, 1]);
   put(endL, { o: bg });
-  const lp = step(t - T(23), [0.7, 1]);
+  const lp = step(t - T(26), [0.7, 1]);
   put(endLogo, { o: lp, s: lerp(0.86, 1, lp), blur: 16 * (1 - lp) });
   put(endGlow, { o: lp * (0.85 + 0.15 * Math.sin(Math.min(t, PICTURE) * 1.4)), s: lerp(0.7, 1, lp) });
   const tp = step(t - (AT[9] + 0.02), [0.5, 1]);

@@ -41,6 +41,8 @@ The tools that inspired this all kill a detour. CleanShot X keeps the screenshot
 
 **The edge is the feel, not the feature list.** Optimizers already exist (ImageOptim, Squoosh, TinyPNG). The ones people love feel instant and obvious. Interaction polish is product work here, not decoration.
 
+**Lead every pitch with the detour, not with file size** (owner, 2026-11-04). "Your files are too heavy" isn't the problem people feel: compression is a commodity, and many tools compress as well or better. The problem is the routine around it: find a website, upload from Finder, wait, download, maybe unzip, find the file, then use it. Droptimize removes the routine: drop the file where you already are, and the result is saved and on the clipboard. Launch film, website and store copy all start from this.
+
 ---
 
 ## 3. Rules
