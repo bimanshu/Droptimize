@@ -42,6 +42,14 @@ Sound:
 Banned: bouncy easing, particle bursts, lens flares, glows beyond the two above, gradients on UI chrome, mismatched icon strokes, dead time, stock-template transitions, fake brand logos, any real company's UI, logo or wallpaper, monospace, rolling digits that smear.
 </direction>
 
+## The opening, rewritten (owner, 2026-11-04)
+"Framing the video as 'your files are too heavy' won't make users relate… the problem is you always have to go on the web, find a platform, drag stuff from Finder, wait for it to convert, download, possibly unzip, and then use the images. That's what Droptimize solves; compression is a commodity." So the film no longer opens on file sizes:
+
+- **Bars 1–4 (0–7.5 s) · The old way**, on the dark wallpaper, music muffled. One generic window (no real brands) steps through the routine as Emma lists it (one take, `audio/emma-vo-routine.mp3`, 107 credits): **"Need a smaller file?"** (Finder, `IMG_2041.HEIC 12.4 MB` selected) · **"Find a website."** (a search types `heic to jpg converter`, three results) · **"Upload."** (a generic converter page with ads; the file uploads, 0 → 37%) · **"Wait."** ("Converting… please wait", a spinner) · **"Download."** (a Download button, `converted-files.zip 11.9 MB` in the tray: barely smaller) · **"Unzip."** (Downloads: the zip becomes a folder, `IMG_2041.jpg` appears) · **"Every single time."** (the window shrinks; Search → Upload → Wait → Download → Unzip go round in a loop, mint). Captions under the window, one per phrase.
+- **Bar 5 (7.5 s) · The drop.** Pixel dissolve to the bright desk as the bass lands (Digital Clouds now starts at its bar 13, so its lift hits here); a photo comes straight onto the bubble, Auto, released on Emma's "drop" in **"Or just drop it."**; ring, check.
+- **Bar 6 · "Meet Droptimize."** The bubble in macro, as before.
+- **From bar 7 on, everything below is three bars later than written** (scene 3, "Drag from anywhere", is now bar 7; the end card is bar 26; 27 bars = 50.6 s of picture + 3 s still = 53.6 s). The VO table at the end is current.
+
 <structure>
 128 BPM, 24 bars (bar.beat; one beat 0.469 s, one bar 1.875 s). Emma's lines start on the beat shown; captions follow her words, and **no caption appears without her saying it**. Scenes 1–4 are as below; from scene 5 the bars are the retimed ones (2026-11-03).
 
@@ -110,19 +118,26 @@ Banned: bouncy easing, particle bursts, lens flares, glows beyond the two above,
 Show the owner this beat grid (done in chat, 2026-11-02). When they approve and v3 plus the photos are here, build, check stills, render and send.
 </start>
 
-## VO placement on the new grid
-Lines 1–9 from `audio/emma-vo-full.mp3` (source times in `HANDOFF-VIDEO.md`); A and B from `audio/emma-vo-extra.mp3`.
+## VO placement on the new grid (current, 2026-11-04)
+Routine lines from `audio/emma-vo-routine.mp3` (+2.4 dB in the mix to match the other takes), A and B from `audio/emma-vo-extra.mp3`, the rest from `audio/emma-vo-full.mp3`.
 
-| # | Line | Starts (bar.beat) | Film time (s) | Ends |
-|---|---|---|---|---|
-| 1 | Your files are too heavy. | 1.2 | 0.469 | 2.24 |
-| 2 | Meet Droptimize. | 3.2 | 4.219 | 5.37 |
-| A | Drag from anywhere. Finder, Photos, or the web. | 4.1 | 5.625 | 9.43 ("Finder" 7.39, "Photos" 8.08, "web" 9.04) |
-| 3 | Drop any photo or video on the bubble. Done. | 6.3 | 10.313 | 13.53 ("Done." at 13.23, with the check) |
-| 4 | Convert to WebP or AVIF in one move. | 9.2 | 15.469 | 18.62 |
-| 5 | Lift the background right out. | 12.2 | 21.094 | 22.69 |
-| 6 | Videos too, down to whatever size you need. | 14.2 | 24.844 | 27.67 |
-| 7 | All on your Mac. Nothing uploaded. | 17.2 | 30.469 | 32.69 |
-| B | No internet needed. | 18.4 | 33.281 | 34.56 |
-| 8 | Batches in one drop. Already on your clipboard. | 20.2 | 36.094 | 39.11 |
-| 9 | Droptimize. Drop it. Done. | 23.1 | 41.250 | 43.62 |
+| # | Line | Starts (s) | Ends |
+|---|---|---|---|
+| n1 | Need a smaller file? | 0.06 | 1.01 |
+| n2 | Find a website. | 1.42 | 2.10 |
+| n3 | Upload. | 2.50 | 3.00 |
+| n4 | Wait. | 3.42 | 3.84 |
+| n5 | Download. | 4.27 | 4.75 |
+| n6 | Unzip. | 5.17 | 5.83 |
+| n7 | Every single time. | 6.12 | 7.37 |
+| n8 | Or just drop it. | 7.62 (5.1 + 0.12; "drop" at 8.49, with the release) | 8.96 |
+| 2 | Meet Droptimize. | 9.84 (6.2) | 10.99 |
+| A | Drag from anywhere. Finder, Photos, or the web. | 11.25 (7.1) | 15.05 |
+| 3 | Drop any photo or video on the bubble. Done. | 15.94 (9.3) | 19.16 |
+| 4 | Convert to WebP or AVIF in one move. | 21.09 (12.2) | 24.24 |
+| 5 | Lift the background right out. | 26.72 (15.2) | 28.31 |
+| 6 | Videos too, down to whatever size you need. | 30.47 (17.2) | 33.30 |
+| 7 | All on your Mac. Nothing uploaded. | 36.09 (20.2) | 38.31 |
+| B | No internet needed. | 38.91 (21.4) | 40.19 |
+| 8 | Batches in one drop. Already on your clipboard. | 41.72 (23.2) | 44.74 |
+| 9 | Droptimize. Drop it. Done. | 46.88 (26.1) | 49.24 |

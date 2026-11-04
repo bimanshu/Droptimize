@@ -356,6 +356,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-04: Positioning (owner): lead with the detour Droptimize removes, not with file size (§2). The launch film now opens on that routine (find a website, upload, wait, download, unzip) before the drop; new Emma lines, 107 credits.
 - 2026-11-03: Launch film v4 approved by the owner; a 1080 × 1920 reel version generated from it (`make-reel-v4.py`), and captions kept clear of every element (owner saw text colliding; `audit-captions-v4.js` now reports none).
 - 2026-11-03: Launch film v4: back to the drawn gradient background (owner preferred it to the landscape photo); the files keep their real photos.
 - 2026-11-03: Launch film v4's music is now Mixkit "Digital Clouds" (owner's pick of five previewed in the film; `mix-v4.py` takes any track's tempo and start point, so trying music needs no re-render).
