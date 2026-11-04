@@ -6,7 +6,11 @@
 
 ## Picking this up in a new account (or from a zip)
 
-The owner sometimes moves the project to another account by zipping this folder. The zip is the whole git repository, history included, minus generated files (`Vendor/`, `*.xcodeproj`, `build/`).
+The owner sometimes moves the project to another account by zipping this folder. The zip is the whole git repository, history included, minus generated files (`Vendor/`, `*.xcodeproj`, `build/`). **Since 2026-11-04 it also carries the launch film's git-ignored files**, so the film runs and rebuilds offline: `docs/launch-video/film/images/` (the photos), `160.mp3` and `175.mp3` (the music), `soundtrack-v4.m4a` (the finished mix) and `renders/` (the current MP4s: `droptimize-launch.mp4` and `droptimize-reel.mp4`). Never commit those (they're in `.gitignore`).
+
+**Run the film on localhost** (owner, 2026-11-04: "run it as a local host on another account"): `cd docs/launch-video/film && python3 -m http.server 8000`, then open `http://localhost:8000/preview.html` (landscape) or `http://localhost:8000/preview.html?reel` (the reel). It plays with sound and has a scrubber; Space plays and pauses.
+
+**Push from the other account** (the owner wants to push from there): the zip's `origin` is `https://github.com/bimanshu/Droptimize` and the branch is `claude/fervent-thompson-2620yn`. After a one-time GitHub sign-in on that machine (GitHub Desktop, or `gh auth login` then `gh auth setup-git`), `git fetch origin` and compare (step 2 below), then `git push -u origin claude/fervent-thompson-2620yn`. The zip of 2026-11-04 was made right after commit `HEAD` was pushed, so GitHub and the zip start out the same.
 
 1. Unzip it and `cd` into it. `git log -1` shows which commit you have; `git status` should be clean. You're on branch `claude/fervent-thompson-2620yn`.
 2. **If the new session can reach `github.com/bimanshu/Droptimize`** (it's public), fetch that branch first, then compare: `git log --oneline origin/claude/fervent-thompson-2620yn..HEAD` lists commits only in this folder, `git log --oneline HEAD..origin/claude/fervent-thompson-2620yn` those only on GitHub. A copy can be ahead of GitHub (on 2026-11-02 the updater was first committed only on the owner's Mac, then pushed when they said so), so never reset local commits away; merge, and push only when the owner says so. CI publishes the preview the owner installs from what's pushed.

@@ -25,3 +25,5 @@ docs/launch-video/film/events.json
 docs/launch-video/film/stills/
 __pycache__/
 docs/launch-video/film/images/
+docs/launch-video/film/*.m4a
+docs/launch-video/film/renders/

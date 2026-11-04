@@ -35,6 +35,9 @@
 1. **Push v3 from the office Mac** (it isn't on GitHub: `encode.swift`, `cutout.swift`, the v3 `index.html` and `HANDOFF-VIDEO.md`). v4 doesn't need it.
 2. **The website URL** for the end card, once there is one.
 
+## Watch it on localhost
+`python3 -m http.server 8000` in `docs/launch-video/film/`, then `http://localhost:8000/preview.html` (add `?reel` for the vertical one). `preview.html` drives `v4.html` / `v4-reel.html` with their own `seek(t)` and plays `soundtrack-v4.m4a` (git-ignored; made from `mix-v4.wav` with `ffmpeg -i mix-v4.wav -c:a aac -b:a 192k soundtrack-v4.m4a`). The film pages themselves stay pure functions of time for the renderer.
+
 ## How v4 is built (from `docs/launch-video/film/`)
 ```bash
 python3 prepare-images-v4.py                               # the four photos into images/ (git-ignored)
