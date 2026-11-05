@@ -60,13 +60,14 @@ extension Action {
     }
 
     /// The option bubbles that fan out when this segment is hovered, for a drag of `kind`
-    /// (nil: a mixed drop, which gets none; PDFs have none yet); empty when it has none.
+    /// (nil: a mixed drop, which gets none); empty when it has none.
     /// `lastColor` is the last custom background, offered again as its own bubble.
     func options(for kind: MediaKind?, lastColor: RGBColor?) -> [MenuOption] {
         switch kind {
         case .video?: return videoOptions
         case .image?: return imageOptions(lastColor: lastColor)
-        case .pdf?, nil: return []
+        case .pdf?: return pdfOptions
+        case nil: return []
         }
     }
 
@@ -93,6 +94,17 @@ extension Action {
         default:
             return []
         }
+    }
+
+    private var pdfOptions: [MenuOption] {
+        guard self == .compress else { return [] }
+        let sizes = PDFTuning.targetSizes.map { bytes in
+            MenuOption(option: .maxBytes(bytes), label: .text(ByteCount.short(bytes)),
+                       title: "Under \(ByteCount.describe(bytes))",
+                       accessibilityLabel: "Compress the PDF to under \(ByteCount.describe(bytes))")
+        }
+        return sizes + [MenuOption(option: .custom, label: .symbol("ellipsis"), title: "Custom size",
+                                   accessibilityLabel: "Compress the PDF to a size you choose")]
     }
 
     private func imageOptions(lastColor: RGBColor?) -> [MenuOption] {

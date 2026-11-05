@@ -15,7 +15,9 @@ final class ActionMenuTests: XCTestCase {
         let menu = ActionMenu(kinds: [.pdf])
         XCTAssertEqual(menu?.center, .auto)
         XCTAssertEqual(menu?.segments, [.compress])
-        XCTAssertEqual(menu?.geometryOptionCounts, [0], "no option bubbles yet")
+        XCTAssertEqual(menu?.options.first?.map(\.title),
+                       ["Under 200 KB", "Under 500 KB", "Under 1 MB", "Under 2 MB", "Under 5 MB", "Custom size"])
+        XCTAssertEqual(menu?.options.first?.first?.option, .maxBytes(200_000))
     }
 
     func testMixedDropsOnlyOfferWhatAppliesToBoth() {

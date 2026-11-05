@@ -27,6 +27,7 @@ Working name: **Droptimize** (also considered: Blip, Ripple, Halo, PixDrop). If 
 | Phase 1: image pipeline | Steps 1 and 4 done, step 2 half done (WebP, AVIF, Compress incl. target sizes, Half size, Remove BG with backgrounds, naming, size guard, clipboard) | libwebp; libaom + libavif; own lossless PNG optimizer; ImageIO for JPEG/HEIC until jpegli; Vision for Remove BG. Next: Auto classification and the full PNG pipeline (step 2), auto-tune (step 3) |
 | Phase 1.5: benchmark, polish, launch clip | Launch film done (first cut sent to the owner, 2026-11-02); benchmark and hands-on polish not started | 31.5 s, 1080p60, Emma's voice-over, built from HTML; sources and handoff in `docs/launch-video/` |
 | Phase 2: video pipeline | Steps 1–5 done: remux, H.264/HEVC, compress to a size, resize, mute, GIF, and **WebM (VP9) + AV1 with Opus**, WebM being Auto (2026-11-05) | AVFoundation decodes; libvpx (VP9), libaom (AV1) and libopus encode; our own WebM writer. Tested on Linux (FFmpeg decodes the files) and in CI on macOS (202/202, run 83); not yet tried on real clips by a person. Next: VMAF auto-tune; WebM *input* (§13) |
+| PDFs: Compress PDF | Done 2026-11-05 (Auto + sizes 200 KB–5 MB, §7b) | Apple's PDFKit and Quartz filters, no new dependency. In CI on macOS; not yet tried on real documents by a person |
 | Phase 3: signing, notarization, distribution | Built-in updater built (pushed 2026-11-02; first stable release waits on the signing secret); signing and notarization not started | No Apple Developer account until Droptimize earns (owner, 2026-11-02), so ad-hoc signing and our own signed-update check instead of Sparkle (§8.2) |
 
 ---
@@ -79,6 +80,8 @@ The tools that inspired this all kill a detour. CleanShot X keeps the screenshot
 
 Image segments, top to bottom: **Convert · Compress · Half size · Remove BG** (center: **Auto**), leaving one slot free. Convert's option bubbles: **WebP · AVIF · JPG · PNG · HEIC** (only formats that web pages and uploads take; no general-purpose conversion).
 Video segments, top to bottom: **Convert · Compress · Resize · Mute** (center: **Auto**, a WebM), mirroring the image menu. Convert's option bubbles: **WebM · AV1 · MP4 · HEVC · GIF** (Convert itself = WebM). Compress: **10 MB · 25 MB · 50 MB · 100 MB · Custom** (common upload limits). Resize: **1080p · 720p · 480p** (the short side).
+
+PDF menu (§7b): **Compress** (center: **Auto**, a smaller PDF). Compress's option bubbles: **200 KB · 500 KB · 1 MB · 2 MB · 5 MB · Custom** (what upload forms and email allow).
 
 - Drops come from anywhere: Finder files, files other apps promise on drop (Photos, Mail, browsers) and plain picture data. Results of files that only existed in another app go to Downloads.
 - Mixed drops (images and videos): show only actions that apply to both (Auto, Compress, without option bubbles).
@@ -238,6 +241,16 @@ The same idea as §6.4, using Netflix's **VMAF** metric: encode a few short samp
 
 Video takes time (a 2-minute 4K clip can take a minute or more). Show real progress, keep working in the background, allow cancel, notify when done, and present the result as a draggable thumbnail, since videos don't paste usefully from the clipboard.
 
+### 7b. PDFs (Compress PDF, 2026-11-05)
+
+The owner asked for PDF optimization and approved doing it with Apple's own PDF engine (PDFKit and Quartz filters), so no new dependency. Code: `Pipeline/PDFOptimizer.swift` (macOS), `Pipeline/PDFPlan.swift` (portable: plan, `PDFTuning`).
+
+- **Only the pictures change.** Text, vector art, links, bookmarks and form fields are kept as they are. Each copy is checked: same pages, same page sizes, at least 98% of the text still text. Otherwise it's refused.
+- **Auto (and Compress without a size):** Apple's "optimize images for screen" + "save images as JPEG", the same as Preview's export options. Measured in CI: pictures scaled to **144 ppi**, JPEG ≈ 0.72 (a JPEG that needs no scaling is kept as it is). A 430 ppi photo page went from 2.36 MB to 139 KB at 49.9 dB PSNR (rendered at 150 dpi); a 300 dpi scan from 4.46 MB to 559 KB at 31.2 dB (softer when zoomed). Size guard on (`-min.pdf`).
+- **Compress to a size:** a ladder of picture settings, from 300 ppi at JPEG 0.85 down to 72 ppi at 0.3 (`PDFTuning.ladder`, with Auto's step in it), searched by halves (about 4 rewrites), keeping the sharpest copy that fits (`-1mb.pdf`). Done through a Quartz filter written at run time and passed to PDFKit as the `QuartzFilter` write option (not documented by Apple, but it's what Preview's filters use; if it ever stops working, the copy simply doesn't fit and the card says so). The card says "Pictures at 100 ppi to fit" when it had to go below 144 ppi.
+- **Left alone:** password-protected or encrypted PDFs (rewriting would drop the protection) and digitally signed ones (any rewrite breaks the signature), each with a plain message.
+- One PDF at a time, like videos. *(tune)* `PDFTuning` from real documents.
+
 ---
 
 ## 8. Dependencies and licensing
@@ -358,12 +371,13 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 - Video "max quality" MP4s: FFmpeg (LGPL build, dynamic linking)? Needs the owner's OK (Rule 7). (WebM is settled: libvpx, libaom, libopus.)
 - WebM as Auto means QuickTime and Quick Look can't open Auto's videos. Keep it, or add a setting "Auto makes: WebM / MP4"?
 - Reading WebM (dropping a .webm in): needs decoders (libvpx's and libaom's, already in the build) and a WebM reader, or FFmpeg. Worth it?
-- PDF optimization (owner, 2026-11-05: "we'll also add pdf optimizations"): what it should do and with what (to plan next). The launch film gets updated once WebM and PDF are both in.
+- PDF: is 144 ppi right for Auto (scans get a little soft when zoomed), or should Auto keep more for scans? Later: lossless cleanup with qpdf (Apache-2.0, needs the owner's OK), and PDF → images. The launch film gets updated once WebM and PDF are both in (owner).
 
 ---
 
 ## 14. Changelog
 
+- 2026-11-05: **Compress PDF** (owner: "yes go ahead with compress pdf", with Apple's own tools): PDFs from Finder or any app get a menu: Auto (Apple's screen setting: pictures to 144 ppi JPEG) and Compress with 200 KB · 500 KB · 1 MB · 2 MB · 5 MB · Custom, which keeps the sharpest picture setting that fits. Text, links and pages are kept and checked; protected and signed PDFs are left alone. Settings chosen from CI measurements of each of Apple's options (§7b).
 - 2026-11-05: **WebM and AV1 video** (owner approved libvpx + libopus; "WebM should be the default"): Auto and Convert now make WebM (VP9 + Opus); Convert also offers AV1 (a WebM too, `-av1.webm`). Menu: WebM · AV1 · MP4 · HEVC · GIF. Own WebM writer instead of libwebm (one dependency fewer). libvpx 1.17.0 and libopus 1.5.2 built by `scripts/build-deps.sh` with libaom's headers now installed too; C shims in `Modules/` for the calls Swift can't make. Owner: the launch film waits until PDF optimization is in too.
 - 2026-11-05: Launch film: the end card's background grid removed (owner: it looked like AI slop); plain near-black with the logo's glow.
 - 2026-11-04: Launch film: the opening's voice is now one uncut take (a clipped "time" caught by the owner); a voice check (`check-voice-v4.py`) joins the caption audit before every render. 52.5 s + 3 s still.

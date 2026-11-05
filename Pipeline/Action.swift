@@ -79,7 +79,7 @@ struct ActionMenu: Equatable {
     /// Listed top to bottom as they sit on the arc.
     static let imageSegments: [Action] = [.convert, .compress, .halfSize, .removeBackground]
     static let videoSegments: [Action] = [.convert, .compress, .resize, .mute]
-    /// PDFs: Compress (Auto in the center does the same).
+    /// PDFs: Compress, to a size or not (Auto in the center is Compress without a size).
     static let pdfSegments: [Action] = [.compress]
     /// Images and videos together: only what applies to both.
     static let mixedSegments: [Action] = [.compress]

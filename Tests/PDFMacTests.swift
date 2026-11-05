@@ -2,7 +2,6 @@ import AppKit
 import CoreText
 import ImageIO
 import PDFKit
-import Quartz
 import UniformTypeIdentifiers
 import XCTest
 @testable import Droptimize
@@ -87,65 +86,40 @@ final class PDFMacTests: XCTestCase {
         XCTAssertLessThan(result.outputBytes, result.inputBytes)
     }
 
-    /// Not a check: prints what each of Apple's options does to a photo PDF and a scan, to tune
-    /// Compress PDF from (CI prints lines starting with "MEASURE").
-    func testMeasureApplesCompressionOptions() throws {
-        let inputs = [try makePDF("m-photo.pdf", pages: [.photo]), try makePDF("m-scan.pdf", pages: [.scan])]
-        let system = URL(fileURLWithPath: "/System/Library/Filters/Reduce File Size.qfilter")
-        if let plist = try? String(contentsOf: system, encoding: .utf8) {
-            for line in plist.split(separator: "\n") { print("MEASURE qfilter| \(line)") }
-        } else if let data = try? Data(contentsOf: system),
-                  let object = try? PropertyListSerialization.propertyList(from: data, format: nil) {
-            print("MEASURE qfilter| \(object)")
-        } else {
-            print("MEASURE qfilter| not found")
-        }
-        var custom: [(String, URL)] = []
-        for quality in [0.5, 0.75] {
-            if let url = try customFilter(from: system, quality: quality) { custom.append(("custom q\(quality)", url)) }
-        }
+    func testCompressesToASizeAsSharpAsFits() throws {
+        let input = try makePDF("scan.pdf", pages: [.scan])
+        let outcome = try PDFOptimizer.process(input, action: .compress, option: .maxBytes(1_000_000))
+        XCTAssertEqual(outcome.output.lastPathComponent, "scan-1mb.pdf")
+        XCTAssertLessThanOrEqual(outcome.outputBytes, 1_000_000)
+        // There's room for more than Auto's 144 ppi (1190 px across an A4 page), so it uses it.
+        let width = try XCTUnwrap(Self.imageWidths(in: outcome.output).first)
+        XCTAssertGreaterThan(width, 1190, "sharper than Auto when the size allows")
+        XCTAssertTrue(PDFDocument(url: outcome.output)?.string?.contains("Quarterly report") ?? false)
+    }
 
-        for input in inputs {
+    func testSaysWhenASizeIsOutOfReach() throws {
+        let input = try makePDF("poster.pdf", pages: [.photo])
+        XCTAssertThrowsError(try PDFOptimizer.process(input, action: .compress, option: .maxBytes(5_000))) { error in
+            XCTAssertEqual(error as? JobError, .cantFit(5_000))
+        }
+        XCTAssertThrowsError(try PDFOptimizer.process(input, action: .compress, option: .maxBytes(5_000_000))) { error in
+            XCTAssertEqual(error as? JobError, .alreadyUnder(5_000_000))
+        }
+    }
+
+    /// Not a check: prints what each step of `PDFTuning.ladder` gives a photo PDF and a scan,
+    /// against Auto, to tune from (CI prints lines starting with "MEASURE").
+    func testMeasureTheLadder() throws {
+        for input in [try makePDF("m-photo.pdf", pages: [.photo]), try makePDF("m-scan.pdf", pages: [.scan])] {
             let document = try XCTUnwrap(PDFDocument(url: input))
             let original = render(input, page: 0)
             report(input.lastPathComponent, "original", input, original)
-            var variants: [(String, [PDFDocumentWriteOption: Any])] = [
-                ("plain write", [:]),
-                ("JPEG", [.saveImagesAsJPEGOption: true]),
-                ("screen", [.optimizeImagesForScreenOption: true]),
-                ("screen + JPEG", [.optimizeImagesForScreenOption: true, .saveImagesAsJPEGOption: true]),
-            ]
-            if let filter = QuartzFilter(url: system) {
-                variants.append(("Reduce File Size", [PDFDocumentWriteOption(rawValue: "QuartzFilter"): filter]))
-            }
-            for (name, url) in custom {
-                if let filter = QuartzFilter(url: url) {
-                    variants.append((name, [PDFDocumentWriteOption(rawValue: "QuartzFilter"): filter]))
-                }
-            }
-            for (name, options) in variants {
+            let auto = folder.appendingPathComponent("auto-\(input.lastPathComponent)")
+            if document.write(to: auto, withOptions: PDFOptimizer.compression) { report(input.lastPathComponent, "Auto", auto, original) }
+            for step in PDFTuning.ladder {
                 let out = folder.appendingPathComponent("\(UUID().uuidString).pdf")
-                guard document.write(to: out, withOptions: options) else {
-                    print("MEASURE \(input.lastPathComponent) | \(name) | write failed")
-                    continue
-                }
-                report(input.lastPathComponent, name, out, original)
-            }
-            // A custom filter applied while redrawing each page into a new PDF.
-            for (name, url) in custom {
-                guard let filter = QuartzFilter(url: url), let source = CGPDFDocument(input as CFURL) else { continue }
-                let out = folder.appendingPathComponent("\(UUID().uuidString).pdf")
-                var box = CGRect(x: 0, y: 0, width: 595, height: 842)
-                guard let context = CGContext(out as CFURL, mediaBox: &box, nil) else { continue }
-                let applied = filter.apply(to: context)
-                for number in 1...source.numberOfPages {
-                    guard let page = source.page(at: number) else { continue }
-                    context.beginPDFPage(nil)
-                    context.drawPDFPage(page)
-                    context.endPDFPage()
-                }
-                context.closePDF()
-                report(input.lastPathComponent, "\(name) redrawn (applied: \(applied))", out, original)
+                try PDFOptimizer.write(document, step: step, to: out, scratch: folder)
+                report(input.lastPathComponent, "\(step.pixelsPerInch) ppi, q \(step.quality)", out, original)
             }
         }
     }
@@ -262,36 +236,6 @@ final class PDFMacTests: XCTestCase {
         return Data(file.utf8)
     }
 
-    /// The system's "Reduce File Size" filter with its JPEG quality set to `quality` and its
-    /// downscaling turned off, saved as a new .qfilter (nil when the system one isn't there).
-    private func customFilter(from system: URL, quality: Double) throws -> URL? {
-        guard let data = try? Data(contentsOf: system),
-              let plist = try? PropertyListSerialization.propertyList(from: data, options: .mutableContainersAndLeaves, format: nil)
-        else { return nil }
-        func adjust(_ value: Any) -> Any {
-            if let dictionary = value as? NSMutableDictionary {
-                for key in dictionary.allKeys {
-                    guard let name = key as? String, let child = dictionary[key] else { continue }
-                    if name.localizedCaseInsensitiveContains("quality") { dictionary[key] = quality }
-                    else if name.localizedCaseInsensitiveContains("scalefactor") { dictionary[key] = 1.0 }
-                    else if name.localizedCaseInsensitiveContains("sizemax") { dictionary[key] = 4000 }
-                    else if name == "Name" { dictionary[key] = "Droptimize q\(quality)" }
-                    else { dictionary[key] = adjust(child) }
-                }
-                return dictionary
-            }
-            if let array = value as? NSMutableArray {
-                for index in 0..<array.count { array[index] = adjust(array[index]) }
-                return array
-            }
-            return value
-        }
-        let adjusted = adjust(plist)
-        let url = folder.appendingPathComponent("droptimize-\(quality).qfilter")
-        try PropertyListSerialization.data(fromPropertyList: adjusted, format: .xml, options: 0).write(to: url)
-        return url
-    }
-
     // MARK: Looking at PDFs
 
     private func report(_ input: String, _ variant: String, _ url: URL, _ original: [UInt8]) {
@@ -300,6 +244,10 @@ final class PDFMacTests: XCTestCase {
         let quality = psnr(original, render(url, page: 0))
         print("MEASURE \(input) | \(variant) | \(bytes) bytes | images \(Self.images(in: url).joined(separator: ", ")) | "
               + "PSNR at 150 dpi \(String(format: "%.1f", quality)) dB | \(letters) letters")
+    }
+
+    private static func imageWidths(in url: URL) -> [Int] {
+        images(in: url).compactMap { Int($0.prefix { $0 != "×" }) }
     }
 
     /// Each image on each page: pixel size and how it's stored.

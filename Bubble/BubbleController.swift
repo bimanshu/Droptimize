@@ -321,8 +321,9 @@ final class BubbleController {
         let anchor = BubbleLayout(side: model.side).accessoryRect(center: center)
         switch action {
         case .compress:
-            let isVideo = files.contains { MediaKind(url: $0) == .video }
-            let initial = memory.lastCustomSize ?? (isVideo ? VideoTuning.defaultCustomSize : nil)
+            let kinds = Set(files.compactMap(MediaKind.init(url:)))
+            let initial = memory.lastCustomSize ?? (kinds.contains(.video) ? VideoTuning.defaultCustomSize
+                                                     : kinds == [.pdf] ? PDFTuning.defaultCustomSize : nil)
             inputs.askForSize(initial: initial, beside: anchor, side: model.side) { [weak self] bytes in
                 guard let self else { return }
                 guard let bytes else { return self.returnToIdle() }
