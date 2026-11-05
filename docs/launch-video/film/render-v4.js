@@ -3,6 +3,9 @@
 //   node render-v4.js events <out.json>              the sound cue list for mix-v4.py
 //   node render-v4.js frames <dir> [pages] [sub]     numbered subframe JPEGs, several pages at once, resumable
 //   then: node render-v4.js encode <dir> <out.mp4> [sub]   blends each frame's subframes (motion blur) → 60 fps
+//   FROM=<seconds> renders (frames) or encodes (encode) only from that frame on. Use it to re-render just a changed
+//   end into a subframe folder, then run frames again without FROM (it skips what exists) and encode once. Don't join
+//   H.264 files by stream copy: tried 2026-11-05, it duplicated frames at the join and broke decoding.
 // Uses the system Playwright (require('playwright'); chromium.launch() needs no options here).
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
@@ -13,8 +16,8 @@ const [mode, out, ...rest] = process.argv.slice(2);
 const FPS = 60;
 
 if (mode === 'encode') {             // no browser needed
-  const sub = +(rest[1] || 8), mp4 = rest[0];
-  const ff = spawn('ffmpeg', ['-y', '-v', 'error', '-framerate', String(FPS * sub), '-i', path.join(out, 'f%06d.jpg'),
+  const sub = +(rest[1] || 8), mp4 = rest[0], from = Math.round((+process.env.FROM || 0) * FPS) * sub;
+  const ff = spawn('ffmpeg', ['-y', '-v', 'error', '-framerate', String(FPS * sub), '-start_number', String(from), '-i', path.join(out, 'f%06d.jpg'),
     '-vf', `tmix=frames=${sub},select='not(mod(n+1\\,${sub}))',setpts=N/${FPS}/TB`, '-r', String(FPS),
     '-c:v', 'libx264', '-preset', 'slow', '-crf', '16', '-pix_fmt', 'yuv420p', '-profile:v', 'high', mp4], { stdio: 'inherit' });
   ff.on('close', c => process.exit(c));
@@ -43,12 +46,13 @@ const VIEW = REEL ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 
     }
   } else if (mode === 'frames') {
     const pages = +(rest[0] || 3), sub = +(rest[1] || 8), rate = FPS * sub, frames = Math.round(END * rate);
+    const from = Math.round((+process.env.FROM || 0) * FPS) * sub;      // a whole frame's subframes, so the blend matches
     fs.mkdirSync(out, { recursive: true });
     const t0 = Date.now(); let done = 0;
     const work = async (k) => {
       const p = k === 0 ? page : await browser.newPage({ viewport: VIEW, deviceScaleFactor: 1 });
       if (k) { await p.goto(page_url); await p.evaluate(() => window.ready); }
-      for (let i = k; i < frames; i += pages) {
+      for (let i = from + k; i < frames; i += pages) {
         const f = path.join(out, `f${String(i).padStart(6, '0')}.jpg`);
         if (fs.existsSync(f)) { done++; continue; }
         const t = (i + 0.5) / rate;                  // the subframe's centre

@@ -356,6 +356,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-05: Launch film: the end card's background grid removed (owner: it looked like AI slop); plain near-black with the logo's glow.
 - 2026-11-04: Launch film: the opening's voice is now one uncut take (a clipped "time" caught by the owner); a voice check (`check-voice-v4.py`) joins the caption audit before every render. 52.5 s + 3 s still.
 - 2026-11-04: Positioning (owner): lead with the detour Droptimize removes, not with file size (§2). The launch film now opens on that routine (find a website, upload, wait, download, unzip) before the drop; new Emma lines, 107 credits.
 - 2026-11-03: Launch film v4 approved by the owner; a 1080 × 1920 reel version generated from it (`make-reel-v4.py`), and captions kept clear of every element (owner saw text colliding; `audit-captions-v4.js` now reports none).
