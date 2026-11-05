@@ -51,7 +51,9 @@ EDITS = [
     ("[T(16) - 0.2, 2.0, 1080, 440, [0.9, 1]], [T(17, 3), 2.4, 980, 452, [1.6, 1]],", "[T(16) - 0.2, 2.2, 1225, 271, [0.9, 1]], [T(17, 3), 2.5, 1220, 200, [1.6, 1]],"),
     ("[T(18, 1) + 0.3, 3.2, 1250, 450, [0.25, 1]], [T(19, 3), 3.9, 1262, 450, [0.8, 1]], [T(20, 3), 3.4, 1262, 450, [0.9, 1]],",
      "[T(18, 1) + 0.3, 3.6, 1319, 400, [0.25, 1]], [T(19, 3), 2.7, 1282, 410, [0.8, 1]], [T(20, 3), 2.6, 1280, 400, [0.9, 1]],"),
-    ("[T(23), 3.3, 1300, 450, [0.25, 1]], [T(25), 3.1, 1270, 450, [0.8, 1]],", "[T(23), 3.3, 1340, 420, [0.25, 1]], [T(25), 2.6, 1280, 400, [0.8, 1]],"),
+    ("[T(25), 3.3, 1300, 450, [0.25, 1]], [T(27), 3.1, 1270, 450, [0.8, 1]],", "[T(25), 3.3, 1340, 420, [0.25, 1]], [T(27), 2.6, 1280, 400, [0.8, 1]],"),
+    ("[T(21) + 0.3, 3.7, 1262, 450, [0.7, 1]], [AT.P + 2.7, 3.4, 1262, 450, [0.9, 1]],",           # the PDF scene, like the video's
+     "[T(21) + 0.3, 2.7, 1282, 410, [0.7, 1]], [AT.P + 2.7, 2.6, 1280, 400, [0.9, 1]],"),
     # ── Captions: above the UI, wrapped for the narrow frame
     ("caption([words(2, [['Meet', 0.01], ['Droptimize.', 0.32]])], { x: 140, y: 500,", "caption([words(2, [['Meet', 0.01], ['Droptimize.', 0.32]])], { x: 540, y: 640, align: 'center',"),
     ("caption([words('A', [['Drag', 0.0], ['from', 0.48], ['anywhere.', 0.79]])], { x: 960, y: 56, align: 'center',",
@@ -68,11 +70,12 @@ EDITS = [
     ("caption([words(6, [['Videos', 0.0], ['too,', 0.5]])], { x: 960, y: 200, align: 'center',", "caption([words(6, [['Videos', 0.0], ['too,', 0.5]])], { x: 540, y: 640, align: 'center',"),
     ("caption([words(6, [['down', 1.17], ['to', 1.4], ['whatever', 1.55]]), words(6, [['size', 2.0], ['you', 2.3], ['need.', 2.45]])], { x: 140, y: 230,",
      "caption([words(6, [['down', 1.17], ['to', 1.4], ['whatever', 1.55]]), words(6, [['size', 2.0], ['you', 2.3], ['need.', 2.45]])], { x: 80, y: 290,"),
-    ("{ x: 120, y: 360, exit: T(23, 4), hl: { 'Mac.'", "{ x: 80, y: 420, exit: T(23, 4), hl: { 'Mac.'"),
-    ("{ x: 120, y: 560, exit: T(23, 4), hl: { 'internet'", "{ x: 80, y: 640, exit: T(23, 4), hl: { 'internet'"),
+    ("{ x: 140, y: 230, exit: T(23) - 0.3,", "{ x: 80, y: 290, exit: T(23) - 0.3,"),                     # PDFs too, under any upload limit.
+    ("{ x: 120, y: 360, exit: T(25, 4), hl: { 'Mac.'", "{ x: 80, y: 420, exit: T(25, 4), hl: { 'Mac.'"),
+    ("{ x: 120, y: 560, exit: T(25, 4), hl: { 'internet'", "{ x: 80, y: 640, exit: T(25, 4), hl: { 'internet'"),
     ("caption([words(8, [['Batches', 0.0], ['in', 0.58], ['one', 0.75], ['drop.', 1.0]])], { x: 140, y: 230,",
      "caption([words(8, [['Batches', 0.0], ['in', 0.58]]), words(8, [['one', 0.75], ['drop.', 1.0]])], { x: 80, y: 290,"),
-    ("{ x: 140, y: 230, exit: T(26) - 0.15, hl: { 'clipboard.'", "{ x: 80, y: 420, exit: T(26) - 0.15, hl: { 'clipboard.'"),
+    ("{ x: 140, y: 230, exit: T(28) - 0.15, hl: { 'clipboard.'", "{ x: 80, y: 420, exit: T(28) - 0.15, hl: { 'clipboard.'"),
     # ── Pixel dissolves: a tall grid
     ("const PIX = { cols: 24, rows: 14 };", "const PIX = { cols: 14, rows: 24 };"),
     # ── Cold open: the four files around the caption

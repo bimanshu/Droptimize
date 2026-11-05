@@ -40,7 +40,7 @@ img.abs { display: block; object-fit: cover; }
 const W = 1920, H = 1080;
 const BEAT = 60 / 128, BAR = 4 * BEAT;              // "Minimal Emotion", 128.00 BPM
 const T = (bar, beat = 1, sixteenth = 0) => (bar - 1) * BAR + (beat - 1) * BEAT + sixteenth * BEAT / 4;
-const PICTURE = T(29);                               // 52.5 s of picture
+const PICTURE = T(31);                               // 56.25 s of picture (two bars for PDFs added 2026-11-05)
 const END = PICTURE + 3;                             // then 3 s of still, silent end card
 const C = { ink: '#0E0E0F', mint: '#3DDC97', white: '#FFFFFF', grey: '#6B6B6F', grey2: '#8A8A8E', line: 'rgba(0,0,0,0.08)' };
 
@@ -222,6 +222,16 @@ function dragTile(key, w = 76, h = 56) {
 }
 const tDrop = dragTile('img'), tImg = dragTile('img'), tHero = dragTile('hero'), tStatue = dragTile('statue'), tVid = dragTile('video');
 icon(tVid.g, 'play', 28, '#FFFFFF', { left: '24px', top: '14px' });
+/** A PDF page as a small document: a picture, lines of text and a PDF tag (no brand colours). */
+function pageThumb(parent, w, h) {
+  const g = el('div', parent, { width: w + 'px', height: h + 'px', borderRadius: (w * 0.08) + 'px', background: '#FFFFFF', overflow: 'hidden', boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.14)' });
+  const k = w / 46;
+  const pic = el('div', g, { left: 5 * k + 'px', top: 6 * k + 'px', width: 36 * k + 'px', height: 20 * k + 'px', borderRadius: 2 * k + 'px', overflow: 'hidden' }); photo(pic, 'hero', 36 * k, 20 * k);
+  [31, 36, 41].forEach((y, i) => el('div', g, { left: 5 * k + 'px', top: y * k + 'px', width: [36, 32, 24][i] * k + 'px', height: 2.2 * k + 'px', borderRadius: 1.1 * k + 'px', background: '#D9D9DF' }));
+  el('div', g, { left: 5 * k + 'px', top: 47 * k + 'px', height: 9 * k + 'px', padding: `0 ${2.6 * k}px`, borderRadius: 2 * k + 'px', background: C.ink, color: '#FFFFFF', fontSize: 6.2 * k + 'px', fontWeight: 700, lineHeight: 9 * k + 'px', letterSpacing: '0.02em' }, 'PDF', 'nowrap');
+  return g;
+}
+const tPdf = (() => { const g = el('div', desk, { width: '46px', height: '60px', borderRadius: '4px', boxShadow: '0 8px 22px rgba(0,0,0,0.3)' }); pageThumb(g, 46, 60); return { g, w: 46, h: 60 }; })();
 // The ten-file stack for the batch
 const stack = el('div', desk, { width: '90px', height: '70px' });
 const stackCards = ['video', 'statue', 'hero', 'img'].map((k, i) => { const d = el('div', stack, { width: '76px', height: '56px', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 6px 16px rgba(0,0,0,0.28)', transform: `translate(${i * 3}px, ${-i * 3}px) rotate(${(i - 1.5) * 4}deg)` }); photo(d, k, 76, 56); return d; });
@@ -256,6 +266,7 @@ const card = el('div', desk, { width: CARD.w + 'px', height: CARD.h + 'px', bord
 const cardGlow = el('div', card, { width: '100%', height: '100%', borderRadius: '14px', boxShadow: `0 0 0 1.5px ${C.mint}, 0 0 22px 4px rgba(61,220,151,0.55)` });
 const cardThumbs = {};
 for (const k of ['img', 'hero', 'video', 'batch']) { const d = el('div', card, { left: '8px', top: '8px', width: '40px', height: '40px', borderRadius: '8px', overflow: 'hidden' }); photo(d, k === 'batch' ? 'statue' : k, 40, 40); cardThumbs[k] = d; }
+{ const d = el('div', card, { left: '8px', top: '8px', width: '40px', height: '40px', borderRadius: '8px', background: '#ECECF0' }); const p = pageThumb(d, 28, 36.5); p.style.left = '6px'; p.style.top = '1.75px'; cardThumbs.pdf = d; }
 const cardBigA = el('div', card, { left: '58px', top: '8px', fontSize: '19px', fontWeight: 600, letterSpacing: '-0.01em', color: C.ink }, '', 'nowrap num');
 const cardBigB = el('div', card, { left: '58px', top: '8px', fontSize: '19px', fontWeight: 600, letterSpacing: '-0.01em', color: C.ink }, '', 'nowrap num');
 const cardSmall = el('div', card, { left: '58px', top: '33px', fontSize: '11px', fontWeight: 450, color: C.grey }, '', 'nowrap num');
@@ -263,9 +274,11 @@ const cursor = svg(desk, 26, 36, `<path d="M3 2 L3 29 L9.4 22.8 L14 33.6 L18.6 3
 
 // ───────────────────────────── Menu geometry (the app's own: 160° arc facing left) ─────────────────────────────
 const SEG_ANGLES = [260, 206.67, 153.33, 100].map(a => a * Math.PI / 180);
-const segPos = i => [B.x + Math.cos(SEG_ANGLES[i]) * RING_R, B.y + Math.sin(SEG_ANGLES[i]) * RING_R];
+const PDF_ANGLES = [Math.PI];                         // one segment (Compress) sits straight out, as in the app
+const segPos = (i, angles = SEG_ANGLES) => [B.x + Math.cos(angles[i]) * RING_R, B.y + Math.sin(angles[i]) * RING_R];
+/** Where option j of a set ({opts, optSeg, angles?}) sits on its arc. */
 function optPos(sc, j) {
-  const n = sc.opts.length, base = SEG_ANGLES[sc.optSeg], spacing = (OPT_D + 12) / OPT_R;
+  const n = sc.opts.length, base = (sc.angles || SEG_ANGLES)[sc.optSeg], spacing = (OPT_D + 12) / OPT_R;
   const lim = 85 * Math.PI / 180, mid = Math.PI;
   const first = base - (n - 1) / 2 * spacing, last = base + (n - 1) / 2 * spacing;
   let shift = 0; if (first < mid - lim) shift = (mid - lim) - first; if (last > mid + lim) shift = (mid + lim) - last;
@@ -276,7 +289,7 @@ function optPos(sc, j) {
 // ───────────────────────────── Timeline ─────────────────────────────
 // Emma's lines: film time of each line's start, and each word's onset within the line (measured).
 // n1–n7: the routine exactly as Emma read it, one uncut piece (cutting it into phrases clipped the m of "time")
-const AT = { n1: 0.10, n2: 1.63, n3: 2.90, n4: 3.94, n5: 4.90, n6: 5.86, n7: 6.96, n8: T(6) + 0.12, 2: T(7, 2), A: T(8), 3: T(10, 3), 4: T(13, 2), 5: T(16, 2), 6: T(18, 2), 7: T(21, 2), B: T(22, 4), 8: T(24, 2), 9: T(27) };
+const AT = { n1: 0.10, n2: 1.63, n3: 2.90, n4: 3.94, n5: 4.90, n6: 5.86, n7: 6.96, n8: T(6) + 0.12, 2: T(7, 2), A: T(8), 3: T(10, 3), 4: T(13, 2), 5: T(16, 2), 6: T(18, 2), P: T(20, 4) + 0.1, 7: T(23, 2), B: T(24, 4), 8: T(26, 2), 9: T(29) };
 const DONE_AT = AT[3] + 2.92;                         // her "Done." lands with the check
 const IMG_ENTER = T(10, 3), IMG_DROP = T(11, 3);
 const SCENES = [
@@ -298,12 +311,20 @@ const SCENES = [
     opts: ['checker', 'white', 'black', 'eyedropper'], optsAt: T(16, 3), optSeg: 3, optHover: [[T(16, 3) + 0.24, 0], [T(17) + 0.05, 1]], labels: ['No background', 'White', 'Black', 'Custom'],
     work: [T(17, 2), T(17, 2) + 0.45], done: T(17, 3), collapse: T(17, 2) + 0.3, result: null, cardOut: 0 },
   { id: 'video', tile: tVid, grab: T(18, 2), enter: T(18, 4), release: T(19, 3), kind: 'video', midDrag: T(18, 3),
-    hovers: [[T(18, 4) + 0.235, 0, 'Convert'], [T(19), 1, 'Compress']],
-    opts: ['10M', '25M', '50M', '100M', '…'], optsAt: T(19) + 0.23, optSeg: 1, optHover: [[T(19, 2), 0], [T(19, 2, 2), 1]],
+    hovers: [[T(18, 4) + 0.1, 0, 'Convert'], [T(19) + 0.12, 1, 'Compress']],
+    // Convert's formats fan out first, WebM leading (the app's default for videos since 2026-11-05), then Compress's sizes
+    pre: { opts: ['WebM', 'AV1', 'MP4', 'HEVC', 'GIF'], optsAt: T(18, 4) + 0.15, optSeg: 0, optHover: [[T(18, 4) + 0.33, 0]], until: T(19) + 0.12 },
+    opts: ['10M', '25M', '50M', '100M', '…'], optsAt: T(19) + 0.3, optSeg: 1, optHover: [[T(19, 2), 0], [T(19, 2, 2), 1]],
     quarters: [T(19, 4), T(20), T(20, 2), T(20, 3)], done: T(20, 3), collapse: T(19, 3) + 0.35,
     result: { at: T(19, 4), thumb: 'video', sizes: [[T(19, 4), '840 MB'], [T(20), '412 MB'], [T(20, 2), '168 MB'], [T(20, 3), '24.1 MB'], [T(20, 3) + 0.3, '−97%']], small: [[T(19, 4), 'launch-25mb.mov'], [T(20, 3) + 0.3, 'launch-25mb.mov · 24.1 MB']] }, cardOut: T(21) - 0.2 },
+  // PDFs (bars 21–22): dragged in, Compress → 1 MB on "limit", done
+  { id: 'pdf', tile: tPdf, grab: T(21) - 0.25, midDrag: T(21) - 0.25, enter: T(21) + 0.4, release: AT.P + 2.4, kind: 'pdf', angles: PDF_ANGLES,
+    hovers: [[T(21) + 0.58, 0, 'Compress']],
+    opts: ['200K', '500K', '1M', '2M', '5M', '…'], optsAt: T(21) + 0.66, optSeg: 0, optHover: [[AT.P + 1.34, 1], [AT.P + 1.72, 2]],
+    work: [AT.P + 2.4, AT.P + 2.95], done: AT.P + 3.0, collapse: AT.P + 2.75,
+    result: { at: AT.P + 2.55, thumb: 'pdf', sizes: [[AT.P + 2.55, '8.4 MB'], [AT.P + 2.55 + BEAT / 2, '912 KB'], [AT.P + 3.0, '−89%']], small: [[AT.P + 2.55, 'report-1mb.pdf'], [AT.P + 3.0, 'report-1mb.pdf · 912 KB']] }, cardOut: T(23) - 0.2 },
 ];
-const BATCH = { enter: T(24) + 0.23, release: AT[8], stream: i => AT[8] + i * BEAT / 4, done: T(25), card: T(25), cardOut: T(25, 3) - 0.1 };
+const BATCH = { enter: T(26) + 0.23, release: AT[8], stream: i => AT[8] + i * BEAT / 4, done: T(27), card: T(27), cardOut: T(27, 3) - 0.1 };
 
 // Cursor path in desk points: [t, x, y, pressed]
 const cell0 = (() => { const c = cellPos(0); return [PHOTOS.x + c.x + c.w / 2, PHOTOS.y + c.y + c.h / 2]; })();
@@ -318,13 +339,19 @@ const CUR = [
   [T(15, 3), 1230, 660, 0], [T(16) - 0.01, 1230, 660, 0], [T(16), 1120, 600, 1], [AT[5], ...entry, 1],
   [AT[5] + 0.23, ...segPos(3), 1], [T(16, 3) + 0.24, 0, 0, 1], [T(17) + 0.05, 0, 0, 1], [T(17, 2), 0, 0, 0],
   [T(17, 4), 1240, 680, 0], [T(18, 3) - 0.01, 1240, 680, 0], [T(18, 3), 1140, 600, 1], [T(18, 4), ...entry, 1],
-  [T(18, 4) + 0.235, ...segPos(0), 1], [T(19), ...segPos(1), 1], [T(19, 2), 0, 0, 1], [T(19, 2, 2), 0, 0, 1], [T(19, 3), 0, 0, 0],
-  [T(20), 1250, 690, 0], [T(24) - 0.01, 1250, 690, 0], [T(24), 1180, 600, 1], [BATCH.enter, B.x + 2, B.y + 4, 1], [BATCH.release, B.x + 2, B.y + 4, 0],
-  [T(25), 1250, 660, 0], [END, 1250, 660, 0],
+  [T(18, 4) + 0.1, ...segPos(0), 1], [T(18, 4) + 0.33, 0, 0, 1], [T(19) + 0.12, ...segPos(1), 1], [T(19, 2), 0, 0, 1], [T(19, 2, 2), 0, 0, 1], [T(19, 3), 0, 0, 0],
+  [T(20), 1250, 690, 0], [T(21) - 0.26, 1250, 820, 0], [T(21) - 0.25, 1250, 820, 1], [T(21) + 0.4, ...entry, 1],   // the PDF comes in from below the frame
+  [T(21) + 0.58, ...segPos(0, PDF_ANGLES), 1], [AT.P + 1.34, 0, 0, 1], [AT.P + 1.72, 0, 0, 1], [AT.P + 2.4, 0, 0, 0],
+  [AT.P + 3.2, 1250, 820, 0], [T(26) - 0.01, 1250, 690, 0], [T(26), 1180, 600, 1], [BATCH.enter, B.x + 2, B.y + 4, 1], [BATCH.release, B.x + 2, B.y + 4, 0],
+  [T(27), 1250, 660, 0], [END, 1250, 660, 0],
 ];
 (function fillOptionWaypoints() {
   const fill = (t, xy) => { const k = CUR.find(c => Math.abs(c[0] - t) < 1e-6); if (k) { k[1] = xy[0]; k[2] = xy[1]; } };
-  for (const s of SCENES) { for (const [t, j] of s.optHover) fill(t, optPos(s, j)); if (s.optHover.length) fill(s.release, optPos(s, s.optHover[s.optHover.length - 1][1])); }
+  for (const s of SCENES) {
+    for (const [t, j] of s.optHover) fill(t, optPos(s, j));
+    if (s.pre) for (const [t, j] of s.pre.optHover) fill(t, optPos(s.pre, j));
+    if (s.optHover.length) fill(s.release, optPos(s, s.optHover[s.optHover.length - 1][1]));
+  }
 })();
 function cursorAt(t) {
   let i = 0; while (i < CUR.length - 1 && CUR[i + 1][0] <= t) i++;
@@ -342,7 +369,8 @@ const CAMK = [
   [T(12, 4) - 0.1, 2.2, webC[0], webC[1], [1.0, 1]], [T(13) + 0.12, 3.0, 1240, 450, [1.1, 1]], [T(14), 4.0, 1250, 440, [0.8, 1]], [T(15, 2), 3.0, 1270, 450, [0.8, 1]],
   [T(16) - 0.2, 2.0, 1080, 440, [0.9, 1]], [T(17, 3), 2.4, 980, 452, [1.6, 1]],
   [T(18, 1) + 0.3, 3.2, 1250, 450, [0.25, 1]], [T(19, 3), 3.9, 1262, 450, [0.8, 1]], [T(20, 3), 3.4, 1262, 450, [0.9, 1]],
-  [T(23), 3.3, 1300, 450, [0.25, 1]], [T(25), 3.1, 1270, 450, [0.8, 1]],
+  [T(21) + 0.3, 3.7, 1262, 450, [0.7, 1]], [AT.P + 2.7, 3.4, 1262, 450, [0.9, 1]],
+  [T(25), 3.3, 1300, 450, [0.25, 1]], [T(27), 3.1, 1270, 450, [0.8, 1]],
 ];
 const camAt = t => {
   const s0 = 6.0, x0 = 1334, y0 = 450;
@@ -351,8 +379,8 @@ const camAt = t => {
 
 // Scene windows: which layer is on screen
 const SHOT = {
-  cold: [0, T(6)], desk1: [T(6), T(18)], pills: [T(18), T(18, 3)], desk2: [T(18, 3), T(21)], priv: [T(21), T(24)],
-  desk3: [T(24), T(25, 3)], keys: [T(25, 3), T(26)], compose: [T(26), T(27)], end: [T(27), Infinity],
+  cold: [0, T(6)], desk1: [T(6), T(18)], pills: [T(18), T(18, 3)], desk2: [T(18, 3), T(23)], priv: [T(23), T(26)],
+  desk3: [T(26), T(27, 3)], keys: [T(27, 3), T(28)], compose: [T(28), T(29)], end: [T(29), Infinity],
 };
 const inShot = (t, k) => t >= SHOT[k][0] && t < SHOT[k][1];
 
@@ -397,17 +425,19 @@ caption([words(4, [['Convert', 0.0], ['to', 0.55], ['WebP', 0.84]]), words(4, [[
 caption([words(5, [['Lift', 0.01], ['the', 0.29], ['background', 0.41], ['right', 1.05], ['out.', 1.3]])], { x: 580, y: 46, align: 'center', exit: T(17, 2) + 0.2, hl: { 'out.': [at(5, 1.3), Infinity] } });
 caption([words(6, [['Videos', 0.0], ['too,', 0.5]])], { x: 960, y: 200, align: 'center', exit: T(18, 3) - 0.05, hl: { 'Videos': [at(6, 0.0), Infinity] } });
 caption([words(6, [['down', 1.17], ['to', 1.4], ['whatever', 1.55]]), words(6, [['size', 2.0], ['you', 2.3], ['need.', 2.45]])], { x: 140, y: 230, exit: T(19, 4) - 0.1, hl: { 'size': [at(6, 2.0), Infinity] } });
-caption([words(7, [['All', 0.0], ['on', 0.15], ['your', 0.28], ['Mac.', 0.45]]), words(7, [['Nothing', 1.27], ['uploaded.', 1.6]])], { x: 120, y: 360, exit: T(23, 4), hl: { 'Mac.': [at(7, 0.45), Infinity] } });
-caption([words('B', [['No', 0.0], ['internet', 0.2], ['needed.', 0.75]])], { x: 120, y: 560, exit: T(23, 4), hl: { 'internet': [at('B', 0.2), Infinity] }, color: '#FFFFFF' });
+caption([words('P', [['PDFs', 0.04], ['too,', 0.7]]), words('P', [['under', 1.34], ['any', 1.72], ['upload', 2.02], ['limit.', 2.4]])], { x: 140, y: 230, exit: T(23) - 0.3,
+  hl: { 'PDFs': [at('P', 0.04), at('P', 2.4)], 'limit.': [at('P', 2.4), Infinity] } });
+caption([words(7, [['All', 0.0], ['on', 0.15], ['your', 0.28], ['Mac.', 0.45]]), words(7, [['Nothing', 1.27], ['uploaded.', 1.6]])], { x: 120, y: 360, exit: T(25, 4), hl: { 'Mac.': [at(7, 0.45), Infinity] } });
+caption([words('B', [['No', 0.0], ['internet', 0.2], ['needed.', 0.75]])], { x: 120, y: 560, exit: T(25, 4), hl: { 'internet': [at('B', 0.2), Infinity] }, color: '#FFFFFF' });
 caption([words(8, [['Batches', 0.0], ['in', 0.58], ['one', 0.75], ['drop.', 1.0]])], { x: 140, y: 230, exit: at(8, 1.35), hl: { 'drop.': [at(8, 1.0), Infinity] } });
-caption([words(8, [['Already', 1.47], ['on', 2.0], ['your', 2.15]]), words(8, [['clipboard.', 2.3]])], { x: 140, y: 230, exit: T(26) - 0.15, hl: { 'clipboard.': [at(8, 2.3), Infinity] } });
+caption([words(8, [['Already', 1.47], ['on', 2.0], ['your', 2.15]]), words(8, [['clipboard.', 2.3]])], { x: 140, y: 230, exit: T(28) - 0.15, hl: { 'clipboard.': [at(8, 2.3), Infinity] } });
 
 // ───────────────────────────── Pixel dissolves ─────────────────────────────
 const PIX = { cols: 24, rows: 14 };
 const pw = W / PIX.cols, ph = H / PIX.rows;
 const pixels = [];
 { const r = rng(7); for (let j = 0; j < PIX.rows; j++) for (let i = 0; i < PIX.cols; i++) pixels.push({ d: el('div', pixLayer, { left: i * pw + 'px', top: j * ph + 'px', width: Math.ceil(pw) + 1 + 'px', height: Math.ceil(ph) + 1 + 'px' }), a: r(), b: r(), i, j }); }
-const DISSOLVES = [{ t: T(6), to: 'light' }, { t: T(21), to: C.ink }, { t: T(24), to: 'light' }];
+const DISSOLVES = [{ t: T(6), to: 'light' }, { t: T(23), to: C.ink }, { t: T(26), to: 'light' }];
 const DUR = 0.22;
 function pixelsAt(t) {
   const d = DISSOLVES.find(x => t >= x.t - DUR && t < x.t + DUR);
@@ -580,8 +610,9 @@ DISSOLVES.forEach(d => ev(d.t - DUR, 'swish'));
 for (const s of SCENES) {
   if (!s.midDrag) ev(s.grab, 'grab');
   ev(s.enter, 'wake');
-  [0, 1, 2, 3].forEach(i => ev(s.enter + i * 0.025, 'fan'));
+  (s.angles || SEG_ANGLES).forEach((_, i) => ev(s.enter + i * 0.025, 'fan'));
   for (const [t] of s.hovers) ev(t, 'tick');
+  if (s.pre) { s.pre.opts.forEach((_, j) => ev(s.pre.optsAt + j * 0.02, 'fanSmall')); for (const [t] of s.pre.optHover) ev(t, 'tick'); }
   s.opts.forEach((_, j) => ev(s.optsAt + j * 0.02, 'fanSmall'));
   for (const [t] of s.optHover) ev(t, 'tick');
   ev(s.release, 'drop'); ev(s.release + 0.02, 'swish');
@@ -593,16 +624,16 @@ ev(T(18, 2), 'click'); ev(T(17, 2) + 0.1, 'fill');
 ev(BATCH.enter, 'wake'); ev(BATCH.release, 'drop');
 for (let i = 0; i < 10; i++) ev(BATCH.stream(i), 'count');
 ev(BATCH.done, 'done');
-ev(T(25, 3), 'key'); ev(T(25, 4), 'key'); ev(T(26), 'paste'); ev(T(26, 3), 'click'); ev(T(26, 3) + 0.05, 'swish');
+ev(T(27, 3), 'key'); ev(T(27, 4), 'key'); ev(T(28), 'paste'); ev(T(28, 3), 'click'); ev(T(28, 3) + 0.05, 'swish');
 ev(AT.B + 0.2, 'tick');
-ev(T(27) - 0.2, 'whoosh'); ev(T(27), 'hit');
+ev(T(29) - 0.2, 'whoosh'); ev(T(29), 'hit');
 EVENTS.sort((a, b) => a[0] - b[0]);
 
 // ───────────────────────────── seek(t) ─────────────────────────────
 function seek(t) {
   const deskOn = inShot(t, 'desk1') || inShot(t, 'desk2') || inShot(t, 'desk3');
   // Blur-dissolves around the pills, the keycaps and the composer
-  const deskFade = 1 - life(t, T(18) - 0.12, T(18, 3) - 0.08, [0.25, 1]) - life(t, T(25, 3) - 0.1, Infinity, [0.25, 1]);
+  const deskFade = 1 - life(t, T(18) - 0.12, T(18, 3) - 0.08, [0.25, 1]) - life(t, T(27, 3) - 0.1, Infinity, [0.25, 1]);
   const cam = camAt(t);
 
   // ── Wallpaper (light): behind the desk, the pills and the composer; drifts with the camera, slower
@@ -613,7 +644,7 @@ function seek(t) {
   } else put(wallLayer, { o: 0 });
 
   // ── Desk
-  if (deskOn || (t >= T(18) - 0.2 && t < T(18, 3) + 0.25) || (t >= T(25, 3) - 0.2 && t < T(25, 3) + 0.3)) {
+  if (deskOn || (t >= T(18) - 0.2 && t < T(18, 3) + 0.25) || (t >= T(27, 3) - 0.2 && t < T(27, 3) + 0.3)) {
     show(desk, true);
     desk.style.transform = `translate(${W / 2}px, ${H / 2}px) scale(${cam.S}) translate(${-cam.cx}px, ${-cam.cy}px)`;
     const fade = clamp(deskFade) * (t >= T(18, 3) && t < T(18, 3) + 0.25 ? step(t - T(18, 3), [0.25, 1]) : 1);
@@ -627,11 +658,11 @@ function seek(t) {
   // ── Pills
   if (t >= T(18) - 0.12 && t < T(18, 3) + 0.3) { show(pills, true); pillScene(t); } else show(pills, false);
   // ── Private
-  if (t >= T(21) && t < T(24)) { show(priv, true); privScene(t); } else show(priv, false);
+  if (t >= T(23) && t < T(26)) { show(priv, true); privScene(t); } else show(priv, false);
   // ── Keycaps, composer, end
-  if (t >= T(25, 3) - 0.12 && t < T(26) + 0.3) { show(keys, true); keyScene(t); } else show(keys, false);
-  if (t >= T(26) - 0.1 && t < T(27) + 0.4) { show(compose, true); composeScene(t); } else show(compose, false);
-  if (t >= T(27) - 0.15) { show(endL, true); endScene(t); } else show(endL, false);
+  if (t >= T(27, 3) - 0.12 && t < T(28) + 0.3) { show(keys, true); keyScene(t); } else show(keys, false);
+  if (t >= T(28) - 0.1 && t < T(29) + 0.4) { show(compose, true); composeScene(t); } else show(compose, false);
+  if (t >= T(29) - 0.15) { show(endL, true); endScene(t); } else show(endL, false);
   // Screen cursor (pills only)
   if (t >= T(18) && t < T(18, 3)) {
     const p = inOut((t - T(18)) / (T(18, 2) - T(18) - 0.05));
@@ -707,23 +738,26 @@ function deskScene(t, cam) {
 
   // Radial menu
   const sc = SCENES.find(s => t >= s.enter - 0.01 && t < s.collapse + 0.5) || null;
-  const segSet = sc && sc.kind === 'video' ? ['convert', 'compress', 'resize', 'mute'] : ['convert', 'compress', 'half', 'scissors'];
+  const segSet = !sc ? [] : sc.kind === 'video' ? ['convert', 'compress', 'resize', 'mute'] : sc.kind === 'pdf' ? ['compress'] : ['convert', 'compress', 'half', 'scissors'];
   segs.forEach((sg, i) => {
-    if (!sc) { put(sg.d, { o: 0 }); return; }
-    const tin = sc.enter + i * 0.025, tout = sc.collapse + (3 - i) * 0.025;
+    if (!sc || i >= segSet.length) { put(sg.d, { o: 0 }); return; }
+    const tin = sc.enter + i * 0.025, tout = sc.collapse + (segSet.length - 1 - i) * 0.025;
     const p = step(t - tin, SPRING) - step(t - tout, [0.25, 1]);
     const hv = hoverAmount(sc, i, t);
-    const [sx, sy] = segPos(i), r = lerp(0.55, 1, p);
+    const [sx, sy] = segPos(i, sc.angles), r = lerp(0.55, 1, p);
     sg.d.style.background = hv > 0.5 ? C.ink : 'rgba(255,255,255,0.95)';
     for (const n of SEG_ICONS) { show(sg.icons[n].dark, n === segSet[i] && hv <= 0.5); show(sg.icons[n].light, n === segSet[i] && hv > 0.5); }
     put(sg.d, { x: B.x + (sx - B.x) * r - SEG_D / 2, y: B.y + (sy - B.y) * r - SEG_D / 2, s: (0.4 + 0.6 * clamp(p)) * (1 + 0.15 * hv), o: clamp(p) });
   });
   opts.forEach((ob, j) => {
-    if (!sc || j >= sc.opts.length) { put(ob.d, { o: 0 }); return; }
-    const tin = sc.optsAt + j * 0.02, tout = sc.collapse;
+    // A scene can fan one segment's options before another's (the video: Convert's formats, then Compress's sizes)
+    const set = sc && sc.pre && t < sc.optsAt ? sc.pre : sc;
+    if (!sc || j >= set.opts.length) { put(ob.d, { o: 0 }); return; }
+    const main = set === sc;
+    const tin = set.optsAt + j * 0.02, tout = main ? sc.collapse : set.until;
     const p = step(t - tin, SPRING) - step(t - tout, [0.25, 1]);
-    const [ox, oy] = optPos(sc, j), [sx, sy] = segPos(sc.optSeg);
-    const hv = optHover(sc, j, t), dark = hv > 0.5, label = sc.opts[j];
+    const [ox, oy] = optPos(set, j), [sx, sy] = segPos(set.optSeg, sc.angles);
+    const hv = optHover(set, j, t, main ? sc.release + 0.2 : set.until), dark = hv > 0.5, label = set.opts[j];
     ob.d.style.background = dark ? C.ink : 'rgba(255,255,255,0.96)';
     const isGlyph = label === '…' || label === 'checker' || label === 'eyedropper', isSwatch = label === 'white' || label === 'black';
     ob.txt.textContent = isGlyph || isSwatch ? '' : label;
@@ -741,7 +775,7 @@ function deskScene(t, cam) {
   // Batch: a stack of ten on the cursor, then one by one into the bubble
   {
     const c = cursorAt(t);
-    const held = t >= T(24) - 0.05 && t < BATCH.release;
+    const held = t >= T(26) - 0.05 && t < BATCH.release;
     put(stack, { x: c.x - 60, y: c.y - 46, s: held ? 1 - 0.3 * step(t - BATCH.enter, SPRING) : 1, o: held ? 1 : 0 });
     batchFlyers.forEach((f, i) => {
       const t0 = BATCH.stream(i);
@@ -758,8 +792,11 @@ function deskScene(t, cam) {
   // Cursor
   {
     const c = cursorAt(t);
-    const vis = ((t >= T(6) && t < T(6, 4) + 0.5) || t >= T(9, 3)) && !(t >= T(20, 3) + 0.3 && t < T(24) - 0.05);
-    put(cursor, { x: c.x - 3, y: c.y - 2, s: c.pressed ? 0.9 : 1, o: vis ? life(t, T(9, 3), Infinity, [0.25, 1]) : 0, ox: 0.1, oy: 0.05 });
+    const vis = (t >= T(6) && t < T(6, 4) + 0.5) || t >= T(9, 3);
+    let o = vis ? life(t, T(9, 3), Infinity, [0.25, 1]) : 0;
+    // Away between the video and the PDF, and between the PDF and the batch: it fades, never pops (the reel shows more desk)
+    for (const [a, b] of [[T(20, 3) + 0.3, T(21) - 0.3], [AT.P + 3.3, T(26) - 0.05]]) o *= 1 - life(t, a - 0.2, b, [0.25, 1]);
+    put(cursor, { x: c.x - 3, y: c.y - 2, s: c.pressed ? 0.9 : 1, o, ox: 0.1, oy: 0.05 });
   }
 }
 
@@ -815,12 +852,14 @@ function hoverAmount(sc, i, t) {
     if (si === i) v += step(t - th, HOVER) - step(t - next, HOVER);
   }
   if (i === sc.optSeg && t >= sc.optsAt && t < sc.release) v = Math.max(v, 0.6);
+  if (sc.pre && i === sc.pre.optSeg && t >= sc.pre.optsAt && t < sc.pre.until) v = Math.max(v, 0.6);
   return clamp(v);
 }
-function optHover(sc, j, t) {
+/** How hovered option j of a set is; the last hover holds until `end`. */
+function optHover(set, j, t, end) {
   let v = 0;
-  for (let k = 0; k < sc.optHover.length; k++) {
-    const [th, oj] = sc.optHover[k], next = sc.optHover[k + 1] ? sc.optHover[k + 1][0] : sc.release + 0.2;
+  for (let k = 0; k < set.optHover.length; k++) {
+    const [th, oj] = set.optHover[k], next = set.optHover[k + 1] ? set.optHover[k + 1][0] : end;
     if (oj === j) v += step(t - th, HOVER) - step(t - next, HOVER);
   }
   return clamp(v);
@@ -828,9 +867,13 @@ function optHover(sc, j, t) {
 function bubbleLabel(t) {
   for (const s of SCENES) {
     if (t >= s.enter && t < s.release) {
+      // Whatever was hovered last: a segment, or an option of either set
+      const marks = s.hovers.map(([th, , label]) => [th, label]);
+      if (s.pre) for (const [th, j] of s.pre.optHover) marks.push([th, s.pre.opts[j]]);
+      for (const [th, j] of s.optHover) marks.push([th, s.labels ? s.labels[j] : s.opts[j]]);
+      marks.sort((a, b) => a[0] - b[0]);
       let text = '';
-      for (const [th, , label] of s.hovers) if (t >= th) text = label;
-      for (const [th, j] of s.optHover) if (t >= th) text = s.labels ? s.labels[j] : s.opts[j];
+      for (const [th, label] of marks) if (t >= th) text = label;
       if (text) return { text, o: 1, logo: 0, check: 0 };
       return { text: '', o: 0, logo: 1, check: 0 };
     }
@@ -923,11 +966,11 @@ function pillScene(t) {
 
 // ── Private: the laptop
 function privScene(t) {
-  const pull = step(t - T(21), [0.9, 1]);
+  const pull = step(t - T(23), [0.9, 1]);
   const s = lerp(2.6, 1, pull);
   put(lap, { s, ox: 0.6, oy: 0.4, x: lerp(-260, 0, pull) });
   LAPF.forEach((f, i) => {
-    const tc = T(21, 3) + i * BEAT;
+    const tc = T(23, 3) + i * BEAT;
     const k = step(t - tc, [0.25, 1]);
     put(f.a, { o: 1 - k, y: -8 * k }); put(f.b, { o: k, y: 8 * (1 - k) });
     put(f.g, { x: 0, y: 0, o: 1 });
@@ -940,31 +983,31 @@ function privScene(t) {
 
 // ── Keycaps
 function keyScene(t) {
-  const inK = life(t, T(25, 3) - 0.1, T(26) - 0.05, [0.3, 1], [0.3, 1]);
-  put(keys, { o: clamp(inK), blur: 12 * (1 - clamp(inK)), s: lerp(1.05, 1, clamp(step(t - T(25, 3), [0.6, 1]))) });
+  const inK = life(t, T(27, 3) - 0.1, T(28) - 0.05, [0.3, 1], [0.3, 1]);
+  put(keys, { o: clamp(inK), blur: 12 * (1 - clamp(inK)), s: lerp(1.05, 1, clamp(step(t - T(27, 3), [0.6, 1]))) });
   const press = (tk, k) => { const d = step(t - tk, [0.1, 1]) - step(t - tk - 0.32, [0.15, 1]); put(k, { y: 12 * d, o: 1 }); k.style.boxShadow = `0 ${18 - 14 * d}px 0 #050506, 0 ${30 - 10 * d}px 60px rgba(0,0,0,0.55), inset 0 0 0 2px rgba(255,255,255,0.06)`; };
-  press(T(25, 3), kCmd); press(T(25, 4), kV);
+  press(T(27, 3), kCmd); press(T(27, 4), kV);
   kCmd.style.left = '820px'; kV.style.left = '1270px';
 }
 
 // ── Composer
 function composeScene(t) {
-  const inC = life(t, T(26) - 0.1, Infinity, [0.4, 0.9]);
-  const zoom = step(t - (T(27) - 0.12), [0.35, 1]);
+  const inC = life(t, T(28) - 0.1, Infinity, [0.4, 0.9]);
+  const zoom = step(t - (T(29) - 0.12), [0.35, 1]);
   put(compose, { o: clamp(inC) * (1 - zoom), y: 30 * (1 - clamp(inC)), s: 1 + 2.2 * zoom, blur: 10 * (1 - clamp(inC)) + 20 * zoom, ox: 0.66, oy: 0.4 });
-  const paste = step(t - T(26), SPRING);
-  put(pasted, { s: lerp(0.5, 1, paste), o: t >= T(26) && t < T(26, 3) ? clamp(paste * 2) : 0, ox: 0, oy: 0.5 });
-  put(placeholder, { x: (t >= T(26) && t < T(26, 3)) ? 230 * paste : 0, o: 1 });
-  const sendP = step(t - T(26, 3), [0.4, 0.85]);
-  put(sent, { o: t >= T(26, 3) ? clamp(sendP * 1.5) : 0, y: 120 * (1 - sendP), s: lerp(0.4, 1, sendP), ox: 0.1, oy: 1 });
-  put(sendBtn, { s: 1 - 0.1 * (step(t - T(26, 3), [0.1, 1]) - step(t - T(26, 3) - 0.15, [0.2, 1])) });
+  const paste = step(t - T(28), SPRING);
+  put(pasted, { s: lerp(0.5, 1, paste), o: t >= T(28) && t < T(28, 3) ? clamp(paste * 2) : 0, ox: 0, oy: 0.5 });
+  put(placeholder, { x: (t >= T(28) && t < T(28, 3)) ? 230 * paste : 0, o: 1 });
+  const sendP = step(t - T(28, 3), [0.4, 0.85]);
+  put(sent, { o: t >= T(28, 3) ? clamp(sendP * 1.5) : 0, y: 120 * (1 - sendP), s: lerp(0.4, 1, sendP), ox: 0.1, oy: 1 });
+  put(sendBtn, { s: 1 - 0.1 * (step(t - T(28, 3), [0.1, 1]) - step(t - T(28, 3) - 0.15, [0.2, 1])) });
 }
 
 // ── End card
 function endScene(t) {
-  const bg = step(t - (T(27) - 0.15), [0.3, 1]);
+  const bg = step(t - (T(29) - 0.15), [0.3, 1]);
   put(endL, { o: bg });
-  const lp = step(t - T(27), [0.7, 1]);
+  const lp = step(t - T(29), [0.7, 1]);
   put(endLogo, { o: lp, s: lerp(0.86, 1, lp), blur: 16 * (1 - lp) });
   put(endGlow, { o: lp * (0.85 + 0.15 * Math.sin(Math.min(t, PICTURE) * 1.4)), s: lerp(0.7, 1, lp) });
   const tp = step(t - (AT[9] + 0.02), [0.5, 1]);

@@ -118,8 +118,15 @@ Banned: bouncy easing, particle bursts, lens flares, glows beyond the two above,
 Show the owner this beat grid (done in chat, 2026-11-02). When they approve and v3 plus the photos are here, build, check stills, render and send.
 </start>
 
-## VO placement on the new grid (current, 2026-11-04)
-Routine lines from `audio/emma-vo-routine.mp3` (+2.4 dB in the mix to match the other takes), A and B from `audio/emma-vo-extra.mp3`, the rest from `audio/emma-vo-full.mp3`.
+## PDFs and WebM (owner, 2026-11-05)
+The app gained WebM video (now its default for videos, with AV1 as an option) and Compress PDF. The owner said to update the film once both were in, and chose a PDF scene with a new line from Emma ("PDF scene + Emma line").
+- **Two bars added at bar 21** (3.75 s; the film is now 56.25 s + the 3 s end card). Everything from the laptop on moved two bars later. The music replays its two bars before that point (film bars 19–20), so every later moment lands on the same music as before (`mix-v4.py`: one 20 ms cross-fade on the downbeat).
+- **The PDF scene (bars 21–22):** a PDF page (a small document with a picture, text lines and a PDF tag) comes up from below the frame onto the bubble. The PDF menu has one segment, Compress, straight out to the left (as in the app); its sizes fan out (200K, 500K, 1M, 2M, 5M, …). The cursor passes 500K on "under", rests on 1M on "any", and drops on "limit". The card: 8.4 MB → 912 KB, −89%, `report-1mb.pdf`. Caption: "PDFs too," / "under any upload limit.", the mint box on "PDFs", moving to "limit." on the drop.
+- **The video scene:** hovering Convert now fans its formats first, **WebM** leading and hovered (the bubble reads "WebM"), then Compress's sizes as before.
+- **The new line:** "PDFs too, under any upload limit." One take, 33 credits (`audio/emma-vo-pdf.mp3`, −21.4 LUFS like the main take, so no gain). Word onsets 0.04, 0.70, 1.34, 1.72, 2.02, 2.40 s; the final "t" of "limit" is released at 2.76–2.86 s, so the line is cut at 2.92 (`check-voice-v4.py` flagged a cut at 2.74).
+
+## VO placement on the new grid (current, 2026-11-05)
+Routine lines from `audio/emma-vo-routine.mp3` (+2.4 dB in the mix to match the other takes), A and B from `audio/emma-vo-extra.mp3`, P from `audio/emma-vo-pdf.mp3`, the rest from `audio/emma-vo-full.mp3`.
 
 | # | Line | Starts (s) | Ends |
 |---|---|---|---|
@@ -131,7 +138,8 @@ Routine lines from `audio/emma-vo-routine.mp3` (+2.4 dB in the mix to match the 
 | 4 | Convert to WebP or AVIF in one move. | 22.97 (13.2) | 26.12 |
 | 5 | Lift the background right out. | 28.59 (16.2) | 30.18 |
 | 6 | Videos too, down to whatever size you need. | 32.34 (18.2) | 35.17 |
-| 7 | All on your Mac. Nothing uploaded. | 37.97 (21.2) | 40.19 |
-| B | No internet needed. | 40.78 (22.4) | 42.06 |
-| 8 | Batches in one drop. Already on your clipboard. | 43.59 (24.2) | 46.61 |
-| 9 | Droptimize. Drop it. Done. | 48.75 (27.1) | 51.12 |
+| P | PDFs too, under any upload limit. | 37.13 (20.4 + 0.1; "limit" at 39.53, with the drop) | 40.05 |
+| 7 | All on your Mac. Nothing uploaded. | 41.72 (23.2) | 43.94 |
+| B | No internet needed. | 44.53 (24.4) | 45.81 |
+| 8 | Batches in one drop. Already on your clipboard. | 47.34 (26.2) | 50.36 |
+| 9 | Droptimize. Drop it. Done. | 52.50 (29.1) | 54.87 |

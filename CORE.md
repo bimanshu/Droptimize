@@ -377,6 +377,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-05: Launch film v8 (owner chose "PDF scene + Emma line"): two bars for PDFs (Compress → 1 MB on "limit") and WebM leading Convert's formats in the video scene; Emma's new line "PDFs too, under any upload limit." (one take, 33 credits). 56.25 s + 3 s end card; the music replays two bars so everything after keeps its music.
 - 2026-11-05: **Compress PDF** (owner: "yes go ahead with compress pdf", with Apple's own tools): PDFs from Finder or any app get a menu: Auto (Apple's screen setting: pictures to 144 ppi JPEG) and Compress with 200 KB · 500 KB · 1 MB · 2 MB · 5 MB · Custom, which keeps the sharpest picture setting that fits. Text, links and pages are kept and checked; protected and signed PDFs are left alone. Settings chosen from CI measurements of each of Apple's options (§7b).
 - 2026-11-05: **WebM and AV1 video** (owner approved libvpx + libopus; "WebM should be the default"): Auto and Convert now make WebM (VP9 + Opus); Convert also offers AV1 (a WebM too, `-av1.webm`). Menu: WebM · AV1 · MP4 · HEVC · GIF. Own WebM writer instead of libwebm (one dependency fewer). libvpx 1.17.0 and libopus 1.5.2 built by `scripts/build-deps.sh` with libaom's headers now installed too; C shims in `Modules/` for the calls Swift can't make. Owner: the launch film waits until PDF optimization is in too.
 - 2026-11-05: Launch film: the end card's background grid removed (owner: it looked like AI slop); plain near-black with the logo's glow.

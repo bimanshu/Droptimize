@@ -18,12 +18,16 @@ from mix import SR, decode, db, ramp, crossfade, synth, master, loudness   # noq
 BEAT = 60 / 128
 BAR = 4 * BEAT
 T = lambda bar, beat=1: (bar - 1) * BAR + (beat - 1) * BEAT
-PICTURE, END = T(29), T(29) + 3          # 52.5 s of picture, then 3 s of silence on the end card
+PICTURE, END = T(31), T(31) + 3          # 56.25 s of picture, then 3 s of silence on the end card
+# The PDF scene (2026-11-05) added two bars at film bar 21. The music replays its two bars before that point
+# (film bars 19–20) there, so everything after lands on the same music as before: one splice, no other change.
+SPLICE, REPEAT = T(21), 2 * BAR
 MUSIC_BPM, MUSIC_START = 129.0, 20.553  # Digital Clouds: its bar 12 downbeat (source time), so its bar 17 lift lands on the drop, film bar 6
 HERE = os.path.dirname(os.path.abspath(__file__))
 FULL = os.path.join(HERE, '..', 'audio', 'emma-vo-full.mp3')
 EXTRA = os.path.join(HERE, '..', 'audio', 'emma-vo-extra.mp3')
 ROUTINE = os.path.join(HERE, '..', 'audio', 'emma-vo-routine.mp3')   # the old-way opening (2026-11-04), one take
+PDF = os.path.join(HERE, '..', 'audio', 'emma-vo-pdf.mp3')           # the PDF line (2026-11-05), one take, 33 credits; −21.4 LUFS like FULL
 SRC_GAIN = {ROUTINE: 10 ** (2.4 / 20)}     # that take is 2.4 dB quieter than the others (−23.7 vs −21.3 LUFS)
 # Emma's lines: (source file, start, end in the source, film time). Starts match v4.html's AT table.
 LINES = [
@@ -36,10 +40,11 @@ LINES = [
     (FULL, 10.63, 13.78, T(13, 2)),  # Convert to WebP or AVIF in one move.
     (FULL, 14.88, 16.47, T(16, 2)),  # Lift the background right out.
     (FULL, 17.62, 20.45, T(18, 2)),  # Videos too, down to whatever size you need.
-    (FULL, 21.48, 23.70, T(21, 2)),  # All on your Mac. Nothing uploaded.
-    (EXTRA, 5.84, 7.12, T(22, 4)),   # No internet needed.
-    (FULL, 24.75, 27.77, T(24, 2)),  # Batches in one drop. Already on your clipboard.
-    (FULL, 28.85, 31.22, T(27)),     # Droptimize. Drop it. Done.
+    (PDF, 0.0, 2.92, T(20, 4) + 0.1),  # PDFs too, under any upload limit. ("limit" with the drop; its final t is released at 2.76–2.86)
+    (FULL, 21.48, 23.70, T(23, 2)),  # All on your Mac. Nothing uploaded.
+    (EXTRA, 5.84, 7.12, T(24, 4)),   # No internet needed.
+    (FULL, 24.75, 27.77, T(26, 2)),  # Batches in one drop. Already on your clipboard.
+    (FULL, 28.85, 31.22, T(29)),     # Droptimize. Drop it. Done.
 ]
 
 
@@ -56,22 +61,30 @@ def main():
     tempo = f'atempo={rate:.6f},' if abs(rate - 1) > 1e-4 else ''
     start = int(a.start / rate * SR)
     def cut(x):
-        y = np.zeros((N, 2), np.float32); seg = x[start:start + int(PICTURE * SR)]
-        y[:len(seg)] = seg; return y
+        # The track from the chosen downbeat, with film bars 21–22 replaying its bars 19–20 (SPLICE, REPEAT):
+        # a 20 ms equal-power cross-fade on the downbeat, from what would have come next into the repeat.
+        y = np.zeros((N, 2), np.float32); seg = x[start:start + int((PICTURE - REPEAT) * SR) + SR]
+        j, r, f = int(SPLICE * SR), int(REPEAT * SR), int(0.02 * SR)
+        y[:min(j, len(seg))] = seg[:j]
+        rest = seg[j - r:]; n = min(N - j, len(rest)); y[j:j + n] = rest[:n]
+        k = np.linspace(0, 1, f)[:, None]
+        y[j:j + f] = seg[j:j + f] * np.cos(k * np.pi / 2) + rest[:f] * np.sin(k * np.pi / 2)
+        y[int(PICTURE * SR):] = 0
+        return y
     music = cut(decode(a.music, tempo.rstrip(',') or None))
     lp800 = cut(decode(a.music, tempo + 'lowpass=f=800:p=2'))
     lp300 = cut(decode(a.music, tempo + 'lowpass=f=300:p=2,lowpass=f=300:p=2'))
     music = crossfade(music, lp800, 0, T(6), 0.06)                 # the old way, muffled; it opens up on the drop
-    music = crossfade(music, lp800, T(23, 4), T(24), 0.03)          # a breath before the batch
-    tail = crossfade(lp800, lp300, T(27) + 0.8, PICTURE, 0.5)       # ending: low-pass sweep after the final hit
-    music = crossfade(music, tail, T(27), PICTURE, 0.08)
-    fade = np.ones(N); a0, a1 = int(T(27) * SR), int((PICTURE - 0.25) * SR)
+    music = crossfade(music, lp800, T(25, 4), T(26), 0.03)          # a breath before the batch
+    tail = crossfade(lp800, lp300, T(29) + 0.8, PICTURE, 0.5)       # ending: low-pass sweep after the final hit
+    music = crossfade(music, tail, T(29), PICTURE, 0.08)
+    fade = np.ones(N); a0, a1 = int(T(29) * SR), int((PICTURE - 0.25) * SR)
     fade[a0:a1] = np.linspace(1, 0, a1 - a0) ** 1.6; fade[a1:] = 0
     music *= fade[:, None]
-    music *= db(-20) / (np.sqrt((music[int(8 * SR):int(46 * SR)] ** 2).mean()) + 1e-9)
+    music *= db(-20) / (np.sqrt((music[int(8 * SR):int((46 + REPEAT) * SR)] ** 2).mean()) + 1e-9)
 
     # ── Voice
-    src = {p: decode(p, 'highpass=f=90:p=2', ch=1)[:, 0] * SRC_GAIN.get(p, 1.0) for p in (FULL, EXTRA, ROUTINE)}
+    src = {p: decode(p, 'highpass=f=90:p=2', ch=1)[:, 0] * SRC_GAIN.get(p, 1.0) for p in (FULL, EXTRA, ROUTINE, PDF)}
     vo = np.zeros(N, np.float32); m = int(0.03 * SR); f = int(0.01 * SR)
     for path, s0, s1, at in LINES:
         seg = src[path][max(0, int(s0 * SR) - m):int(s1 * SR) + m].copy()
