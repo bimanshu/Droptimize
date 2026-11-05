@@ -5,9 +5,9 @@
 #          `xcodegen generate` (project.yml preGenCommand) and in CI.
 #   Linux: host-only builds, so scripts/check-linux.sh can test the encoders without a Mac.
 #
-# Each library is skipped when its pinned version is already built. Needs curl, git, a C
-# compiler (Xcode's on macOS) and, for AVIF, cmake and perl. nasm makes libaom fast on Intel
-# Macs (`brew install nasm`); without it, the Intel slice is built without SIMD.
+# Each library is skipped when its pinned version is already built. Needs curl, git, make, a C
+# compiler (Xcode's on macOS), cmake and perl. nasm makes libaom and libvpx fast on Intel
+# (`brew install nasm`); without it, their Intel slices are built without SIMD.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # Mind macOS's bash 3.2: declare local arrays first, then assign (`local a=(…)` makes a string there).
@@ -25,6 +25,16 @@ AOM_URL="https://storage.googleapis.com/aom-releases/libaom-${AOM_VERSION}.tar.g
 AVIF_VERSION=1.4.2
 AVIF_COMMIT=c5240fc79fe5c2407e10afd35f5505ef6333ea49     # tag v1.4.2
 AVIF_REPO=https://github.com/AOMediaCodec/libavif
+
+# libvpx: the VP9 encoder for WebM video. BSD-3-Clause + Google's royalty-free VP8/VP9 patent grant.
+# libopus: the sound in WebM. BSD-3-Clause (+ royalty-free patent licenses). Both approved by the
+# owner 2026-11-05. AV1 video reuses the libaom above. The WebM container is our own (Video/WebMWriter.swift).
+VPX_VERSION=1.17.0
+VPX_SHA256=7f98aae5c52c46e85b7b26feabcab9b1554605e771bd1df1d6e6a00ee22fa8ed
+VPX_URL="https://storage.googleapis.com/downloads.webmproject.org/releases/webm/libvpx-${VPX_VERSION}.tar.gz"
+OPUS_VERSION=1.5.2
+OPUS_SHA256=65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1
+OPUS_URL="https://github.com/xiph/opus/releases/download/v${OPUS_VERSION}/opus-${OPUS_VERSION}.tar.gz"
 
 MIN_MACOS=14.0
 platform="$(uname -s)"
@@ -131,7 +141,8 @@ build_avif_slice() {
 }
 
 build_avif() {
-  local out=Vendor/libavif stamp="$AVIF_VERSION-aom$AOM_VERSION-$platform"
+  # "+aomh": the libaom headers are installed too (AV1 video talks to libaom directly).
+  local out=Vendor/libavif stamp="$AVIF_VERSION-aom$AOM_VERSION+aomh-$platform"
   up_to_date "$out" "$stamp" && return
   command -v cmake >/dev/null || { echo "cmake is needed to build AVIF support (brew install cmake)." >&2; exit 1; }
   echo "Building libaom $AOM_VERSION and libavif $AVIF_VERSION ($platform). This takes a few minutes, once…"
@@ -147,11 +158,11 @@ build_avif() {
     for lib in libaom.a libavif.a; do
       xcrun lipo -create "$work/avif-arm64/lib/$lib" "$work/avif-x86_64/lib/$lib" -output "$out/lib/$lib"
     done
-    cp -R "$work/avif-arm64/include/avif" "$out/include/"
+    cp -R "$work/avif-arm64/include/"{avif,aom} "$out/include/"
   else
     build_avif_slice host "$work/avif-host"
     cp "$work/avif-host/lib/"{libaom.a,libavif.a} "$out/lib/"
-    cp -R "$work/avif-host/include/avif" "$out/include/"
+    cp -R "$work/avif-host/include/"{avif,aom} "$out/include/"
   fi
   cp "$work/libaom-$AOM_VERSION/LICENSE" "$out/LICENSE-aom"
   cp "$work/libaom-$AOM_VERSION/PATENTS" "$out/PATENTS-aom"
@@ -160,5 +171,102 @@ build_avif() {
   echo "libaom $AOM_VERSION + libavif $AVIF_VERSION → $out"
 }
 
+# MARK: libvpx
+
+# build_vpx_slice <arch or "host"> <prefix>: libvpx's VP9 encoder only, installed into <prefix>.
+build_vpx_slice() {
+  local arch=$1 prefix=$2
+  local build="$work/vpx-build-$arch"
+  local flags
+  flags=(--prefix="$prefix" --enable-static --disable-shared --enable-pic --disable-vp8 --disable-vp9-decoder
+         --disable-examples --disable-tools --disable-docs --disable-unit-tests --disable-webm-io --disable-libyuv)
+  if [[ "$arch" == arm64 ]]; then
+    flags+=(--target=arm64-darwin23-gcc --extra-cflags="-mmacosx-version-min=$MIN_MACOS")
+  elif [[ "$arch" == x86_64 ]]; then
+    if command -v nasm >/dev/null; then
+      flags+=(--target=x86_64-darwin23-gcc --as=nasm --extra-cflags="-mmacosx-version-min=$MIN_MACOS")
+    else
+      echo "  (nasm not found: the Intel slice of libvpx is built without SIMD, so it's slower. brew install nasm)"
+      flags+=(--target=generic-gnu --extra-cflags="-arch x86_64 -mmacosx-version-min=$MIN_MACOS")
+    fi
+  fi
+  mkdir -p "$build"
+  (cd "$build" && "$work/libvpx-$VPX_VERSION/configure" "${flags[@]}") >"$work/vpx-$arch.log" 2>&1 \
+    || { tail -30 "$work/vpx-$arch.log"; exit 1; }
+  make -C "$build" -j "$jobs" install >>"$work/vpx-$arch.log" 2>&1 || { tail -30 "$work/vpx-$arch.log"; exit 1; }
+}
+
+build_vpx() {
+  local out=Vendor/libvpx stamp="$VPX_VERSION-$platform"
+  up_to_date "$out" "$stamp" && return
+  echo "Building libvpx $VPX_VERSION ($platform). This takes a minute or two, once…"
+  fetch "$VPX_URL" "$VPX_SHA256" "$work/libvpx.tar.gz"
+  tar xzf "$work/libvpx.tar.gz" -C "$work"
+  rm -rf "$out"
+  mkdir -p "$out/lib" "$out/include"
+  if [[ "$platform" == Darwin ]]; then
+    for arch in arm64 x86_64; do build_vpx_slice "$arch" "$work/vpx-$arch"; done
+    xcrun lipo -create "$work/vpx-arm64/lib/libvpx.a" "$work/vpx-x86_64/lib/libvpx.a" -output "$out/lib/libvpx.a"
+    cp -R "$work/vpx-arm64/include/vpx" "$out/include/"
+  else
+    build_vpx_slice host "$work/vpx-host"
+    cp "$work/vpx-host/lib/libvpx.a" "$out/lib/"
+    cp -R "$work/vpx-host/include/vpx" "$out/include/"
+  fi
+  cp "$work/libvpx-$VPX_VERSION/LICENSE" "$out/LICENSE"
+  cp "$work/libvpx-$VPX_VERSION/PATENTS" "$out/PATENTS"
+  echo "$stamp" > "$out/.built"
+  echo "libvpx $VPX_VERSION → $out"
+}
+
+# MARK: libopus
+
+# build_opus_slice <arch or "host"> <prefix>
+build_opus_slice() {
+  local arch=$1 prefix=$2
+  local flags
+  flags=(-DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$prefix"
+         -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+         -DOPUS_BUILD_PROGRAMS=OFF -DOPUS_BUILD_TESTING=OFF -DOPUS_INSTALL_PKG_CONFIG_MODULE=OFF
+         -DOPUS_INSTALL_CMAKE_CONFIG_MODULE=OFF)
+  if [[ "$arch" != host ]]; then
+    # Opus picks its SIMD code from CMAKE_SYSTEM_PROCESSOR, which is the build machine's unless
+    # cross-compiling is declared. "aarch64" also tells it every Apple Silicon Mac has NEON.
+    local processor=$arch
+    [[ "$arch" == arm64 ]] && processor=aarch64
+    flags+=(-DCMAKE_OSX_ARCHITECTURES="$arch" -DCMAKE_OSX_DEPLOYMENT_TARGET="$MIN_MACOS"
+            -DCMAKE_SYSTEM_NAME=Darwin -DCMAKE_SYSTEM_PROCESSOR="$processor")
+  fi
+  cmake -S "$work/opus-$OPUS_VERSION" -B "$work/opus-build-$arch" -Wno-dev "${flags[@]}" >"$work/opus-$arch.log" 2>&1 \
+    || { tail -30 "$work/opus-$arch.log"; exit 1; }
+  cmake --build "$work/opus-build-$arch" -j "$jobs" >>"$work/opus-$arch.log" 2>&1 || { tail -30 "$work/opus-$arch.log"; exit 1; }
+  cmake --install "$work/opus-build-$arch" >>"$work/opus-$arch.log" 2>&1
+}
+
+build_opus() {
+  local out=Vendor/libopus stamp="$OPUS_VERSION-$platform"
+  up_to_date "$out" "$stamp" && return
+  command -v cmake >/dev/null || { echo "cmake is needed to build Opus (brew install cmake)." >&2; exit 1; }
+  echo "Building libopus $OPUS_VERSION ($platform)…"
+  fetch "$OPUS_URL" "$OPUS_SHA256" "$work/opus.tar.gz"
+  tar xzf "$work/opus.tar.gz" -C "$work"
+  rm -rf "$out"
+  mkdir -p "$out/lib" "$out/include"
+  if [[ "$platform" == Darwin ]]; then
+    for arch in arm64 x86_64; do build_opus_slice "$arch" "$work/opus-$arch"; done
+    xcrun lipo -create "$work/opus-arm64/lib/libopus.a" "$work/opus-x86_64/lib/libopus.a" -output "$out/lib/libopus.a"
+    cp -R "$work/opus-arm64/include/opus" "$out/include/"
+  else
+    build_opus_slice host "$work/opus-host"
+    cp "$work/opus-host/lib/libopus.a" "$out/lib/"
+    cp -R "$work/opus-host/include/opus" "$out/include/"
+  fi
+  cp "$work/opus-$OPUS_VERSION/COPYING" "$out/COPYING"
+  echo "$stamp" > "$out/.built"
+  echo "libopus $OPUS_VERSION → $out"
+}
+
 build_webp
 build_avif
+build_vpx
+build_opus

@@ -1,11 +1,14 @@
 import Foundation
 
-/// What Convert can turn a video into (CORE.md §7.4). WebM waits for FFmpeg or libvpx (owner's OK).
+/// What Convert can turn a video into (CORE.md §7.4), in menu order: the web's formats first, as
+/// for images (WebM ~ WebP, AV1 ~ AVIF, MP4 ~ JPG, HEVC ~ HEIC).
 enum VideoFormat: String, Hashable, CaseIterable {
-    case mp4, hevc, gif
+    case webm, av1, mp4, hevc, gif
 
     var displayName: String {
         switch self {
+        case .webm: return "WebM"
+        case .av1: return "AV1"
         case .mp4: return "MP4"
         case .hevc: return "HEVC"
         case .gif: return "GIF"
@@ -16,7 +19,12 @@ enum VideoFormat: String, Hashable, CaseIterable {
 /// What an action turns a video into (CORE.md §7.4). Portable, so it's tested on Linux too.
 struct VideoPlan: Equatable {
     enum Codec: Equatable {
+        /// MP4 through Apple's encoders.
         case h264, hevc
+        /// WebM through our own writer: VP9 (libvpx) or AV1 (libaom), with Opus sound.
+        case vp9, av1
+
+        var isWebM: Bool { self == .vp9 || self == .av1 }
     }
 
     enum Work: Equatable {
@@ -44,14 +52,19 @@ struct VideoPlan: Equatable {
         let container = ["mov", "mp4", "m4v"].contains(ext) ? ext : "mp4"
         switch action {
         case .auto:
-            return VideoPlan(work: .encode(.h264), fileExtension: "mp4", suffix: ext == "mp4" ? "-min" : nil,
-                             appliesSizeGuard: true)
+            // WebM (VP9): the smallest file every browser plays (the owner's choice, 2026-11-05).
+            return VideoPlan(work: .encode(.vp9), fileExtension: "webm", appliesSizeGuard: true)
         case .convert:
-            var format = VideoFormat.mp4
+            var format = VideoFormat.webm
             if case .videoFormat(let chosen) = option { format = chosen }
             switch format {
+            case .webm:
+                return VideoPlan(work: .encode(.vp9), fileExtension: "webm", appliesSizeGuard: false)
+            case .av1:
+                return VideoPlan(work: .encode(.av1), fileExtension: "webm", suffix: "-av1", appliesSizeGuard: false)
             case .mp4 where ext == "mp4":
-                return try make(action: .auto, option: nil, sourceExtension: ext)    // already MP4: a recompress
+                // Already MP4: a smaller one.
+                return VideoPlan(work: .encode(.h264), fileExtension: "mp4", suffix: "-min", appliesSizeGuard: true)
             case .mp4:
                 return VideoPlan(work: .remuxOrEncode(.h264), fileExtension: "mp4", appliesSizeGuard: false)
             case .hevc:
@@ -93,6 +106,19 @@ enum VideoTuning {
     /// Bits per pixel per frame. Screen recordings and most phone clips look good here.   (tune)
     static let h264BitsPerPixel = 0.08
     static let hevcBitsPerPixel = 0.05
+    /// WebM encodes at a constant quality (0 best … 63) and these bits per pixel are only its
+    /// ceiling: still or simple footage comes out far smaller. Similar look to the MP4s above. (tune)
+    static let vp9Quality = 32
+    static let av1Quality = 34
+    static let vp9BitsPerPixel = 0.06
+    static let av1BitsPerPixel = 0.045
+    /// Encoder presets (libvpx/libaom cpu-used): the fastest of their good-quality modes.     (tune)
+    static let vp9Speed = 5
+    static let av1Speed = 6
+    /// Seconds between keyframes in WebM at most: where players can seek to.               (tune)
+    static let webmKeyframeSeconds = 4.0
+    /// Opus, per channel (96 kbps stereo: transparent for most sound, smaller than AAC's 128).
+    static let opusBitratePerChannel = 48_000
     static let minBitrate = 250_000
     static let maxBitrate = 25_000_000
     /// Auto and Compress never encode above this share of the source's bitrate, so they shrink.
@@ -133,11 +159,29 @@ enum VideoTuning {
     /// Browsers slow anything faster than 2/100 s down to 1/10 s.
     static let gifMinCentiseconds = 2
 
-    /// A good-looking bitrate for this size and frame rate.
+    /// A good-looking bitrate for this size and frame rate (for WebM, the most it may spend).
     static func bitrate(width: Int, height: Int, fps: Double, codec: VideoPlan.Codec) -> Int {
-        let bitsPerPixel = codec == .h264 ? h264BitsPerPixel : hevcBitsPerPixel
+        let bitsPerPixel: Double
+        switch codec {
+        case .h264: bitsPerPixel = h264BitsPerPixel
+        case .hevc: bitsPerPixel = hevcBitsPerPixel
+        case .vp9: bitsPerPixel = vp9BitsPerPixel
+        case .av1: bitsPerPixel = av1BitsPerPixel
+        }
         return clamp(Int(Double(width * height) * max(fps, 1) * bitsPerPixel))
     }
+
+    /// The constant quality WebM encodes at; nil (aim at the bitrate) for Apple's encoders.
+    static func quality(for codec: VideoPlan.Codec) -> Int? {
+        switch codec {
+        case .vp9: return vp9Quality
+        case .av1: return av1Quality
+        case .h264, .hevc: return nil
+        }
+    }
+
+    /// Frames between keyframes at most, in WebM.
+    static func webmKeyframeInterval(fps: Double) -> Int { max(1, Int((max(fps, 1) * webmKeyframeSeconds).rounded())) }
 
     /// The video bitrate that lands a file of `bytes` for this duration, leaving room for sound.
     static func bitrate(fitting bytes: Int, seconds: Double, hasAudio: Bool) -> Int {

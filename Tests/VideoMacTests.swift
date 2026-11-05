@@ -143,14 +143,57 @@ final class VideoMacTests: XCTestCase {
                        "a remux keeps the streams, so the size barely changes")
     }
 
-    func testAutoMakesASmallerMP4() async throws {
+    func testAutoMakesASmallerWebM() async throws {
         let input = try await makeVideo("recording.mov")
         let outcome = try await process(input, .auto)
-        XCTAssertEqual(outcome.output.lastPathComponent, "recording.mp4")
+        XCTAssertEqual(outcome.output.lastPathComponent, "recording.webm")
         XCTAssertLessThan(outcome.outputBytes, outcome.inputBytes)
-        let out = try await info(outcome.output)
-        XCTAssertTrue(out.hasAudio, "the sound is kept")
-        XCTAssertEqual(out.seconds, 1.5, accuracy: 0.2)
+        // macOS can't open WebM, so it's read with the tests' own reader.
+        let webm = try TestWebM([UInt8](Data(contentsOf: outcome.output)))
+        XCTAssertEqual(webm.tracks.map(\.codecID), ["V_VP9", "A_OPUS"], "the sound is kept, as Opus")
+        XCTAssertEqual(webm.tracks.first?.width, 1280)
+        XCTAssertEqual(webm.tracks.first?.height, 720)
+        XCTAssertEqual(webm.blocks.filter { $0.track == 1 }.count, 45, "every frame")
+        XCTAssertEqual((webm.duration ?? 0) / 1000, 1.5, accuracy: 0.1)
+        let lastSound = try XCTUnwrap(webm.blocks.last { $0.track == 2 })
+        XCTAssertEqual(Double(lastSound.time) / 1000, 1.5, accuracy: 0.1, "the sound lasts as long as the picture")
+    }
+
+    func testConvertToAV1KeepsColorsAndTurnsPortraitUpright() async throws {
+        // Stored landscape and turned a quarter clockwise for display, as iPhones record portrait.
+        // WebM can't say "rotate", so the frames themselves are turned.
+        let input = try await makeVideo("portrait.mov", width: 320, height: 180, seconds: 0.5,
+                                        halves: true, transform: CGAffineTransform(rotationAngle: .pi / 2))
+        let outcome = try await process(input, .convert, .videoFormat(.av1))
+        XCTAssertEqual(outcome.output.lastPathComponent, "portrait-av1.webm")
+        let webm = try TestWebM([UInt8](Data(contentsOf: outcome.output)))
+        XCTAssertEqual(webm.tracks.map(\.codecID), ["V_AV1", "A_OPUS"])
+        XCTAssertEqual(webm.tracks.first?.width, 180, "upright: portrait")
+        XCTAssertEqual(webm.tracks.first?.height, 320)
+
+        let pictures = try TestAV1Decoder.decode(webm.blocks.filter { $0.track == 1 }.map(\.data))
+        XCTAssertEqual(pictures.count, 15)
+        let picture = try XCTUnwrap(pictures.first)
+        // The stored left half (red) is the top once turned; the right half (blue) the bottom.
+        let top = picture.rgb(x: 90, y: 80), bottom = picture.rgb(x: 90, y: 240)
+        XCTAssertEqual(top.r, 220, accuracy: 25, "top: \(top)")
+        XCTAssertLessThan(top.b, 100, "top: \(top)")
+        XCTAssertEqual(bottom.b, 220, accuracy: 25, "bottom: \(bottom)")
+        XCTAssertLessThan(bottom.r, 100, "bottom: \(bottom)")
+    }
+
+    func testWebMOfAnUprightVideoKeepsItsColorsAndSize() async throws {
+        // Upright and the same size: frames tagged BT.709 go to the encoder untouched, others
+        // through Core Image. The colors must come out right either way.
+        let input = try await makeVideo("flat.mov", width: 320, height: 180, seconds: 0.5, sound: false, halves: true)
+        let outcome = try await process(input, .convert, .videoFormat(.av1))
+        let webm = try TestWebM([UInt8](Data(contentsOf: outcome.output)))
+        XCTAssertEqual(webm.tracks.map(\.codecID), ["V_AV1"], "no sound in, no sound track")
+        let picture = try XCTUnwrap(TestAV1Decoder.decode(webm.blocks.map(\.data)).first)
+        XCTAssertEqual(picture.width, 320)
+        let left = picture.rgb(x: 80, y: 90), right = picture.rgb(x: 240, y: 90)
+        XCTAssertEqual(left.r, 220, accuracy: 25, "left: \(left)")
+        XCTAssertEqual(right.b, 220, accuracy: 25, "right: \(right)")
     }
 
     func testResizeTo480p() async throws {

@@ -4,8 +4,9 @@ import CoreImage.CIFilterBuiltins
 import Foundation
 import ImageIO
 
-/// Turns one video into a new file next to it (CORE.md §7), with no new dependencies: passthrough
-/// remux, H.264/HEVC through VideoToolbox, GIF through our own encoder (`GIFWriter`).
+/// Turns one video into a new file next to it (CORE.md §7): passthrough remux, H.264/HEVC through
+/// VideoToolbox, WebM through libvpx/libaom + libopus and our own writer (`WebMTranscoder`), GIF
+/// through our own encoder (`GIFWriter`).
 enum VideoOptimizer {
     /// `progress` gets 0…1 as the work goes (from any thread).
     static func process(_ input: URL, action: Action, option: ActionOption?,
@@ -97,6 +98,7 @@ enum VideoOptimizer {
 
     /// Re-encodes to `codec`: the size from `plan.maxShortSide`, the bitrate from the frame size,
     /// the source's bitrate (so it shrinks) or the target file size. Returns a note for the card.
+    /// WebM encodes at a constant quality with that bitrate as its ceiling, unless aiming at a size.
     private static func encode(_ asset: AVAsset, source: VideoSource, plan: VideoPlan, codec: VideoPlan.Codec,
                                to url: URL, fileType: AVFileType,
                                progress: @escaping @Sendable (Double) -> Void) async throws -> String? {
@@ -115,6 +117,7 @@ enum VideoOptimizer {
                 bitrate = min(bitrate, Int(Double(sourceBitrate) * VideoTuning.maxShareOfSource))
             }
         }
+        let quality = plan.targetBytes == nil ? VideoTuning.quality(for: codec) : nil
         // Retries fill part of what's left of the ring, so it keeps moving forward.
         var shown = 0.0
         func stage(_ share: Double) -> @Sendable (Double) -> Void {
@@ -123,7 +126,7 @@ enum VideoOptimizer {
             return { progress(start + span * $0) }
         }
         try await transcode(asset, source: source, width: size.width, height: size.height, bitrate: bitrate,
-                            codec: codec, to: url, fileType: fileType,
+                            quality: quality, codec: codec, to: url, fileType: fileType,
                             progress: stage(plan.targetBytes == nil ? 1 : VideoTuning.firstTryShare))
 
         // Encoders don't hit a bitrate exactly, and busy footage (grain, confetti, noise) can come out
@@ -145,7 +148,8 @@ enum VideoOptimizer {
             }
             try? FileManager.default.removeItem(at: url)
             try await transcode(asset, source: source, width: size.width, height: size.height, bitrate: bitrate,
-                                codec: codec, to: url, fileType: fileType, progress: stage(VideoTuning.retryShare))
+                                quality: quality, codec: codec, to: url, fileType: fileType,
+                                progress: stage(VideoTuning.retryShare))
         }
         return note
     }
@@ -156,8 +160,13 @@ enum VideoOptimizer {
     }
 
     private static func transcode(_ asset: AVAsset, source: VideoSource, width: Int, height: Int, bitrate: Int,
-                                  codec: VideoPlan.Codec, to url: URL, fileType: AVFileType,
+                                  quality: Int?, codec: VideoPlan.Codec, to url: URL, fileType: AVFileType,
                                   progress: @escaping @Sendable (Double) -> Void) async throws {
+        if codec.isWebM {
+            try WebMTranscoder.transcode(asset, source: source, width: width, height: height, bitrate: bitrate,
+                                         quality: quality, codec: codec, to: url, progress: progress)
+            return
+        }
         let reader = try AVAssetReader(asset: asset)
         let videoOutput = AVAssetReaderTrackOutput(track: source.videoTrack, outputSettings: [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,

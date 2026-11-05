@@ -26,7 +26,7 @@ Working name: **Droptimize** (also considered: Blip, Ripple, Halo, PixDrop). If 
 | Phase 0: app shell, bubble, radial menu (dummy actions) | Code complete; needs hands-on tuning on a Mac | Builds and passes tests in CI; DMG on the `preview` release. Feel not yet tuned by a person; see HANDOFF.md |
 | Phase 1: image pipeline | Steps 1 and 4 done, step 2 half done (WebP, AVIF, Compress incl. target sizes, Half size, Remove BG with backgrounds, naming, size guard, clipboard) | libwebp; libaom + libavif; own lossless PNG optimizer; ImageIO for JPEG/HEIC until jpegli; Vision for Remove BG. Next: Auto classification and the full PNG pipeline (step 2), auto-tune (step 3) |
 | Phase 1.5: benchmark, polish, launch clip | Launch film done (first cut sent to the owner, 2026-11-02); benchmark and hands-on polish not started | 31.5 s, 1080p60, Emma's voice-over, built from HTML; sources and handoff in `docs/launch-video/` |
-| Phase 2: video pipeline | Steps 1–4 done with AVFoundation only (remux, H.264/HEVC, compress to a size, resize, mute, GIF) | No new dependencies. Next: WebM and FFmpeg "max quality" + VMAF, which need the owner's OK on FFmpeg or libvpx (§13) |
+| Phase 2: video pipeline | Steps 1–5 done: remux, H.264/HEVC, compress to a size, resize, mute, GIF, and **WebM (VP9) + AV1 with Opus**, WebM being Auto (2026-11-05) | AVFoundation decodes; libvpx (VP9), libaom (AV1) and libopus encode; our own WebM writer. Tested on Linux with FFmpeg decoding; first Mac run is CI. Next: VMAF auto-tune; WebM *input* (§13) |
 | Phase 3: signing, notarization, distribution | Built-in updater built (pushed 2026-11-02; first stable release waits on the signing secret); signing and notarization not started | No Apple Developer account until Droptimize earns (owner, 2026-11-02), so ad-hoc signing and our own signed-update check instead of Sparkle (§8.2) |
 
 ---
@@ -49,7 +49,7 @@ The tools that inspired this all kill a detour. CleanShot X keeps the screenshot
 
 1. **Never leave the user's context.** No windows to manage in the core flow. Drop → result. Images go to the clipboard; videos appear as a draggable thumbnail on the bubble. Both are also saved next to the original.
 2. **Never touch the original.** Always write a new file. Never overwrite; on a name clash append `-2`, `-3`.
-3. **Never hand back a bigger file.** If the output is larger than the input (or saves less than ~1%, *tune*), keep the original and say "Already as small as it gets." Exceptions, agreed with the owner: **Convert** into another format, and **Remove BG**. They do what was asked even when the result is bigger. The video equivalents (Convert to MP4, HEVC or GIF, and **Mute**) follow the same reasoning.
+3. **Never hand back a bigger file.** If the output is larger than the input (or saves less than ~1%, *tune*), keep the original and say "Already as small as it gets." Exceptions, agreed with the owner: **Convert** into another format, and **Remove BG**. They do what was asked even when the result is bigger. The video equivalents (Convert to WebM, AV1, MP4, HEVC or GIF, and **Mute**) follow the same reasoning.
 4. **Everything on-device.** No network calls, no accounts, no analytics in v1. Works offline, costs nothing per use. Privacy is a selling point. The one exception (owner approved, 2026-11-01): checking a Pro license key with Dodo Payments (§8.1). It sends the key and the Mac's name, never files or anything about them, and the free plan works fully offline. The second (owner approved, 2026-11-02): the built-in updater fetches one small JSON file from GitHub (`update.json` on the `stable` release) about 30 s after launch and then daily, sending nothing about the user or their files; an update downloads only when you click Install (§8.2).
 5. **The bubble never stutters.** Decoding, encoding and analysis all run off the main thread. The UI reacts to a drag within one frame.
 6. **Quality is measured, not guessed.** "Looks the same" means a perceptual metric score (§6.4, §7.3), not a fixed quality number.
@@ -78,7 +78,7 @@ The tools that inspired this all kill a detour. CleanShot X keeps the screenshot
 - **Option bubbles:** some segments have a second ring of smaller bubbles (max 6) that fan out beyond them while hovered. Dropping on the segment itself does its default; dropping on an option picks it. Options are centered on their segment but kept within 85° of straight into the screen. **Compress:** 100 KB · 250 KB · 500 KB · 1 MB · 2 MB · Custom. **Remove BG:** None (transparent) · White · Black · last custom color · Custom. You can't type mid-drag, so **Custom** opens a small panel beside the bubble after the drop (a size in KB/MB, or a hex color with swatches and an eyedropper). It takes the keyboard without activating the app.
 
 Image segments, top to bottom: **Convert · Compress · Half size · Remove BG** (center: **Auto**), leaving one slot free. Convert's option bubbles: **WebP · AVIF · JPG · PNG · HEIC** (only formats that web pages and uploads take; no general-purpose conversion).
-Video segments, top to bottom: **Convert · Compress · Resize · Mute** (center: **Auto**, a smaller H.264 MP4), mirroring the image menu. Convert's option bubbles: **MP4 · HEVC · GIF** (WebM waits on §13). Compress: **10 MB · 25 MB · 50 MB · 100 MB · Custom** (common upload limits). Resize: **1080p · 720p · 480p** (the short side).
+Video segments, top to bottom: **Convert · Compress · Resize · Mute** (center: **Auto**, a WebM), mirroring the image menu. Convert's option bubbles: **WebM · AV1 · MP4 · HEVC · GIF** (Convert itself = WebM). Compress: **10 MB · 25 MB · 50 MB · 100 MB · Custom** (common upload limits). Resize: **1080p · 720p · 480p** (the short side).
 
 - Drops come from anywhere: Finder files, files other apps promise on drop (Photos, Mail, browsers) and plain picture data. Results of files that only existed in another app go to Downloads.
 - Mixed drops (images and videos): show only actions that apply to both (Auto, Compress, without option bubbles).
@@ -203,7 +203,7 @@ Quality presets (in Settings; calibrate with the §9 benchmark and by eye):
 
 ### 7.1 Input and probe
 
-AVFoundation for MOV, MP4 and M4V; FFmpeg for WebM, MKV and anything AVFoundation can't open. Probe codec, dimensions, frame rate, bitrate, audio and HDR before choosing a path.
+AVFoundation for MOV, MP4 and M4V; WebM, MKV and anything AVFoundation can't open aren't read yet (§13). Probe codec, dimensions, frame rate, bitrate, audio and HDR before choosing a path.
 
 ### 7.2 Engines
 
@@ -211,7 +211,8 @@ AVFoundation for MOV, MP4 and M4V; FFmpeg for WebM, MKV and anything AVFoundatio
 |---|---|---|
 | **Instant re-wrap** | Remux, no re-encode | MOV → MP4 when the stream is already H.264/HEVC: seconds, zero quality loss. Always try first |
 | **Fast (default)** | Apple hardware encoders (H.264/HEVC via AVFoundation/VideoToolbox) | Very fast, free, no licensing issues |
-| **Max quality** | FFmpeg with libx264 / libx265 (MP4), libvpx-vp9 or SVT-AV1 (WebM) | Smallest files, much slower; check licenses (§8) |
+| **WebM** | libvpx (VP9) or libaom (AV1) and libopus, linked directly; our own WebM writer (`Video/WebMWriter.swift`) | Auto's format (owner, 2026-11-05). Software encoders, so slower than Apple's hardware ones, and AV1 more so |
+| **Max quality** | FFmpeg with libx264 / libx265 (MP4) | Smallest MP4s, much slower; check licenses (§8) |
 
 MP4s are always written web-ready (index at the front: `shouldOptimizeForNetworkUse` in AVFoundation, `-movflags +faststart` in FFmpeg) so they play in browsers before fully downloading.
 
@@ -221,15 +222,17 @@ The same idea as §6.4, using Netflix's **VMAF** metric: encode a few short samp
 
 ### 7.4 Actions
 
-- **Auto:** MP4 (H.264 for maximum compatibility; HEVC as a setting). Remux if possible, otherwise encode, auto-tuned.
-- **MP4 / WebM:** convert.
+- **Auto:** WebM (VP9 + Opus): the smallest file every current browser plays (owner, 2026-11-05; it replaced H.264 MP4). Size guard on. QuickTime and Quick Look can't open WebM; Convert → MP4 is there for that.
+- **WebM / AV1 / MP4 / HEVC:** convert. AV1 is a WebM too (`-av1.webm`): smaller again, slower to make; Chrome, Firefox and Edge play it, Safari only on Macs and iPhones with AV1 hardware (M3, A17 Pro and later).
 - **GIF:** two-pass palette (one palette for the clip, then dithered frames that only redraw what changed), up to 30 fps in even steps of the source and ~800px (*tune*). Many platforms convert uploaded GIFs to video anyway, so the done state can suggest MP4 as the smaller option. gifski makes better GIFs but is AGPL (§8).
 - **1080p / 720p:** scale down preserving aspect ratio, even dimensions, never upscale.
 - **Mute:** drop the audio track (for website hero videos).
 - Audio when kept: AAC ~128–160 kbps in MP4, Opus in WebM.
 - HDR sources: keep HDR in HEVC; tone-map to SDR for H.264, WebM and GIF.
 
-**Built so far (AVFoundation only, `Video/`):** Auto = H.264 MP4 at ~0.08 bits per pixel per frame, never above 70% of the source's bitrate, size guard on. Convert → MP4 remuxes when the streams are already H.264/HEVC + AAC, else encodes H.264; HEVC encodes at ~0.05 bpp. Compress to a size takes the bitrate from size ÷ duration (8% headroom, AAC 128 kbps), drops to the largest standard size (1080p, 720p, 480p, 360p) that bitrate suits when it is too low for the frame, and retries when the encoder overshoots (lower bitrate, then fewer pixels); the card says "Scaled to 480p to fit". Resize never upscales and keeps even sizes. Mute is a passthrough copy without the audio track. GIF is our own encoder (`Video/GIFEncoder.swift`: one palette per clip by median cut + k-means, Floyd–Steinberg dithering, only changed pixels redrawn, real frame timing), from every frame up to 30 fps, Lanczos-scaled to ≤ 800 px and color-managed to sRGB, the first 30 seconds. Settings in `VideoTuning` (*tune*) until VMAF.
+**WebM (`Video/WebM*.swift`):** AVFoundation decodes to NV12; frames that are already upright, the right size and tagged BT.709 go straight to the encoder, the rest are turned upright (WebM has no rotation flag) and Lanczos-scaled by Core Image into BT.709. VP9 (libvpx, cpu-used 5) and AV1 (libaom good quality, cpu-used 6) encode at a constant quality (VP9 32, AV1 34 of 63) capped at ~0.06 / 0.045 bits per pixel per frame (Auto also caps at 70% of the source's bitrate), a keyframe at least every 4 s, row multithreading and tiles. Sound: Opus at 48 kHz, 48 kbps per channel, 20 ms packets, kept in step with the picture. Our writer puts SeekHead, Info and Tracks first, a cluster per keyframe, and Cues at the end; tested against an independent reader, FFmpeg and libaom's decoder. HDR sources are clipped to SDR, not tone-mapped yet. *(tune)*
+
+**Built so far (MP4 and GIF, AVFoundation, `Video/`):** MP4s from Auto used H.264 at ~0.08 bits per pixel per frame, never above 70% of the source's bitrate, size guard on (now Convert → MP4 of an MP4). Convert → MP4 remuxes when the streams are already H.264/HEVC + AAC, else encodes H.264; HEVC encodes at ~0.05 bpp. Compress to a size takes the bitrate from size ÷ duration (8% headroom, AAC 128 kbps), drops to the largest standard size (1080p, 720p, 480p, 360p) that bitrate suits when it is too low for the frame, and retries when the encoder overshoots (lower bitrate, then fewer pixels); the card says "Scaled to 480p to fit". Resize never upscales and keeps even sizes. Mute is a passthrough copy without the audio track. GIF is our own encoder (`Video/GIFEncoder.swift`: one palette per clip by median cut + k-means, Floyd–Steinberg dithering, only changed pixels redrawn, real frame timing), from every frame up to 30 fps, Lanczos-scaled to ≤ 800 px and color-managed to sRGB, the first 30 seconds. Settings in `VideoTuning` (*tune*) until VMAF.
 
 ### 7.5 UX differences from images
 
@@ -246,12 +249,14 @@ Video takes time (a 2-minute 4K clip can take a minute or more). Show real progr
 | jpegli / libjxl | JPEG encode, SSIMULACRA 2 | BSD-3 | Yes |
 | MozJPEG | JPEG fallback | BSD-style (IJG) | Yes |
 | libwebp | WebP | BSD-3 | Yes. **In use** (1.6.0, approved 2026-10-30) |
-| libavif + libaom | AVIF | BSD-2 (+ AOM patent license) | Yes. **In use** (libavif 1.4.2, libaom 3.15.2, approved 2026-10-30) |
+| libavif + libaom | AVIF, and AV1 video | BSD-2 (+ AOM patent license) | Yes. **In use** (libavif 1.4.2, libaom 3.15.2, approved 2026-10-30; AV1 video 2026-11-05) |
 | oxipng | Lossless PNG | MIT | Yes |
 | pngquant / libimagequant | Lossy PNG | GPLv3 or commercial | **Only with a commercial license** |
 | FFmpeg | Video plumbing | LGPL (GPL if built with x264/x265) | Yes as an LGPL build |
 | x264 / x265 | H.264 / HEVC software encoders | GPLv2 or commercial | **Only with a commercial license** |
-| libvpx | VP9 | BSD-3 | Yes |
+| libvpx | VP9 (WebM video) | BSD-3 + Google's royalty-free VP8/VP9 patent grant | Yes. **In use** (1.17.0, approved 2026-11-05) |
+| libopus | Opus (WebM sound) | BSD-3 (+ royalty-free patent licenses) | Yes. **In use** (1.5.2, approved 2026-11-05) |
+| libwebm | WebM container | BSD-3 | Approved 2026-11-05 but not needed: our own writer (`Video/WebMWriter.swift`) does it |
 | SVT-AV1 | AV1 | BSD-style (+ AOM patent license) | Yes |
 | VMAF | Video quality metric | BSD-2-Clause-Patent | Yes |
 | gifski | High-quality GIF | AGPL or commercial | **Only with a commercial license** |
@@ -316,7 +321,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 **Phase 1.5: benchmark, polish, launch.** Run §9, tune targets and motion, record a 10–15s demo clip.
 
-**Phase 2: video**, in this order: remux fast path → Apple encoders (MP4) → resize and mute → GIF → WebM → FFmpeg max quality + VMAF auto-tune.
+**Phase 2: video**, in this order: remux fast path → Apple encoders (MP4) → resize and mute → GIF → WebM (done 2026-11-05) → VMAF auto-tune → FFmpeg max quality (MP4).
 
 **Phase 3: ship.** Developer ID signing, notarization, DMG, auto-updates (built in now, §8.2; Sparkle once Developer ID signed), a simple landing page.
 
@@ -350,12 +355,16 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 - Switch the built-in updater to Sparkle once there's a Developer ID (§8.2), or keep ours?
 - The first stable version number (1.0.0 suggested) and when to release it (after Dodo is live, so buyers get the paid build?).
 - Launch film: the website URL for the end card (none yet; it has room for one), and whether the owner wants a ProRes master or other cuts (a square or vertical version for social).
-- WebM and video "max quality": FFmpeg (LGPL build, dynamic linking) or libvpx + libwebm (BSD-3)? Needs the owner's OK (Rule 7). Ties into free vs paid for x264/x265.
+- Video "max quality" MP4s: FFmpeg (LGPL build, dynamic linking)? Needs the owner's OK (Rule 7). (WebM is settled: libvpx, libaom, libopus.)
+- WebM as Auto means QuickTime and Quick Look can't open Auto's videos. Keep it, or add a setting "Auto makes: WebM / MP4"?
+- Reading WebM (dropping a .webm in): needs decoders (libvpx's and libaom's, already in the build) and a WebM reader, or FFmpeg. Worth it?
+- PDF optimization (owner, 2026-11-05: "we'll also add pdf optimizations"): what it should do and with what (to plan next). The launch film gets updated once WebM and PDF are both in.
 
 ---
 
 ## 14. Changelog
 
+- 2026-11-05: **WebM and AV1 video** (owner approved libvpx + libopus; "WebM should be the default"): Auto and Convert now make WebM (VP9 + Opus); Convert also offers AV1 (a WebM too, `-av1.webm`). Menu: WebM · AV1 · MP4 · HEVC · GIF. Own WebM writer instead of libwebm (one dependency fewer). libvpx 1.17.0 and libopus 1.5.2 built by `scripts/build-deps.sh` with libaom's headers now installed too; C shims in `Modules/` for the calls Swift can't make. Owner: the launch film waits until PDF optimization is in too.
 - 2026-11-05: Launch film: the end card's background grid removed (owner: it looked like AI slop); plain near-black with the logo's glow.
 - 2026-11-04: Launch film: the opening's voice is now one uncut take (a clipped "time" caught by the owner); a voice check (`check-voice-v4.py`) joins the caption audit before every render. 52.5 s + 3 s still.
 - 2026-11-04: Positioning (owner): lead with the detour Droptimize removes, not with file size (§2). The launch film now opens on that routine (find a website, upload, wait, download, unzip) before the drop; new Emma lines, 107 credits.

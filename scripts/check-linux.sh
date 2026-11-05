@@ -2,9 +2,10 @@
 # What can be checked without a Mac (for agents working in Linux containers):
 #   1. every Swift file parses;
 #   2. the portable code passes its unit tests: layout, spring, dock position, action menus,
-#      output naming, the size guard, the updater's feed and swap script, and the PNG, WebP and
-#      AVIF encoders (libwebp, libaom and libavif are built for the host by scripts/build-deps.sh;
-#      zlib comes from the system).
+#      output naming, the size guard, the updater's feed and swap script, the PNG, WebP and AVIF
+#      encoders, and WebM (our muxer with VP9, AV1 and Opus; checked by FFmpeg when it's installed).
+#      libwebp, libaom, libavif, libvpx and libopus are built for the host by scripts/build-deps.sh;
+#      zlib comes from the system.
 # This is NOT a build: AppKit/SwiftUI code is only type-checked by Xcode or by CI
 # (.github/workflows/build.yml). Needs a Swift toolchain on PATH; see HANDOFF.md.
 set -euo pipefail
@@ -32,6 +33,8 @@ PORTABLE_SOURCES=(
   Image/Encoders/AVIF.swift
   Video/VideoPlan.swift
   Video/GIFEncoder.swift
+  Video/WebMWriter.swift
+  Video/WebMEncoders.swift
   Store/Allowance.swift
   Store/License.swift
   Store/UpdateFeed.swift
@@ -48,10 +51,13 @@ PORTABLE_TESTS=(
   Tests/HistoryTests.swift
   Tests/VideoPlanTests.swift
   Tests/GIFTests.swift
+  Tests/WebMTests.swift
   Tests/StoreTests.swift
   Tests/UpdateTests.swift
   Tests/Support/TestPNGReader.swift
   Tests/Support/TestGIFReader.swift
+  Tests/Support/TestWebMReader.swift
+  Tests/Support/TestAV1Decoder.swift
 )
 
 command -v swiftc >/dev/null || { echo "swiftc not found. See HANDOFF.md → 'Checking code without a Mac'." >&2; exit 1; }
@@ -60,7 +66,7 @@ echo "→ Parsing every Swift file"
 find App Bubble Pipeline Image Video Store Tests -name '*.swift' -print0 | xargs -0 swiftc -parse
 echo "  ok"
 
-echo "→ Building libwebp, libaom and libavif for this machine (a no-op once built)"
+echo "→ Building libwebp, libaom, libavif, libvpx and libopus for this machine (a no-op once built)"
 ./scripts/build-deps.sh
 repo="$(pwd)"
 
@@ -93,9 +99,11 @@ let package = Package(
     ]
 )
 EOF
-# The C modules (Modules/module.modulemap) and libwebp, for every target including the
+# The C modules (Modules/module.modulemap) and their libraries, for every target including the
 # generated test runner, so they're passed on the command line rather than per target.
-flags=(-Xswiftc -I -Xswiftc "$repo/Modules" -Xlinker -L"$repo/Vendor/libwebp/lib" -Xlinker -L"$repo/Vendor/libavif/lib")
+# libaom's headers include each other as "aom/…", so its include folder is a header search path.
+flags=(-Xswiftc -I -Xswiftc "$repo/Modules" -Xswiftc -Xcc -Xswiftc -I"$repo/Vendor/libavif/include")
+for lib in libwebp libavif libvpx libopus; do flags+=(-Xlinker -L"$repo/Vendor/$lib/lib"); done
 if (cd "$work" && swift test "${flags[@]}" >"$work/test.log" 2>&1); then
   grep -E "Executed [0-9]+ tests" "$work/test.log" | tail -1
   echo "  ok"
