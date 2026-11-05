@@ -43,8 +43,10 @@ final class VideoMacTests: XCTestCase {
         let videoTrack = try XCTUnwrap(videoTracks.first)
         let audioTrack = try XCTUnwrap(audioTracks.first)
         let audioDuration = try await audioAsset.load(.duration)
-        try XCTUnwrap(composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid))
-            .insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: videoTrack, at: .zero)
+        let videoCopy = try XCTUnwrap(composition.addMutableTrack(withMediaType: .video,
+                                                                  preferredTrackID: kCMPersistentTrackID_Invalid))
+        try videoCopy.insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: videoTrack, at: .zero)
+        videoCopy.preferredTransform = try await videoTrack.load(.preferredTransform)     // keep portrait videos portrait
         try XCTUnwrap(composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid))
             .insertTimeRange(CMTimeRange(start: .zero, duration: CMTimeMinimum(duration, audioDuration)), of: audioTrack, at: .zero)
         try await VideoOptimizer.export(composition, preset: AVAssetExportPresetPassthrough, to: url, fileType: .mov)
@@ -174,6 +176,9 @@ final class VideoMacTests: XCTestCase {
         let pictures = try TestAV1Decoder.decode(webm.blocks.filter { $0.track == 1 }.map(\.data))
         XCTAssertEqual(pictures.count, 15)
         let picture = try XCTUnwrap(pictures.first)
+        guard picture.width == 180, picture.height == 320 else {
+            return XCTFail("decoded \(picture.width) × \(picture.height), not upright")
+        }
         // The stored left half (red) is the top once turned; the right half (blue) the bottom.
         let top = picture.rgb(x: 90, y: 80), bottom = picture.rgb(x: 90, y: 240)
         XCTAssertEqual(top.r, 220, accuracy: 25, "top: \(top)")
@@ -190,7 +195,9 @@ final class VideoMacTests: XCTestCase {
         let webm = try TestWebM([UInt8](Data(contentsOf: outcome.output)))
         XCTAssertEqual(webm.tracks.map(\.codecID), ["V_AV1"], "no sound in, no sound track")
         let picture = try XCTUnwrap(TestAV1Decoder.decode(webm.blocks.map(\.data)).first)
-        XCTAssertEqual(picture.width, 320)
+        guard picture.width == 320, picture.height == 180 else {
+            return XCTFail("decoded \(picture.width) × \(picture.height)")
+        }
         let left = picture.rgb(x: 80, y: 90), right = picture.rgb(x: 240, y: 90)
         XCTAssertEqual(left.r, 220, accuracy: 25, "left: \(left)")
         XCTAssertEqual(right.b, 220, accuracy: 25, "right: \(right)")
