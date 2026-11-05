@@ -74,7 +74,8 @@ jobs:
             CODE_SIGN_IDENTITY=- \
             > build.log 2>&1
           status=$?
-          grep -E 'error:|Test Suite .* (passed|failed)|Test Case .* failed|Executed|\*\* (BUILD|TEST)' build.log || true
+          # MEASURE lines: numbers a test prints for tuning (e.g. what each PDF compression option does).
+          grep -E 'error:|Test Suite .* (passed|failed)|Test Case .* failed|Executed|\*\* (BUILD|TEST)|^MEASURE ' build.log || true
           exit $status
 
       - name: Warnings

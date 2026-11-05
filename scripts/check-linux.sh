@@ -23,6 +23,7 @@ PORTABLE_SOURCES=(
   Pipeline/ImagePlan.swift
   Pipeline/ActionOptions.swift
   Pipeline/History.swift
+  Pipeline/PDFPlan.swift
   Image/RGBAImage.swift
   Image/ImageFormat.swift
   Image/RGBColor.swift
@@ -52,6 +53,7 @@ PORTABLE_TESTS=(
   Tests/VideoPlanTests.swift
   Tests/GIFTests.swift
   Tests/WebMTests.swift
+  Tests/PDFPlanTests.swift
   Tests/StoreTests.swift
   Tests/UpdateTests.swift
   Tests/Support/TestPNGReader.swift

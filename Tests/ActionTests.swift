@@ -11,10 +11,18 @@ final class ActionMenuTests: XCTestCase {
         XCTAssertEqual(ActionMenu(kinds: [.video])?.segments, [.convert, .compress, .resize, .mute])
     }
 
+    func testPDFsGetCompress() {
+        let menu = ActionMenu(kinds: [.pdf])
+        XCTAssertEqual(menu?.center, .auto)
+        XCTAssertEqual(menu?.segments, [.compress])
+        XCTAssertEqual(menu?.geometryOptionCounts, [0], "no option bubbles yet")
+    }
+
     func testMixedDropsOnlyOfferWhatAppliesToBoth() {
         let menu = ActionMenu(kinds: [.image, .video])
         XCTAssertEqual(menu?.center, .auto)
         XCTAssertEqual(menu?.segments, [.compress])
+        XCTAssertEqual(ActionMenu(kinds: [.image, .pdf])?.segments, [.compress])
     }
 
     func testNothingUsefulMeansNoMenu() {
@@ -22,7 +30,7 @@ final class ActionMenuTests: XCTestCase {
     }
 
     func testNoMenuHasMoreThanSixSegments() {
-        for menu in [ActionMenu.image, .video, .mixed] {
+        for menu in [ActionMenu.image, .video, .pdf, .mixed] {
             XCTAssertLessThanOrEqual(menu.segments.count, ActionMenu.maxSegments)
         }
     }

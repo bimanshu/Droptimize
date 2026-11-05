@@ -147,8 +147,8 @@ enum ImageOptimizer {
     }
 }
 
-/// Runs a drop through `ImageOptimizer` (several images at a time) or `VideoOptimizer` (one video at
-/// a time, CORE.md §5), and puts the results on the clipboard.
+/// Runs a drop through `ImageOptimizer` (several images at a time), `VideoOptimizer` or `PDFOptimizer`
+/// (one video or PDF at a time, CORE.md §5), and puts the results on the clipboard.
 struct ImageJobRunner: JobRunner {
     func run(_ job: Job, progress: @escaping @MainActor (JobProgress) -> Void) async throws -> JobResult {
         let action = job.action
@@ -158,7 +158,8 @@ struct ImageJobRunner: JobRunner {
         var outcomes: [(index: Int, outcome: FileOutcome)] = []
         var errors: [Error] = []
         let hasVideo = job.files.contains { MediaKind(url: $0) == .video }
-        let concurrency = hasVideo ? 1 : Self.concurrency
+        // Long PDFs can hold hundreds of pictures, so like videos they go one at a time.
+        let concurrency = hasVideo || job.files.contains { MediaKind(url: $0) == .pdf } ? 1 : Self.concurrency
         // Videos report progress within the file; images only as each one finishes.
         let reporter = ProgressReporter(total: total, report: progress)
 
@@ -177,10 +178,15 @@ struct ImageJobRunner: JobRunner {
                 group.addTask {
                     do {
                         try Task.checkCancellation()
-                        if MediaKind(url: url) == .video {
+                        switch MediaKind(url: url) {
+                        case .video?:
                             let outcome = try await VideoOptimizer.process(url, action: action, option: option,
                                                                            progress: reporter.within)
                             return (index, .success(outcome))
+                        case .pdf?:
+                            return (index, .success(try PDFOptimizer.process(url, action: action, option: option)))
+                        case .image?, nil:
+                            break
                         }
                         return (index, .success(try ImageOptimizer.process(url, action: action, option: option,
                                                                            wantsPicture: wantsPicture)))

@@ -4,12 +4,13 @@ import XCTest
 
 // macOS only (AppKit, UniformTypeIdentifiers); runs in CI and Xcode, not in scripts/check-linux.sh.
 final class MediaKindTests: XCTestCase {
-    func testRecognisesImagesAndVideosByExtension() {
+    func testRecognisesImagesVideosAndPDFsByExtension() {
         let cases: [(String, MediaKind?)] = [
             ("photo.jpg", .image), ("shot.PNG", .image), ("pic.heic", .image), ("art.webp", .image),
             ("a.avif", .image), ("scan.tiff", .image), ("anim.gif", .image),
             ("clip.mov", .video), ("clip.mp4", .video), ("clip.m4v", .video),
-            ("logo.svg", nil), ("doc.pdf", nil), ("notes.txt", nil), ("archive.zip", nil),
+            ("doc.pdf", .pdf), ("Scan.PDF", .pdf),
+            ("logo.svg", nil), ("notes.txt", nil), ("archive.zip", nil),
         ]
         for (name, expected) in cases {
             let url = URL(fileURLWithPath: "/nonexistent/\(name)")

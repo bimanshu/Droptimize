@@ -51,6 +51,11 @@ enum JobError: LocalizedError, Equatable {
     case noAudio
     case alreadyAtMost(Int)
     case unreadableVideo
+    case unreadablePDF
+    /// Encrypted: rewriting it would drop the protection, so it's left alone.
+    case protectedPDF
+    /// Digitally signed: any rewrite breaks the signature.
+    case signedPDF
     case notReceived
     /// An action or format that isn't built yet; the message says which.
     case notYet(String)
@@ -67,6 +72,9 @@ enum JobError: LocalizedError, Equatable {
         case .noAudio: return "This video has no sound to remove."
         case .alreadyAtMost(let side): return "Already \(side)p or smaller."
         case .unreadableVideo: return "Can't open this video. MOV and MP4 work."
+        case .unreadablePDF: return "Can't open this PDF."
+        case .protectedPDF: return "This PDF is password-protected, so it's left as it is."
+        case .signedPDF: return "This PDF is signed. Compressing it would break the signature."
         case .notReceived: return "Couldn't get the files from that app."
         case .notYet(let message): return message
         }

@@ -60,13 +60,13 @@ extension Action {
     }
 
     /// The option bubbles that fan out when this segment is hovered, for a drag of `kind`
-    /// (nil: images and videos together, which get none); empty when it has none.
+    /// (nil: a mixed drop, which gets none; PDFs have none yet); empty when it has none.
     /// `lastColor` is the last custom background, offered again as its own bubble.
     func options(for kind: MediaKind?, lastColor: RGBColor?) -> [MenuOption] {
         switch kind {
         case .video?: return videoOptions
         case .image?: return imageOptions(lastColor: lastColor)
-        case nil: return []
+        case .pdf?, nil: return []
         }
     }
 

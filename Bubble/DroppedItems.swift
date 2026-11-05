@@ -1,7 +1,7 @@
 import AppKit
 import UniformTypeIdentifiers
 
-/// What a drag carries, so images and videos can come from any app (CORE.md §4.2):
+/// What a drag carries, so images, videos and PDFs can come from any app (CORE.md §4.2):
 /// - **files** Finder (or anything else) already has on disk;
 /// - **promised files** an app writes once you drop: Photos, Mail and Messages attachments,
 ///   Safari and most browsers' images;
@@ -106,6 +106,7 @@ struct DroppedItems {
         receiver.fileTypes.compactMap { identifier in
             guard let type = UTType(identifier) else { return nil }
             if type.conforms(to: .svg) { return nil }
+            if type.conforms(to: .pdf) { return .pdf }
             if type.conforms(to: .image) { return .image }
             if type.conforms(to: .movie) || type.conforms(to: .video) { return .video }
             return nil

@@ -1,6 +1,7 @@
 import Foundation
 
-/// Everything a drop can ask for. Image actions are Phase 1, video actions Phase 2 (CORE.md §6.5, §7.4).
+/// Everything a drop can ask for. Image actions are Phase 1, video actions Phase 2 (CORE.md §6.5, §7.4);
+/// PDFs use Auto and Compress (§7b).
 enum Action: String, CaseIterable, Identifiable {
     case auto
     // Images
@@ -52,7 +53,7 @@ enum Action: String, CaseIterable, Identifiable {
 
 /// What the media in a drag is.
 enum MediaKind: Hashable {
-    case image, video
+    case image, video, pdf
 }
 
 /// What the radial menu offers for one drag: Auto in the center, up to six segments around it,
@@ -78,11 +79,14 @@ struct ActionMenu: Equatable {
     /// Listed top to bottom as they sit on the arc.
     static let imageSegments: [Action] = [.convert, .compress, .halfSize, .removeBackground]
     static let videoSegments: [Action] = [.convert, .compress, .resize, .mute]
+    /// PDFs: Compress (Auto in the center does the same).
+    static let pdfSegments: [Action] = [.compress]
     /// Images and videos together: only what applies to both.
     static let mixedSegments: [Action] = [.compress]
 
     static let image = ActionMenu(segments: imageSegments, kind: .image)
     static let video = ActionMenu(segments: videoSegments, kind: .video)
+    static let pdf = ActionMenu(segments: pdfSegments, kind: .pdf)
     static let mixed = ActionMenu(segments: mixedSegments, kind: nil)
 
     /// The menu for a drag carrying `kinds`, or nil when there's nothing to offer.
@@ -91,6 +95,7 @@ struct ActionMenu: Equatable {
         case []: return nil
         case [.image]: self.init(segments: Self.imageSegments, kind: .image, lastColor: lastColor)
         case [.video]: self.init(segments: Self.videoSegments, kind: .video, lastColor: lastColor)
+        case [.pdf]: self.init(segments: Self.pdfSegments, kind: .pdf, lastColor: lastColor)
         default: self.init(segments: Self.mixedSegments, kind: nil, lastColor: lastColor)
         }
     }
