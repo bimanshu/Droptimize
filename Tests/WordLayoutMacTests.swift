@@ -59,6 +59,53 @@ final class WordLayoutMacTests: XCTestCase {
 
         // The stamp placed on the page behind the text, at 400, 700.
         XCTAssertTrue(second.isColor(x: 450, y: 725, red: true, blue: true), "the placed picture: \(second.describe(x: 450, y: 725))")
+        keepSample(outcome.output, as: "lookalike-report.pdf")
+    }
+
+    /// The demo document in docs/samples (python-docx's own styles: theme fonts, a title with a rule,
+    /// a styled table, a chart picture, page numbers, a page break).
+    func testTheDemoDocument() async throws {
+        let demo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("docs/samples/droptimize-demo.docx")
+        let input = folder.appendingPathComponent("demo.docx")
+        try FileManager.default.copyItem(at: demo, to: input)
+        let outcome = try await DocumentConverter.process(input, action: .auto, option: nil, engines: [.builtIn])
+        let pdf = try XCTUnwrap(PDFDocument(url: outcome.output))
+        // Two pages in Word; Calibri isn't on a Mac, and its stand-in is a little wider.
+        XCTAssertTrue((2...3).contains(pdf.pageCount), "the summary, then the appendix: \(pdf.pageCount) pages")
+        let last = Self.words(pdf.page(at: pdf.pageCount - 1)?.string)
+        XCTAssertTrue(last.contains("Appendix: how the PDF is made"), "the appendix starts a page: \(last)")
+        XCTAssertTrue(last.contains("Page \(pdf.pageCount) of \(pdf.pageCount)"), last)
+        let text = Self.words(pdf.string)
+        for words in ["Launch Plan: Droptimize for Mac", "Why it matters", "Results so far", "Drop it. Done."] {
+            XCTAssertTrue(text.contains(words), "\(words): \(text)")
+        }
+        XCTAssertEqual(Self.pictures(in: outcome.output), 1, "the chart")
+        keepSample(outcome.output, as: "demo.pdf")
+    }
+
+    /// CI keeps the PDFs these tests make (TEST_RUNNER_WORD_SAMPLES in the workflow), to look at.
+    private func keepSample(_ url: URL, as name: String) {
+        guard let folder = ProcessInfo.processInfo.environment["WORD_SAMPLES"], !folder.isEmpty else { return }
+        let target = URL(fileURLWithPath: folder).appendingPathComponent(name)
+        try? FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? FileManager.default.removeItem(at: target)
+        try? FileManager.default.copyItem(at: url, to: target)
+    }
+
+    /// How many pictures the PDF's pages draw.
+    private static func pictures(in url: URL) -> Int {
+        guard let document = CGPDFDocument(url as CFURL), document.numberOfPages > 0 else { return 0 }
+        var count = 0
+        for number in 1...document.numberOfPages {
+            guard let page = document.page(at: number), let dictionary = page.dictionary else { continue }
+            var resources: CGPDFDictionaryRef?, objects: CGPDFDictionaryRef?
+            guard CGPDFDictionaryGetDictionary(dictionary, "Resources", &resources), let resources,
+                  CGPDFDictionaryGetDictionary(resources, "XObject", &objects), let objects
+            else { continue }
+            count += CGPDFDictionaryGetCount(objects)
+        }
+        return count
     }
 
     // MARK: The document

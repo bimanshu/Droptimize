@@ -97,8 +97,9 @@ appendix = doc.add_heading('Appendix: how the PDF is made', level=1)
 appendix.paragraph_format.page_break_before = True
 doc.add_paragraph('When Microsoft Word is installed, Droptimize asks Word to save the document as a PDF, out of sight. '
                   'The PDF then looks exactly like the document, including this page’s header and the page numbers at the bottom.')
-doc.add_paragraph('Without Word, Pages does the same. Without either, macOS’s own reader makes the PDF: the text, styles, '
-                  'lists, table and picture come through, but the header and footer are left out, and the card says the layout may differ.')
+doc.add_paragraph('Without Word, Pages does the same. Without either, Droptimize reads the document itself: the text, styles, '
+                  'lists, table, picture, header and page numbers come through, but fonts that come with Office are swapped for '
+                  'the closest ones a Mac has, so the card says the layout may differ.')
 doc.add_heading('What to check', level=2)
 for check in ['Two pages, with this appendix starting on page 2.', 'The header at the top right of each page.',
               '“Page 1 of 2” and “Page 2 of 2” at the bottom.', 'The table and the chart where they are on page 1.']:

@@ -57,7 +57,20 @@ final class WordReaderTests: XCTestCase {
         XCTAssertEqual(image.width, 468, accuracy: 0.01, "5943600 EMU is 6.5 inches")
         XCTAssertEqual(image.height, 137.15, accuracy: 0.01)
         XCTAssertNil(image.floating)
+        XCTAssertEqual(image.crop, WordInsets(top: 0, left: 0, bottom: 0, right: 0))
         XCTAssertEqual(document.images["word/media/image1.png"], Self.png, "the picture's bytes come along")
+    }
+
+    func testACroppedPicture() throws {
+        let body = """
+            <w:p><w:r><w:drawing><wp:inline><wp:extent cx="1270000" cy="1270000"/><a:graphic><a:graphicData><pic:pic>
+            <pic:blipFill><a:blip r:embed="rId1"/><a:srcRect l="10000" t="25000" b="5000"/></pic:blipFill></pic:pic>
+            </a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>
+            """
+        let document = try WordReader.read(parts: parts(body: body, relationships: [("rId1", "media/logo.png")],
+                                                        media: ["word/media/logo.png": Self.png]))
+        guard case .image(let image) = paragraphs(document).first?.inlines.first else { return XCTFail("a picture") }
+        XCTAssertEqual(image.crop, WordInsets(top: 0.25, left: 0.1, bottom: 0.05, right: 0))
     }
 
     func testAPicturePlacedOnThePage() throws {
@@ -311,7 +324,7 @@ final class WordReaderTests: XCTestCase {
             <w:tr><w:trPr><w:trHeight w:val="400"/></w:trPr>
               <w:tc><w:tcPr><w:vMerge w:val="restart"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:r><w:t>S.No</w:t></w:r></w:p></w:tc>
               <w:tc><w:tcPr><w:gridSpan w:val="2"/><w:shd w:val="clear" w:fill="D9E2F3"/></w:tcPr><w:p><w:r><w:t>Wide</w:t></w:r></w:p></w:tc></w:tr>
-            <w:tr><w:tc><w:tcPr><w:vMerge/></w:tcPr><w:p/></w:tc>
+            <w:tr><w:trPr><w:gridBefore w:val="0"/></w:trPr><w:tc><w:tcPr><w:vMerge/></w:tcPr><w:p/></w:tc>
               <w:tc><w:p><w:r><w:t>B</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>C</w:t></w:r></w:p></w:tc></w:tr>
             </w:tbl><w:p/>
             """
@@ -330,6 +343,7 @@ final class WordReaderTests: XCTestCase {
         XCTAssertEqual(first[0].verticalAlign, .center)
         XCTAssertEqual(first[1].shading, WordColor(hex: "D9E2F3"))
         XCTAssertEqual(table.rows[1].cells[0].verticalMerge, .continued)
+        XCTAssertEqual(table.rows.map(\.gridBefore), [0, 0])
         guard case .paragraph(let wide) = first[1].blocks.first else { return XCTFail() }
         XCTAssertEqual(wide.text, "Wide")
     }
@@ -345,10 +359,11 @@ final class WordReaderTests: XCTestCase {
         let body = """
             <w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/><w:jc w:val="center"/><w:tblLook w:firstRow="1"/></w:tblPr>
             <w:tblGrid><w:gridCol w:w="2000"/></w:tblGrid>
-            <w:tr><w:tc><w:p><w:r><w:t>Head</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:p><w:r><w:t>Body</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
+            <w:tr><w:tc><w:p><w:r><w:t>Head</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:trPr><w:gridBefore w:val="1"/></w:trPr><w:tc><w:p><w:r><w:t>Body</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
             """
         guard case .table(let table) = try WordReader.read(parts: parts(body: body, styles: styles)).blocks.first else { return XCTFail() }
         XCTAssertEqual(table.alignment, .center)
+        XCTAssertEqual(table.rows[1].gridBefore, 1, "a row that starts one column in")
         XCTAssertEqual(table.cellMargins.left, 5.4)
         XCTAssertEqual(table.borders.insideHorizontal?.width, 1)
         XCTAssertNil(table.borders.bottom)

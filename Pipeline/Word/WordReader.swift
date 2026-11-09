@@ -825,6 +825,10 @@ private struct Reader {
             let extent = frame?.child("wp:extent")
             var image = WordImage(part: path, width: WordUnits.emu(extent?.attr("cx")) ?? 72, height: WordUnits.emu(extent?.attr("cy")) ?? 72)
             if let anchor = frame, anchor.name == "wp:anchor" { image.floating = float(anchor) }
+            if let source = element.descendants("a:srcRect").first {
+                func side(_ name: String) -> Double { min(max((source.attr(name).flatMap(Double.init) ?? 0) / 100_000, 0), 0.9) }
+                image.crop = WordInsets(top: side("t"), left: side("l"), bottom: side("b"), right: side("r"))
+            }
             inlines.append(.image(image))
         } else if let imagedata = element.descendants("v:imagedata").first, let id = imagedata.attr("id"),
                   let path = rels[id], let data = parts[path] {
@@ -931,6 +935,7 @@ private struct Reader {
         for (index, tr) in rowElements.enumerated() {
             var row = WordRow()
             row.minimumHeight = WordUnits.twips(tr.child("w:trPr")?.child("w:trHeight")?.attr("val")) ?? 0
+            row.gridBefore = max(0, tr.child("w:trPr")?.child("w:gridBefore")?.attr("val").flatMap(Int.init) ?? 0)
             var rowContext = context
             if index == 0, headerStyled, let run = firstRowRun { rowContext.run.apply(run) }
             for tc in tr.children("w:tc") {

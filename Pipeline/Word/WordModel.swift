@@ -71,6 +71,8 @@ struct WordImage: Equatable {
     var height: Double
     /// Nil for a picture in the line of text; set for one placed freely on the page.
     var floating: WordFloat?
+    /// How much of each side is cut off, as a fraction of the picture (Word's Crop).
+    var crop = WordInsets(top: 0, left: 0, bottom: 0, right: 0)
 }
 
 /// Where a freely placed picture sits. Behind or in front of the text, it's drawn there without
@@ -199,6 +201,8 @@ struct WordBorders: Equatable {
 struct WordRow: Equatable {
     var cells: [WordCell] = []
     var minimumHeight = 0.0
+    /// Grid columns left empty before the first cell.
+    var gridBefore = 0
 }
 
 struct WordCell: Equatable {

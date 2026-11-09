@@ -64,6 +64,9 @@ jobs:
         run: xcodegen generate
 
       - name: Build and test
+        env:
+          # The Word → PDF tests copy the PDFs they make here (xcodebuild hands TEST_RUNNER_ variables to tests).
+          TEST_RUNNER_WORD_SAMPLES: ${{ runner.temp }}/word-samples
         run: |
           set +e
           xcodebuild test \
@@ -77,6 +80,15 @@ jobs:
           # MEASURE lines: numbers a test prints for tuning (e.g. what each PDF compression option does).
           grep -E 'error:|Test Suite .* (passed|failed)|Test Case .* failed|Executed|\*\* (BUILD|TEST)|^MEASURE ' build.log || true
           exit $status
+
+      - name: Upload Word → PDF samples
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: word-samples
+          path: ${{ runner.temp }}/word-samples
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Warnings
         # CORE.md §12: fix warnings, not just errors. Any compiler warning fails the build.

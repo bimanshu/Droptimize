@@ -232,7 +232,7 @@ private final class Composer {
                     for image in group.floats {
                         let rect = place(image, anchor: origin.y, column: CGRect(x: geometry.left, y: origin.y, width: geometry.width, height: 0),
                                          sheet: Sheet(geometry: geometry))
-                        pages[pages.count - 1].floats.append((picture(image.part), rect, image.floating?.behindText ?? false))
+                        pages[pages.count - 1].floats.append((picture(image), rect, image.floating?.behindText ?? false))
                     }
                 }
                 y += before + unit.height
@@ -256,7 +256,7 @@ private final class Composer {
             y += group.spaceBefore
             let column = CGRect(x: origin.x, y: y, width: width, height: 0)
             for image in group.floats where image.floating?.behindText ?? false {
-                paint(picture(image.part), in: place(image, anchor: y, column: column, sheet: sheet), context: context)
+                paint(picture(image), in: place(image, anchor: y, column: column, sheet: sheet), context: context)
             }
             let top = y
             for unit in group.units {
@@ -264,7 +264,7 @@ private final class Composer {
                 y += unit.height
             }
             for image in group.floats where !(image.floating?.behindText ?? false) {
-                paint(picture(image.part), in: place(image, anchor: top, column: column, sheet: sheet), context: context)
+                paint(picture(image), in: place(image, anchor: top, column: column, sheet: sheet), context: context)
             }
             y += group.spaceAfter
         }
@@ -397,7 +397,7 @@ private final class Composer {
         let scale = min(1, geometry.size.width / max(CGFloat(image.width), 1))
         let size = CGSize(width: CGFloat(image.width) * scale, height: CGFloat(image.height) * scale)
         let float = image.floating ?? WordFloat()
-        let drawing = picture(image.part)
+        let drawing = picture(image)
         let page = geometry
         return Unit(height: size.height + 4) { [weak self] spot in
             let across: (min: CGFloat, max: CGFloat)
@@ -480,7 +480,7 @@ private final class Composer {
                 let piece = NSMutableAttributedString(attributedString: NSAttributedString(attachment: attachment))
                 let whole = NSRange(location: 0, length: piece.length)
                 piece.addAttribute(.font, value: Typeface.font(lastFormat).font, range: whole)
-                piece.addAttribute(.droptimizePicture, value: PictureBox(picture(image.part)), range: whole)
+                piece.addAttribute(.droptimizePicture, value: PictureBox(picture(image)), range: whole)
                 text.append(piece)
             default: continue
             }
@@ -553,7 +553,7 @@ private final class Composer {
         guard !rows.isEmpty else { return [] }
         var columnOf: [[Int]] = []                           // each cell's first grid column
         for row in rows {
-            var column = 0
+            var column = row.gridBefore
             var list: [Int] = []
             for cell in row.cells {
                 list.append(column)
@@ -687,13 +687,25 @@ private final class Composer {
 
     // MARK: Pictures and lines
 
-    private func picture(_ part: String) -> CGImage? {
-        if let cached = pictures[part] { return cached }
-        guard let data = document.images[part], let source = CGImageSourceCreateWithData(data as CFData, nil),
-              let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
-        else { return nil }                                // EMF and WMF: room is left, nothing drawn
-        pictures[part] = image
-        return image
+    /// The picture's pixels, cropped as the document says.
+    private func picture(_ image: WordImage) -> CGImage? {
+        let decoded: CGImage
+        if let cached = pictures[image.part] {
+            decoded = cached
+        } else {
+            guard let data = document.images[image.part], let source = CGImageSourceCreateWithData(data as CFData, nil),
+                  let made = CGImageSourceCreateImageAtIndex(source, 0, nil)
+            else { return nil }                            // EMF and WMF: room is left, nothing drawn
+            pictures[image.part] = made
+            decoded = made
+        }
+        let crop = image.crop
+        guard crop.top > 0 || crop.left > 0 || crop.bottom > 0 || crop.right > 0 else { return decoded }
+        let width = CGFloat(decoded.width), height = CGFloat(decoded.height)
+        let keep = CGRect(x: width * CGFloat(crop.left), y: height * CGFloat(crop.top),
+                          width: width * CGFloat(max(0.05, 1 - crop.left - crop.right)),
+                          height: height * CGFloat(max(0.05, 1 - crop.top - crop.bottom)))
+        return decoded.cropping(to: keep.integral) ?? decoded
     }
 
     /// Where a picture placed on the page goes: measured from the page, the margins or the paragraph.
