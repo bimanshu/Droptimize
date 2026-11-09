@@ -295,7 +295,7 @@ The owner asked for a Word to PDF converter and, offered them, both PDF conversi
 ### 8.1 Plans and pricing (owner's decision, 2026-11-01)
 
 - **Free:** 3 files a day, any action (images and video alike), counted per result (a file, or a PDF's pages folder; images combined into one PDF count once; 2026-11-09), reset at local midnight. A drop with more files than are left runs what's left and says so on the card; with none left, the bubble says "No free files left today. Activate Pro?" while you drag over it, and letting go there asks for the license key (owner, 2026-11-09).
-- **Pro:** unlimited, **$4.99 once at launch, rising as more people download** (owner, 2026-11-09; was $9.99), for life, with a 3-day free trial and a 7-day refund (same day; the trial isn't built). No subscription (owner, 2026-11-02: "a commodity tool"; this replaced $5/month or $50 lifetime).
+- **Pro:** unlimited, **$4.99 once at launch, rising as more people download** (owner, 2026-11-09; was $9.99), for life, with a 7-day refund (same day). No subscription (owner, 2026-11-02: "a commodity tool"; this replaced $5/month or $50 lifetime).
 - **Sold directly through Dodo Payments** (owner switched from Lemon Squeezy, 2026-11-02; merchant of record: cards, tax, refunds), not the Mac App Store. The buyer gets a license key by email and pastes it into the Pro window (menu bar → Activate Pro…). The app activates it and checks it weekly when online (to catch refunds); offline, Pro just keeps working. Code: `Store/` (portable), `App/Pro.swift`. The product ID and checkout link go in `StoreConfig`; until they're set, nothing is for sale and nothing is limited. A refunded purchase disables its key at Dodo, which the next check picks up.
 
 ### 8.2 Updates (built in, 2026-11-02)
@@ -375,7 +375,6 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 - Whether "wake on any drag" (§4.1) is worth a permission prompt.
 - Direct download only (current, with Dodo Payments), or also the Mac App Store later?
 - How many Macs per Pro key (the activation limit in Dodo Payments; 3 suggested)?
-- Pro's 3-day trial (owner, 2026-11-09): what does it unlock next to the free plan, and how is it enforced without an account?
 - Pro's rising price (owner, 2026-11-09): what triggers each rise, and how does the app show the current price?
 - Hovered label inside the bubble (current) or next to the segment?
 - Show/hide shortcut: ⌃⌥⌘D for now (⌥⌘D is macOS's Dock toggle). Make it configurable in Settings?
@@ -395,6 +394,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-09: Dropped the 3-day trial before launch (owner): the free plan already shows every feature, and the 7-day refund covers the rest. Removed from the website, Terms and Refunds pages.
 - 2026-11-09: **Convert no longer shrinks** (owner: "only compression shd compress the size"). Images from lossless sources stay lossless where the format can; others use WebP 95, AVIF 90, JPG and HEIC 0.95. Video keeps the source's bitrate (WebM at constant quality 20, AV1 at 22). PDF pages and images-to-PDF use the same JPG quality. Converting to the same format says so and writes nothing. Auto, Compress, Half size and Resize still shrink.
 - 2026-11-09: **License guard rail** (owner, setting up license keys by email): with today's free files used, letting go on the bubble opens the Pro window with the cursor in the key field. The menu bar item and window now say "Activate Pro", and the key field comes first. Takes effect once `StoreConfig` has Dodo's product ID and checkout link.
 - 2026-11-09: **The website is live at droptimize.app** on Cloudflare (owner bought the domain). A small Worker (`scripts/website-worker.js`) adds byte ranges for the films, which Cloudflare's static assets ignore and Safari needs.
