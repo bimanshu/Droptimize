@@ -379,7 +379,8 @@ private final class Composer {
         let shift = CGFloat(min(0, format.indentLeft, format.indentLeft + format.firstLine))   // into the margin
         let containerWidth = max(width - shift - CGFloat(min(0, format.indentRight)), 1)
         let text = attributedText(paragraph, width: width, shift: shift, fields: fields)
-        let layout = TextLayout(text, width: containerWidth)
+        let layout = TextLayout(text, width: containerWidth, justified: format.alignment == .justified,
+                                rightEdge: containerWidth - CGFloat(max(0, format.indentRight)))
         let lines = layout.lines
         let left = CGFloat(max(0, format.indentLeft)), right = CGFloat(max(0, format.indentRight))
         let borders = format.borders
@@ -488,7 +489,7 @@ private final class Composer {
         case .left: style.alignment = .left
         case .center: style.alignment = .center
         case .right: style.alignment = .right
-        case .justified: style.alignment = .justified
+        case .justified: style.alignment = .left           // justified by TextLayout, the way Word does
         }
         style.headIndent = CGFloat(format.indentLeft) - shift
         style.firstLineHeadIndent = CGFloat(format.indentLeft + format.firstLine) - shift
@@ -838,6 +839,9 @@ private final class TextLayout {
     struct Line {
         var rect: CGRect
         var glyphs: NSRange
+        /// Justified: the spaces that widen, and by how much each.
+        var gaps: [Int] = []
+        var stretch: CGFloat = 0
     }
 
     private let storage: NSTextStorage
@@ -845,7 +849,10 @@ private final class TextLayout {
     private let container: NSTextContainer
     private(set) var lines: [Line] = []
 
-    init(_ text: NSAttributedString, width: CGFloat) {
+    /// `justified`: lines are laid out flush left, then widened to `rightEdge` at their spaces, as
+    /// Word does: not the last line, not a line ended by a line break, and never by spacing out the
+    /// letters of a line with one word (TextKit's own justification does that).
+    init(_ text: NSAttributedString, width: CGFloat, justified: Bool = false, rightEdge: CGFloat = 0) {
         storage = NSTextStorage(attributedString: text)
         container = NSTextContainer(size: CGSize(width: width, height: 10_000_000))   // one paragraph, never cut
         container.lineFragmentPadding = 0
@@ -856,13 +863,47 @@ private final class TextLayout {
         manager.enumerateLineFragments(forGlyphRange: manager.glyphRange(for: container)) { rect, _, _, glyphs, _ in
             lines.append(Line(rect: rect, glyphs: glyphs))
         }
+        if justified {
+            let string = storage.string as NSString
+            for index in lines.indices.dropLast() {
+                let characters = manager.characterRange(forGlyphRange: lines[index].glyphs, actualGlyphRange: nil)
+                var end = NSMaxRange(characters)
+                guard end > characters.location, string.character(at: end - 1) != 0x2028 else { continue }
+                while end > characters.location, string.character(at: end - 1) == 0x20 { end -= 1 }
+                var start = characters.location
+                while start < end, string.character(at: start) == 0x20 { start += 1 }
+                guard start < end else { continue }
+                let words = NSRange(location: start, length: end - start)
+                if string.range(of: "\t", options: [], range: words).location != NSNotFound { continue }   // tabs set their own places
+                var gaps: [Int] = []
+                for character in start..<end where string.character(at: character) == 0x20 {
+                    gaps.append(manager.glyphIndexForCharacter(at: character))
+                }
+                guard !gaps.isEmpty else { continue }
+                let last = manager.glyphIndexForCharacter(at: end - 1)
+                let used = manager.boundingRect(forGlyphRange: NSRange(location: last, length: 1), in: container).maxX
+                let extra = rightEdge - used
+                guard extra > 0.01, extra < width / 2 else { continue }
+                lines[index].gaps = gaps
+                lines[index].stretch = extra / CGFloat(gaps.count)
+            }
+        }
         self.lines = lines
     }
 
     /// The line's text at `origin` (where the container's top-left lands), and its pictures.
     func draw(_ line: Line, at origin: CGPoint, context: CGContext) {
-        manager.drawBackground(forGlyphRange: line.glyphs, at: origin)
-        manager.drawGlyphs(forGlyphRange: line.glyphs, at: origin)
+        // Word by word when justified: each piece after a widened space moves right.
+        var ends = line.gaps.map { $0 + 1 }.filter { $0 > line.glyphs.location && $0 < NSMaxRange(line.glyphs) }
+        ends.append(NSMaxRange(line.glyphs))
+        var from = line.glyphs.location
+        for (piece, to) in ends.enumerated() where to > from {
+            let range = NSRange(location: from, length: to - from)
+            let at = CGPoint(x: origin.x + CGFloat(piece) * line.stretch, y: origin.y)
+            manager.drawBackground(forGlyphRange: range, at: at)
+            manager.drawGlyphs(forGlyphRange: range, at: at)
+            from = to
+        }
         let characters = manager.characterRange(forGlyphRange: line.glyphs, actualGlyphRange: nil)
         storage.enumerateAttribute(.droptimizePicture, in: characters, options: []) { value, range, _ in
             guard let box = value as? PictureBox, let image = box.image else { return }
@@ -870,7 +911,8 @@ private final class TextLayout {
             let size = box.size
             let fragment = manager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
             let baseline = manager.location(forGlyphAt: glyph)       // the picture sits on the baseline
-            let rect = CGRect(x: origin.x + fragment.minX + baseline.x, y: origin.y + fragment.minY + baseline.y - size.height,
+            let moved = CGFloat(line.gaps.filter { $0 < glyph }.count) * line.stretch
+            let rect = CGRect(x: origin.x + fragment.minX + baseline.x + moved, y: origin.y + fragment.minY + baseline.y - size.height,
                               width: size.width, height: size.height)
             context.saveGState()
             context.translateBy(x: rect.minX, y: rect.maxY)
