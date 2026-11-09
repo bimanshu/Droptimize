@@ -275,8 +275,13 @@ button { font: inherit; color: inherit; }
 .card .icon svg { width: 20px; height: 20px; color: var(--ink); }
 
 /* The menu card: the real bubble menu, with every action and option */
-.menu-card { grid-column: span 2; grid-row: span 2; display: grid; grid-template-columns: 1fr auto; gap: 24px; padding: 32px 24px 32px 32px; }
+.menu-card { grid-column: span 2; grid-row: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 .menu-card .copy { display: flex; flex-direction: column; min-width: 0; }
+@media (min-width: 721px) {
+  /* Equal outer rows keep the list on the card's center line on every tab. */
+  .menu-card .copy { display: grid; grid-template-rows: 1fr auto 1fr; }
+  .menu-card .switch { justify-self: start; margin-bottom: 16px; }
+}
 
 .switch {
   display: inline-flex; padding: 4px; gap: 2px; border-radius: 999px; background: var(--surface-dim); align-self: flex-start;
@@ -310,13 +315,13 @@ button { font: inherit; color: inherit; }
 .actions-list button[aria-pressed="true"] { background: var(--surface); box-shadow: var(--elevation-icon); }
 .actions-list button[aria-pressed="true"] .glyph { background: var(--mint); color: var(--on-mint); }
 @media (hover: hover) { .actions-list button:hover:not([aria-pressed="true"]) { background: var(--surface-hover); } }
-.menu-card .auto { margin-top: auto; padding: 18px 12px 0; font-size: 15px; color: var(--muted); }
+.menu-card .auto { margin-top: auto; padding: 12px 12px 0; font-size: 15px; color: var(--muted); }
 .menu-card .auto b { color: var(--ink); font-weight: 600; }
 
 /* The stage is drawn in the app's own points (Bubble/Motion.swift), times --u. */
 .stage {
   --u: 1.35;
-  position: relative; align-self: center;
+  position: relative; align-self: center; justify-self: center;
   width: calc(205px * var(--u)); height: calc(330px * var(--u));
   user-select: none; -webkit-user-select: none;
 }
@@ -370,7 +375,7 @@ button { font: inherit; color: inherit; }
 .anywhere .apps span { font-size: 14px; font-weight: 500; color: var(--ink); background: var(--surface); border-radius: 999px; padding: 6px 12px; box-shadow: var(--elevation-icon); }
 
 /* Eased falloff so the large glows don't band. --glow is the peak opacity. */
-.private::before, .plan.pro::before, .footer::before {
+.plan.pro::before, .footer::before {
   background: radial-gradient(circle closest-side,
     rgb(61 220 151 / var(--glow)),
     rgb(61 220 151 / calc(var(--glow) * 0.951)) 15.5%,
@@ -385,13 +390,16 @@ button { font: inherit; color: inherit; }
 
 .private { background: var(--surface-inverse); }
 .private h3 { color: #fff; }
-.private p { color: rgba(255, 255, 255, 0.62); }
+.private p { color: rgba(255, 255, 255, 0.76); }
 .private .icon { background: rgba(61, 220, 151, 0.14); box-shadow: inset 0 0 0 1px rgb(61 220 151 / 0.18); }
 .private .icon svg { color: var(--mint); }
-.private::before {
-  --glow: 0.28;
-  content: ""; position: absolute; width: 360px; height: 360px; right: -140px; top: -160px; border-radius: 50%; pointer-events: none;
+.private .waves {
+  --fade: linear-gradient(#000 15%, rgb(0 0 0 / 0.72) 55%, rgb(0 0 0 / 0.42));
+  position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.55; pointer-events: none;
+  -webkit-mask-image: var(--fade);
+  mask-image: var(--fade);
 }
+.private > :not(.waves) { position: relative; }
 
 .extras {
   grid-column: 1 / -1;
@@ -410,6 +418,7 @@ button { font: inherit; color: inherit; }
 .plan .price { margin-top: 10px; display: flex; align-items: baseline; gap: 10px; color: var(--ink); }
 .plan .price b { font-size: 56px; font-weight: 600; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
 .plan .price span { font-size: 16px; color: var(--muted); }
+.plan .launch { margin-top: 10px; font-size: 15px; color: var(--mint); }
 .plan ul { list-style: none; margin: 28px 0 32px; padding: 0; display: grid; gap: 12px; }
 .plan li { display: flex; gap: 10px; align-items: flex-start; font-size: 16px; color: var(--text); }
 .plan li svg { width: 18px; height: 18px; flex: none; margin-top: 3px; color: var(--mint-deep); }
@@ -431,7 +440,7 @@ button { font: inherit; color: inherit; }
 
 .footer { position: relative; overflow: hidden; background: var(--surface-inverse); border-top: var(--border-hairline) solid var(--line); color: rgba(255, 255, 255, 0.6); padding: 96px 0 40px; text-align: center; isolation: isolate; }
 .footer::before {
-  --glow: 0.24;
+  --glow: 0.096;
   content: ""; position: absolute; z-index: -1; left: 50%; top: -60px; width: 520px; height: 520px; translate: -50% 0; border-radius: 50%;
 }
 .footer .mark { width: 64px; height: 64px; margin: 0 auto; color: #fff; }

@@ -30,7 +30,7 @@ Working name: **Droptimize** (also considered: Blip, Ripple, Halo, PixDrop). If 
 | PDFs: Compress PDF | Done 2026-11-05 (Auto + sizes 200 KB–5 MB, §7b) | Apple's PDFKit and Quartz filters, no new dependency. Green in CI on macOS (run 86, 219/219); not yet tried on real documents by a person |
 | Conversions: Word → PDF, images → PDF, PDF → images | Built 2026-11-09 (§7c); green in CI (run 93, 240 tests). **Our own Word reader** (after the owner's missing-logo report) green in CI run 99 (265 tests), in the preview | No new dependency. Word → PDF uses Word, then Pages, then our own reader (`Pipeline/Word/`; Apple's importer only for .doc); only the last runs in CI (no Word or Pages there), so the Word and Pages path waits for a try on the owner's Mac |
 | Phase 3: signing, notarization, distribution | Built-in updater built (pushed 2026-11-02; first stable release waits on the signing secret); signing and notarization not started | No Apple Developer account until Droptimize earns (owner, 2026-11-02), so ad-hoc signing and our own signed-update check instead of Sparkle (§8.2) |
-| Website | Built in `website/` (committed locally 2026-11-09; not pushed or hosted yet) | One static page with light and dark themes, the current film and legal pages. Download buttons use the preview DMG until 1.0.0 is released. Says free and unlimited until Pro goes on sale, as the app does. Contact email, legal name, country and checkout link still to do (HANDOFF.md, Next) |
+| Website | Built in `website/` (pushed 2026-11-09; not hosted yet) | One static page with light and dark themes, the current film and legal pages. Download buttons use the preview DMG until 1.0.0 is released. Says free and unlimited until Pro goes on sale, as the app does. Contact email, legal name, country and checkout link still to do (HANDOFF.md, Next) |
 
 ---
 
@@ -295,7 +295,7 @@ The owner asked for a Word to PDF converter and, offered them, both PDF conversi
 ### 8.1 Plans and pricing (owner's decision, 2026-11-01)
 
 - **Free:** 3 files a day, any action (images and video alike), counted per result (a file, or a PDF's pages folder; images combined into one PDF count once; 2026-11-09), reset at local midnight. A drop with more files than are left runs what's left and says so on the card; with none left, the bubble says "No free files left today. Click for Pro." while you drag over it.
-- **Pro:** unlimited, **$9.99 once**, for life (owner, 2026-11-02: "a commodity tool", so no subscription; this replaced $5/month or $50 lifetime).
+- **Pro:** unlimited, **$4.99 once at launch, rising as more people download** (owner, 2026-11-09; was $9.99), for life, with a 3-day free trial and a 7-day refund (same day; the trial isn't built). No subscription (owner, 2026-11-02: "a commodity tool"; this replaced $5/month or $50 lifetime).
 - **Sold directly through Dodo Payments** (owner switched from Lemon Squeezy, 2026-11-02; merchant of record: cards, tax, refunds), not the Mac App Store. The buyer gets a license key by email and pastes it into the Pro window (menu bar → Upgrade to Pro…). The app activates it and checks it weekly when online (to catch refunds); offline, Pro just keeps working. Code: `Store/` (portable), `App/Pro.swift`. The product ID and checkout link go in `StoreConfig`; until they're set, nothing is for sale and nothing is limited. A refunded purchase disables its key at Dodo, which the next check picks up.
 
 ### 8.2 Updates (built in, 2026-11-02)
@@ -375,6 +375,8 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 - Whether "wake on any drag" (§4.1) is worth a permission prompt.
 - Direct download only (current, with Dodo Payments), or also the Mac App Store later?
 - How many Macs per Pro key (the activation limit in Dodo Payments; 3 suggested)?
+- Pro's 3-day trial (owner, 2026-11-09): what does it unlock next to the free plan, and how is it enforced without an account?
+- Pro's rising price (owner, 2026-11-09): what triggers each rise, and how does the app show the current price?
 - Hovered label inside the bubble (current) or next to the segment?
 - Show/hide shortcut: ⌃⌥⌘D for now (⌥⌘D is macOS's Dock toggle). Make it configurable in Settings?
 - How to ship oxipng (Rust, no C API): a bundled binary via `Process`, or a different lossless PNG optimizer with a C library?
@@ -393,6 +395,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-09: **Pro's launch price, trial and refund** (owner, from their Agentation notes on the site): $4.99 once, going up as more people download; 3-day free trial; 7-day refund (was $9.99 and 14 days). Website, terms and refund policy updated; the app's `StoreConfig.price` and a trial are still to do. Same notes: the features list and bubble centered in their card, the footer glow 60% softer, the privacy card's corner glow replaced by the film's wallpaper.
 - 2026-11-09: **Website copy matches the app** (owner: "Yes, fix the copy"): PDFs and Word tabs in the features card; video Auto is WebM and Convert lists WebM and AV1; pricing says free and unlimited until Pro goes on sale, with Coming soon instead of Get Pro; privacy and terms cover PDFs and Word; every page's download button works (the legal pages pointed at the missing stable DMG).
 - 2026-11-09: **Website light and dark themes** (owner asked for a surfaces pass): follows the Mac's setting through CSS variables; cards, plans and buttons get layered shadows that collapse to a white ring in dark; eased glows and hero fade; 0.5 pt hairlines on Retina; inset outlines on images and video; the footer's grid removed, as in the film's end card; text outside the hero passes WCAG AA in both themes.
 - 2026-11-09: **Website in `website/`** with the current film (720p H.264 and HEVC) and the preview DMG on its download buttons until 1.0.0 is released.
