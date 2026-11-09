@@ -123,6 +123,69 @@ final class ProStoreTests: XCTestCase {
 }
 
 @MainActor
+final class FreeLimitGuardRailTests: XCTestCase {
+    private let suite = "FreeLimitGuardRailTests-\(UUID().uuidString)"
+    private let folder = FileManager.default.temporaryDirectory.appendingPathComponent("FreeLimitGuardRailTests-\(UUID().uuidString)")
+    private let pasteboard = NSPasteboard(name: NSPasteboard.Name("FreeLimitGuardRailTests-\(UUID().uuidString)"))
+    private var opened = 0
+
+    override func tearDown() async throws {
+        UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
+        try? FileManager.default.removeItem(at: folder)
+        pasteboard.releaseGlobally()
+    }
+
+    private func bubble(filesUsed: Int) throws -> BubbleController {
+        let pro = ProStore(defaults: try XCTUnwrap(UserDefaults(suiteName: suite)), selling: true)
+        pro.record(filesUsed)
+        let bubble = BubbleController(history: HistoryStore(url: folder.appendingPathComponent("history.json")), pro: pro)
+        bubble.onShowPro = { [weak self] in self?.opened += 1 }
+        return bubble
+    }
+
+    private func photoDrag() throws -> DroppedItems {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let photo = folder.appendingPathComponent("photo.jpg")
+        try Data([0xFF]).write(to: photo)
+        pasteboard.clearContents()
+        pasteboard.writeObjects([photo as NSURL])
+        return DroppedItems(pasteboard, withData: false)
+    }
+
+    private func settle() async {
+        await withCheckedContinuation { done in DispatchQueue.main.async { done.resume() } }
+    }
+
+    func testLettingGoWithNoFreeFilesLeftAsksForTheLicenseKey() async throws {
+        let bubble = try bubble(filesUsed: FreeAllowance.perDay)
+        let drag = try photoDrag()
+        XCTAssertTrue(bubble.dragEntered(drag), "taken, so it can be let go on the bubble")
+        XCTAssertFalse(bubble.model.isMenuOpen, "no menu without free files")
+        XCTAssertEqual(bubble.dragMoved(), .copy)
+        XCTAssertFalse(bubble.drop(drag), "the file itself isn't taken")
+        await settle()
+        XCTAssertEqual(opened, 1)
+    }
+
+    func testDraggingAwayDoesNotAsk() async throws {
+        let bubble = try bubble(filesUsed: FreeAllowance.perDay)
+        XCTAssertTrue(bubble.dragEntered(try photoDrag()))
+        bubble.dragExited()
+        await settle()
+        XCTAssertEqual(opened, 0)
+    }
+
+    func testFilesLeftOpenTheMenuAsUsual() async throws {
+        let bubble = try bubble(filesUsed: FreeAllowance.perDay - 1)
+        XCTAssertTrue(bubble.dragEntered(try photoDrag()))
+        XCTAssertTrue(bubble.model.isMenuOpen)
+        bubble.dragExited()
+        await settle()
+        XCTAssertEqual(opened, 0)
+    }
+}
+
+@MainActor
 final class DroppedItemsTests: XCTestCase {
     private var pasteboard: NSPasteboard!
 

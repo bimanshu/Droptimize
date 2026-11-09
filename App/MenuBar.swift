@@ -79,7 +79,7 @@ final class MenuBar: NSObject, NSMenuDelegate {
             proItem.title = "Pro License…"
         } else {
             planItem.title = "Free plan: \(pro.remainingToday) of \(FreeAllowance.perDay) files left today"
-            proItem.title = pro.isSelling ? "Upgrade to Pro…" : "Droptimize Pro…"
+            proItem.title = "Activate Pro…"
         }
 
         recentMenu.removeAllItems()

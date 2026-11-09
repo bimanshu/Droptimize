@@ -204,11 +204,11 @@ final class BubbleController {
             }
             return false
         }
-        // Out of free files today: say so at once rather than after the drop.
+        // Out of free files today: say so at once, and letting go here asks for the license key.
         guard pro.grant(1) > 0 else {
             isRejectingDrag = true
             offerPro()
-            return false
+            return true
         }
         dismissTask?.cancel()
         isRejectingDrag = false
@@ -223,6 +223,7 @@ final class BubbleController {
     /// The drag moved; highlight whatever is under the pointer, and show the options of the
     /// segment it's over (Compress sizes, Remove BG backgrounds).
     func dragMoved() -> NSDragOperation {
+        if isRejectingDrag && isOfferingPro { return .copy }
         guard model.isMenuOpen else { return [] }
         let mouse = NSEvent.mouseLocation
         let geometry = menuGeometry
@@ -262,6 +263,12 @@ final class BubbleController {
     }
 
     func drop(_ items: DroppedItems) -> Bool {
+        if isRejectingDrag && isOfferingPro {
+            returnToIdle()
+            // After the drag has finished, or the app that started it takes focus back from the window.
+            DispatchQueue.main.async { [weak self] in self?.onShowPro?() }
+            return false
+        }
         guard model.isMenuOpen, let target = model.target, let action = model.menu.action(for: target) else {
             returnToIdle()
             return false
@@ -436,9 +443,9 @@ final class BubbleController {
         }
     }
 
-    /// Today's free files are used up: say so; a click opens the Pro window.
+    /// Today's free files are used up: say so; letting go on the bubble, or a click, asks for the license key.
     private func offerPro() {
-        showMessage("No free files left today. Click for Pro.", autoDismiss: !isRejectingDrag)
+        showMessage("No free files left today. Activate Pro?", autoDismiss: !isRejectingDrag)
         isOfferingPro = true
     }
 

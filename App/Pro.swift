@@ -141,7 +141,7 @@ final class ProStore: ObservableObject {
     }
 }
 
-/// The Pro window, from the menu bar or by clicking the bubble when the free files run out.
+/// The Pro window, from the menu bar or from the bubble when the free files run out.
 /// A normal window: it activates the app, since you asked for it.
 @MainActor
 final class ProWindowController {
@@ -159,11 +159,11 @@ final class ProWindowController {
             let window = ClosableWindow(contentViewController: hosting)
             window.styleMask = [.titled, .closable, .fullSizeContentView]
             window.titlebarAppearsTransparent = true
-            window.title = "Droptimize Pro"
             window.isReleasedWhenClosed = false
             window.center()
             self.window = window
         }
+        window?.title = store.isPro ? "Droptimize Pro" : "Activate Pro"
         Task { await store.check(force: true) }
         NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
@@ -173,6 +173,7 @@ final class ProWindowController {
 private struct ProView: View {
     @ObservedObject var store: ProStore
     @State private var typedKey = ""
+    @FocusState private var keyFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -180,7 +181,7 @@ private struct ProView: View {
                 LogoMark(size: 40)
                     .foregroundStyle(Color.accentColor)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Droptimize Pro")
+                    Text(store.isPro ? "Droptimize Pro" : "Activate Pro")
                         .font(.system(size: 20, weight: .semibold))
                     Text(status)
                         .font(.system(size: 12))
@@ -193,8 +194,8 @@ private struct ProView: View {
                 owned(license)
             } else {
                 if let license = store.license { ended(license) }
-                offer
                 keyEntry
+                offer
             }
 
             if let problem = store.problem {
@@ -208,12 +209,19 @@ private struct ProView: View {
         .padding(.top, 34)
         .padding(.bottom, 24)
         .frame(width: 380)
+        .onAppear(perform: focusKey)
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in focusKey() }
+    }
+
+    private func focusKey() {
+        if store.isSelling && !store.isPro { keyFocused = true }
     }
 
     private var status: String {
         if store.isPro { return "Pro, for life. Thank you!" }
         if !store.isSelling { return "Pro goes on sale soon. Until then, everything is unlimited." }
         let left = store.remainingToday
+        if left == 0 { return "You've used today's \(FreeAllowance.perDay) free files. Enter your license key to keep going." }
         return "Free plan: \(left) of \(FreeAllowance.perDay) files left today."
     }
 
@@ -221,6 +229,10 @@ private struct ProView: View {
 
     private var offer: some View {
         VStack(alignment: .leading, spacing: 12) {
+            Divider()
+            Text("Don't have a key yet?")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 6) {
                 benefit("infinity", "Unlimited files, every day")
                 benefit("photo.on.rectangle.angled", "Every action, for images and video")
@@ -252,13 +264,14 @@ private struct ProView: View {
 
     private var keyEntry: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Already bought it? Paste the license key from your email.")
+            Text("Paste the license key from your email.")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
             HStack {
                 TextField("License key", text: $typedKey)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 12, design: .monospaced))
+                    .focused($keyFocused)
                     .onSubmit(activate)
                 if store.isWorking {
                     ProgressView().controlSize(.small)
