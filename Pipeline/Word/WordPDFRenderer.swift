@@ -70,10 +70,15 @@ private final class Group {
     var total: CGFloat { spaceBefore + height + spaceAfter }
 }
 
-/// A picture in a line of text: TextKit leaves room for it, and it's drawn here (so it's upright).
+/// A picture in a line of text. TextKit only leaves room for it (an invisible space as wide as
+/// the picture, in a font as tall as it), and it's drawn here, upright: no AppKit image cells.
 private final class PictureBox: NSObject {
     let image: CGImage?
-    init(_ image: CGImage?) { self.image = image }
+    let size: CGSize
+    init(_ image: CGImage?, size: CGSize) {
+        self.image = image
+        self.size = size
+    }
 }
 
 private extension NSAttributedString.Key {
@@ -346,7 +351,8 @@ private final class Composer {
         group.keepLines = format.keepLines
         group.widowControl = true
 
-        var hasText = paragraph.marker != nil
+        var hasWords = paragraph.marker != nil
+        var inlinePictures: [WordImage] = []
         for inline in paragraph.inlines {
             switch inline {
             case .image(let image):
@@ -354,14 +360,21 @@ private final class Composer {
                     // Text wraps around it in Word; here it gets the line where it's anchored.
                     if float.overText { group.floats.append(image) } else { group.units.append(pictureLine(image, width: width)) }
                 } else {
-                    hasText = true
+                    inlinePictures.append(image)
                 }
-            case .text(let text, _): if !text.isEmpty { hasText = true }
-            case .tab, .lineBreak, .field: hasText = true
+            case .text(let text, _): if !text.isEmpty { hasWords = true }
+            case .tab, .lineBreak, .field: hasWords = true
             case .pageBreak: break
             }
         }
-        if !hasText && !group.units.isEmpty { return group }
+        if !hasWords {
+            // A logo or a chart on its own: rows of pictures, no text to lay out.
+            if !inlinePictures.isEmpty {
+                group.units += pictureRows(inlinePictures, format: format, width: width)
+                return group
+            }
+            if !group.units.isEmpty { return group }
+        }
 
         let shift = CGFloat(min(0, format.indentLeft, format.indentLeft + format.firstLine))   // into the margin
         let containerWidth = max(width - shift - CGFloat(min(0, format.indentRight)), 1)
@@ -390,6 +403,55 @@ private final class Composer {
             })
         }
         return group
+    }
+
+    /// Pictures in a paragraph with no text: side by side on lines, sitting on the baseline as in
+    /// Word, the line spaced like the paragraph.
+    private func pictureRows(_ images: [WordImage], format: ParagraphFormat, width: CGFloat) -> [Unit] {
+        let left = CGFloat(max(0, format.indentLeft)), right = CGFloat(max(0, format.indentRight))
+        let available = max(width - left - right, 1)
+        let descent = abs(Typeface.font(format.markFormat).font.descender)
+        var rows: [[(image: WordImage, size: CGSize)]] = []
+        var current: [(image: WordImage, size: CGSize)] = []
+        var used: CGFloat = 0
+        for image in images {
+            let scale = min(1, available / max(CGFloat(image.width), 1))
+            let size = CGSize(width: CGFloat(image.width) * scale, height: CGFloat(image.height) * scale)
+            if !current.isEmpty, used + size.width > available {
+                rows.append(current)
+                current = []
+                used = 0
+            }
+            current.append((image, size))
+            used += size.width
+        }
+        if !current.isEmpty { rows.append(current) }
+        return rows.map { row in
+            let rowWidth = row.reduce(0) { $0 + $1.size.width }
+            let natural = (row.map(\.size.height).max() ?? 0) + descent
+            let height: CGFloat
+            switch format.lineSpacing {
+            case .multiple(let multiple): height = natural * CGFloat(max(multiple, 1))
+            case .exactly(let exact): height = max(natural, CGFloat(exact))       // the whole picture, not clipped
+            case .atLeast(let least): height = max(natural, CGFloat(least))
+            }
+            let offset: CGFloat
+            switch format.alignment {
+            case .center: offset = max(0, (available - rowWidth) / 2)
+            case .right: offset = max(0, available - rowWidth)
+            case .left, .justified: offset = 0
+            }
+            let pictures = row.map { (image: picture($0.image), size: $0.size) }
+            let baseline = height - descent
+            return Unit(height: height) { [weak self] spot in
+                var x = spot.origin.x + left + offset
+                for item in pictures {
+                    let rect = CGRect(x: x, y: spot.origin.y + baseline - item.size.height, width: item.size.width, height: item.size.height)
+                    self?.paint(item.image, in: rect, context: spot.context)
+                    x += item.size.width
+                }
+            }
+        }
     }
 
     /// A picture that text wraps around in Word, on a line of its own at its own position across.
@@ -475,13 +537,15 @@ private final class Composer {
             case .image(let image) where image.floating == nil:
                 let scale = min(1, available / max(CGFloat(image.width), 1))
                 let size = CGSize(width: CGFloat(image.width) * scale, height: CGFloat(image.height) * scale)
-                let attachment = NSTextAttachment()
-                attachment.attachmentCell = NSTextAttachmentCell(imageCell: NSImage(size: size, flipped: false) { _ in true })
-                let piece = NSMutableAttributedString(attributedString: NSAttributedString(attachment: attachment))
-                let whole = NSRange(location: 0, length: piece.length)
-                piece.addAttribute(.font, value: Typeface.font(lastFormat).font, range: whole)
-                piece.addAttribute(.droptimizePicture, value: PictureBox(picture(image)), range: whole)
-                text.append(piece)
+                // A figure space in a font whose ascent is the picture's height, widened to its width.
+                let base = Typeface.font(lastFormat).font
+                let ascent = max(base.ascender / max(base.pointSize, 1), 0.5)
+                let font = NSFont(descriptor: base.fontDescriptor, size: max(size.height / ascent, 1)) ?? base
+                let space = ("\u{2007}" as NSString).size(withAttributes: [.font: font]).width
+                text.append(NSAttributedString(string: "\u{2007}", attributes: [
+                    .font: font, .kern: size.width - space,
+                    .droptimizePicture: PictureBox(picture(image), size: size),
+                ]))
             default: continue
             }
         }
@@ -783,7 +847,7 @@ private final class TextLayout {
 
     init(_ text: NSAttributedString, width: CGFloat) {
         storage = NSTextStorage(attributedString: text)
-        container = NSTextContainer(size: CGSize(width: width, height: CGFloat.greatestFiniteMagnitude))
+        container = NSTextContainer(size: CGSize(width: width, height: 10_000_000))   // one paragraph, never cut
         container.lineFragmentPadding = 0
         manager.addTextContainer(container)
         storage.addLayoutManager(manager)
@@ -803,8 +867,7 @@ private final class TextLayout {
         storage.enumerateAttribute(.droptimizePicture, in: characters, options: []) { value, range, _ in
             guard let box = value as? PictureBox, let image = box.image else { return }
             let glyph = manager.glyphIndexForCharacter(at: range.location)
-            let size = manager.attachmentSize(forGlyphAt: glyph)
-            guard size.width > 0, size.height > 0 else { return }
+            let size = box.size
             let fragment = manager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
             let baseline = manager.location(forGlyphAt: glyph)       // the picture sits on the baseline
             let rect = CGRect(x: origin.x + fragment.minX + baseline.x, y: origin.y + fragment.minY + baseline.y - size.height,

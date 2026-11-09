@@ -78,7 +78,12 @@ jobs:
             > build.log 2>&1
           status=$?
           # MEASURE lines: numbers a test prints for tuning (e.g. what each PDF compression option does).
-          grep -E 'error:|Test Suite .* (passed|failed)|Test Case .* failed|Executed|\*\* (BUILD|TEST)|^MEASURE ' build.log || true
+          grep -E 'error:|Test Suite .* (passed|failed)|Test Case .* failed|Executed|\*\* (BUILD|TEST)|^MEASURE |Restarting after|uncaught exception|Terminating app|Fatal error|Test Case .*WordLayoutMacTests' build.log || true
+          if [ $status -ne 0 ]; then
+            # A crashed test leaves no "failed" line: show what crashed, from macOS's crash reports.
+            ls ~/Library/Logs/DiagnosticReports/ 2>/dev/null | grep -i droptimize || echo "(no crash reports)"
+            python3 scripts/show-crash.py ~/Library/Logs/DiagnosticReports/*[Dd]roptimize* 2>/dev/null || true
+          fi
           exit $status
 
       - name: Upload Word → PDF samples

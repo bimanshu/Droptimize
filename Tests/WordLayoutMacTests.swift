@@ -20,11 +20,17 @@ final class WordLayoutMacTests: XCTestCase {
         try? FileManager.default.removeItem(at: folder)
     }
 
-    func testAReportKeepsItsLogoTableAndPageNumbers() async throws {
+    /// The look-alike report as a PDF, made by the built-in reader.
+    private func convertReport() async throws -> URL {
         let input = folder.appendingPathComponent("report.docx")
         try Self.report().write(to: input)
-        let outcome = try await DocumentConverter.process(input, action: .auto, option: nil, engines: [.builtIn])
-        let pdf = try XCTUnwrap(PDFDocument(url: outcome.output))
+        return try await DocumentConverter.process(input, action: .auto, option: nil, engines: [.builtIn]).output
+    }
+
+    func testAReportKeepsItsPagesAndText() async throws {
+        let output = try await convertReport()
+        keepSample(output, as: "lookalike-report.pdf")
+        let pdf = try XCTUnwrap(PDFDocument(url: output))
         XCTAssertEqual(pdf.pageCount, 2, "the cover, then a page break")
         let paper = try XCTUnwrap(pdf.page(at: 0)?.bounds(for: .mediaBox).size)
         XCTAssertEqual(paper.width, 595.3, accuracy: 0.01, "A4, as the file says")
@@ -39,27 +45,33 @@ final class WordLayoutMacTests: XCTestCase {
         XCTAssertTrue(content.contains("1. First point") && content.contains("2. Second point"), "numbered: \(content)")
         XCTAssertTrue(content.contains("Coping strategy"), "the table's text: \(content)")
         XCTAssertTrue(content.contains("Page 2 of 2"), content)
+    }
 
+    func testAReportKeepsItsPictures() async throws {
+        let output = try await convertReport()
         // The cover logo: red above blue, the full width of the text, at the top of the page.
         let scale: CGFloat = 2
-        let first = Pixels(outcome.output, page: 0, scale: scale)
+        let first = Pixels(output, page: 0, scale: scale)
         XCTAssertTrue(first.isColor(x: 297, y: 108, red: true), "the logo's red top: \(first.describe(x: 297, y: 108))")
         XCTAssertTrue(first.isColor(x: 297, y: 178, blue: true), "the logo's blue bottom, so not upside down: \(first.describe(x: 297, y: 178))")
         XCTAssertTrue(first.isColor(x: 80, y: 120, red: true), "6.5 inches wide: \(first.describe(x: 80, y: 120))")
 
         // The header's small green logo on every page.
-        let second = Pixels(outcome.output, page: 1, scale: scale)
+        let second = Pixels(output, page: 1, scale: scale)
         for (page, pixels) in [(1, first), (2, second)] {
             XCTAssertTrue(pixels.isColor(x: 99, y: 53, green: true), "page \(page)'s header logo: \(pixels.describe(x: 99, y: 53))")
         }
 
-        // The table's left edge: a long unbroken line down the page, where the text has none.
-        let edge = second.longestDarkRun(columns: 176...180)
-        XCTAssertGreaterThan(edge, 60 * scale, "the table's border is drawn")
-
         // The stamp placed on the page behind the text, at 400, 700.
         XCTAssertTrue(second.isColor(x: 450, y: 725, red: true, blue: true), "the placed picture: \(second.describe(x: 450, y: 725))")
-        keepSample(outcome.output, as: "lookalike-report.pdf")
+    }
+
+    func testAReportKeepsItsTableBorders() async throws {
+        let output = try await convertReport()
+        // The table's left edge: a long unbroken line down the page, where the text has none.
+        let scale: CGFloat = 2
+        let edge = Pixels(output, page: 1, scale: scale).longestDarkRun(columns: 176...180)
+        XCTAssertGreaterThan(edge, 60 * scale, "the table's border is drawn")
     }
 
     /// The demo document in docs/samples (python-docx's own styles: theme fonts, a title with a rule,
