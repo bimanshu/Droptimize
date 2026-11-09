@@ -30,7 +30,7 @@ Working name: **Droptimize** (also considered: Blip, Ripple, Halo, PixDrop). If 
 | PDFs: Compress PDF | Done 2026-11-05 (Auto + sizes 200 KB–5 MB, §7b) | Apple's PDFKit and Quartz filters, no new dependency. Green in CI on macOS (run 86, 219/219); not yet tried on real documents by a person |
 | Conversions: Word → PDF, images → PDF, PDF → images | Built 2026-11-09 (§7c); green in CI (run 93, 240 tests). **Our own Word reader** (after the owner's missing-logo report) green in CI run 99 (265 tests), in the preview | No new dependency. Word → PDF uses Word, then Pages, then our own reader (`Pipeline/Word/`; Apple's importer only for .doc); only the last runs in CI (no Word or Pages there), so the Word and Pages path waits for a try on the owner's Mac |
 | Phase 3: signing, notarization, distribution | Built-in updater built (pushed 2026-11-02; first stable release waits on the signing secret); signing and notarization not started | No Apple Developer account until Droptimize earns (owner, 2026-11-02), so ad-hoc signing and our own signed-update check instead of Sparkle (§8.2) |
-| Website | Built in `website/` (pushed 2026-11-09; not hosted yet) | One static page with light and dark themes, the current film and legal pages. Download buttons use the preview DMG until 1.0.0 is released. Says free and unlimited until Pro goes on sale, as the app does. Legal name, country and checkout link still to do, and support@droptimize.app needs its domain bought (HANDOFF.md, Next) |
+| Website | Live at droptimize.app (Cloudflare, 2026-11-09; every push redeploys it) | One static page with light and dark themes, the current film and legal pages. Download buttons use the preview DMG until 1.0.0 is released. Says free and unlimited until Pro goes on sale, as the app does. Legal name, country and checkout link still to do, and support@droptimize.app needs its forwarding finished (HANDOFF.md, Next) |
 
 ---
 
@@ -395,6 +395,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-09: **The website is live at droptimize.app** on Cloudflare (owner bought the domain). A small Worker (`scripts/website-worker.js`) adds byte ranges for the films, which Cloudflare's static assets ignore and Safari needs.
 - 2026-11-09: Website: the features card's "Or drop in the middle" line now fits on one row on every tab (owner's Agentation note), by saying "for a smaller WebP" instead of "for Auto: straight to WebP".
 - 2026-11-09: **Support address: support@droptimize.app** (owner's choice), on all four website pages and in the Pro window's license-ended message. The domain isn't bought yet, so mail to it bounces until it is and Cloudflare Email Routing is on.
 - 2026-11-09: **Launch film v9** (owner: the "No background" label spilled out of its bubble): the label is "No bg", and the end card says "Free and unlimited for now · Pro $4.99 once", in both cuts. Only those pixels were re-rendered and pasted into the v8 masters; the website's film was re-encoded from the new master, now with fast start.
