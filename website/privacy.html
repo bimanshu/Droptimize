@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy · Droptimize</title>
+  <meta name="description" content="Droptimize makes every file on your Mac and never uploads it. What the app sends, and to whom.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icon-256.png">
+  <link rel="preload" href="assets/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="logo" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2"/>
+    <circle cx="9.6" cy="14.4" r="5.6" fill="none" stroke="currentColor" stroke-width="2"/>
+    <circle cx="7.9" cy="16.1" r="2.6" fill="#3DDC97"/>
+  </symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+</svg>
+
+<nav class="nav" aria-label="Main">
+  <a class="brand" href="index.html"><svg aria-hidden="true"><use href="#logo"/></svg>Droptimize</a>
+  <a class="link" href="index.html#features">Features</a>
+  <a class="link" href="index.html#pricing">Pricing</a>
+  <a class="button button-mint" href="https://github.com/bimanshu/Droptimize/releases/download/stable/Droptimize.dmg"><svg aria-hidden="true"><use href="#i-download"/></svg>Download</a>
+</nav>
+
+<main class="doc">
+  <div class="wrap">
+    <p class="kicker">Privacy</p>
+    <h1>Your files never leave your Mac.</h1>
+    <p class="updated">Last updated 4 November 2026</p>
+    <div class="summary">
+      <p>Droptimize makes every file on your Mac. It never uploads your images or videos, has no analytics and needs no account. It goes online for two small things only: checking a Pro license key with Dodo Payments, and checking for updates on GitHub.</p>
+    </div>
+
+    <h2>Your files</h2>
+    <p>Everything Droptimize does to an image or video (converting, compressing, resizing, removing the background, muting) happens on your Mac. Your files, their contents and their names are never sent anywhere. Removing a background uses Apple's on-device Vision framework.</p>
+    <p>The History window keeps a list of the files you made (names, sizes, dates and a link to where they are) in a file on your Mac. It never leaves your Mac, and Clear History deletes it.</p>
+
+    <h2>What the app sends, and to whom</h2>
+    <ul>
+      <li><b>Pro license (only if you buy Pro).</b> When you activate a key, the app sends the key and your Mac's name (so you can tell your Macs apart) to Dodo Payments. About once a week it asks Dodo whether the key is still valid, so a refunded key stops working. Nothing about your files is sent.</li>
+      <li><b>Update check.</b> About 30 seconds after launch and then once a day, the app downloads a small file from GitHub that says which version is newest. It sends nothing about you. An update is only downloaded when you click Install.</li>
+    </ul>
+    <p>Like any request on the internet, these reach Dodo Payments and GitHub with your IP address, which they handle under their own privacy policies. The free plan works without ever going online.</p>
+
+    <h2>Buying Pro</h2>
+    <p>Pro is sold by Dodo Payments, our merchant of record: they take the payment, handle tax and invoices, and send you the license key. Your card details go to Dodo, never to us. Dodo shares the order with us (your name, email address, country and what you bought) so we can help you with your purchase. See <a href="https://dodopayments.com/privacy-policy">Dodo Payments' privacy policy</a>.</p>
+
+    <h2>This website</h2>
+    <p>This site has no cookies, no analytics and no trackers, and its fonts are served from here. It's hosted on GitHub Pages, and the app downloads from GitHub, which may log visits (such as IP addresses) for security; see <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a>.</p>
+
+    <h2>Email</h2>
+    <p>If you write to us, we use your email only to reply, and keep it only as long as the conversation needs.</p>
+
+    <h2>Your rights</h2>
+    <p>You can ask us what we hold about you (at most, your order details from Dodo and any emails), and ask us to correct or delete it. Write to <a href="mailto:"><span class="todo">contact email</span></a>.</p>
+
+    <h2>Changes</h2>
+    <p>If this policy changes, the new version will be posted here with a new date. If the app ever needs to send anything new, it will say so here first.</p>
+  </div>
+</main>
+
+<footer class="doc-footer">
+  <div class="wrap">
+    <span>© 2026 Droptimize · <a href="mailto:"><span class="todo">contact email</span></a></span>
+    <nav aria-label="Legal">
+      <a href="privacy.html" aria-current="page">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="refunds.html">Refunds</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>
