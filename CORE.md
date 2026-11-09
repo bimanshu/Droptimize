@@ -28,6 +28,7 @@ Working name: **Droptimize** (also considered: Blip, Ripple, Halo, PixDrop). If 
 | Phase 1.5: benchmark, polish, launch clip | Launch film done (first cut sent to the owner, 2026-11-02); benchmark and hands-on polish not started | 31.5 s, 1080p60, Emma's voice-over, built from HTML; sources and handoff in `docs/launch-video/` |
 | Phase 2: video pipeline | Steps 1–5 done: remux, H.264/HEVC, compress to a size, resize, mute, GIF, and **WebM (VP9) + AV1 with Opus**, WebM being Auto (2026-11-05) | AVFoundation decodes; libvpx (VP9), libaom (AV1) and libopus encode; our own WebM writer. Tested on Linux (FFmpeg decodes the files) and in CI on macOS (202/202, run 83); not yet tried on real clips by a person. Next: VMAF auto-tune; WebM *input* (§13) |
 | PDFs: Compress PDF | Done 2026-11-05 (Auto + sizes 200 KB–5 MB, §7b) | Apple's PDFKit and Quartz filters, no new dependency. Green in CI on macOS (run 86, 219/219); not yet tried on real documents by a person |
+| Conversions: Word → PDF, images → PDF, PDF → images | Built 2026-11-09 (§7c) | No new dependency. Word → PDF uses Word, then Pages, then macOS's own reader; only the last runs in CI (no Word or Pages there), so the Word and Pages path waits for a try on the owner's Mac |
 | Phase 3: signing, notarization, distribution | Built-in updater built (pushed 2026-11-02; first stable release waits on the signing secret); signing and notarization not started | No Apple Developer account until Droptimize earns (owner, 2026-11-02), so ad-hoc signing and our own signed-update check instead of Sparkle (§8.2) |
 
 ---
@@ -50,7 +51,7 @@ The tools that inspired this all kill a detour. CleanShot X keeps the screenshot
 
 1. **Never leave the user's context.** No windows to manage in the core flow. Drop → result. Images go to the clipboard; videos appear as a draggable thumbnail on the bubble. Both are also saved next to the original.
 2. **Never touch the original.** Always write a new file. Never overwrite; on a name clash append `-2`, `-3`.
-3. **Never hand back a bigger file.** If the output is larger than the input (or saves less than ~1%, *tune*), keep the original and say "Already as small as it gets." Exceptions, agreed with the owner: **Convert** into another format, and **Remove BG**. They do what was asked even when the result is bigger. The video equivalents (Convert to WebM, AV1, MP4, HEVC or GIF, and **Mute**) follow the same reasoning.
+3. **Never hand back a bigger file.** If the output is larger than the input (or saves less than ~1%, *tune*), keep the original and say "Already as small as it gets." Exceptions, agreed with the owner: **Convert** into another format, and **Remove BG**. They do what was asked even when the result is bigger. The video equivalents (Convert to WebM, AV1, MP4, HEVC or GIF, and **Mute**) follow the same reasoning, as do the document conversions (Word → PDF, images → PDF, PDF → images, §7c).
 4. **Everything on-device.** No network calls, no accounts, no analytics in v1. Works offline, costs nothing per use. Privacy is a selling point. The one exception (owner approved, 2026-11-01): checking a Pro license key with Dodo Payments (§8.1). It sends the key and the Mac's name, never files or anything about them, and the free plan works fully offline. The second (owner approved, 2026-11-02): the built-in updater fetches one small JSON file from GitHub (`update.json` on the `stable` release) about 30 s after launch and then daily, sending nothing about the user or their files; an update downloads only when you click Install (§8.2).
 5. **The bubble never stutters.** Decoding, encoding and analysis all run off the main thread. The UI reacts to a drag within one frame.
 6. **Quality is measured, not guessed.** "Looks the same" means a perceptual metric score (§6.4, §7.3), not a fixed quality number.
@@ -81,7 +82,9 @@ The tools that inspired this all kill a detour. CleanShot X keeps the screenshot
 Image segments, top to bottom: **Convert · Compress · Half size · Remove BG** (center: **Auto**), leaving one slot free. Convert's option bubbles: **WebP · AVIF · JPG · PNG · HEIC** (only formats that web pages and uploads take; no general-purpose conversion).
 Video segments, top to bottom: **Convert · Compress · Resize · Mute** (center: **Auto**, a WebM), mirroring the image menu. Convert's option bubbles: **WebM · AV1 · MP4 · HEVC · GIF** (Convert itself = WebM). Compress: **10 MB · 25 MB · 50 MB · 100 MB · Custom** (common upload limits). Resize: **1080p · 720p · 480p** (the short side).
 
-PDF menu (§7b): **Compress** (center: **Auto**, a smaller PDF). Compress's option bubbles: **200 KB · 500 KB · 1 MB · 2 MB · 5 MB · Custom** (what upload forms and email allow).
+PDF menu (§7b, §7c): **Convert · Compress** (center: **Auto**, a smaller PDF). Convert's option bubbles: **PNG · JPG** (each page as an image; Convert itself = PNG). Compress's: **200 KB · 500 KB · 1 MB · 2 MB · 5 MB · Custom** (what upload forms and email allow).
+
+Word documents (.docx, .doc; §7c): **Convert** with one bubble, **PDF** (center: **Auto**, the same). Images' Convert has a sixth bubble, **PDF**: all of a drop's images in one PDF.
 
 - Drops come from anywhere: Finder files, files other apps promise on drop (Photos, Mail, browsers) and plain picture data. Results of files that only existed in another app go to Downloads.
 - Mixed drops (images and videos): show only actions that apply to both (Auto, Compress, without option bubbles).
@@ -251,6 +254,15 @@ The owner asked for PDF optimization and approved doing it with Apple's own PDF 
 - **Left alone:** password-protected or encrypted PDFs (rewriting would drop the protection) and digitally signed ones (any rewrite breaks the signature), each with a plain message.
 - One PDF at a time, like videos. *(tune)* `PDFTuning` from real documents.
 
+### 7c. Conversions (owner, 2026-11-09)
+
+The owner asked for a Word to PDF converter and, offered them, both PDF conversions. All on-device, no new dependency.
+
+- **Word → PDF** (`Pipeline/DocumentConverter.swift`, `DocumentPlan.swift`): the owner chose "Word or Pages when installed, else built-in". It tries, in order: **Microsoft Word** (exact), **Pages** (very close), then **macOS's own Word reader** (TextEdit's: `NSAttributedString` laid out page by page with TextKit, using the document's paper size and margins when it gives them and its page breaks; headers, footers, text boxes and columns aren't read). Word and Pages are opened hidden (Rule 1), scripted with JavaScript for Automation through `osascript` (off the main thread, 90 s limit, cancellable), never close a document the person already had open, and are quit if Droptimize started them. The first time, macOS asks "Droptimize wants to control Word" (`NSAppleEventsUsageDescription`, Apple Events entitlement). Any failure falls through to the next, so a drop always gets a PDF; with the built-in reader the card says why the layout may differ ("Without Word or Pages, layout may differ", "Allow Word in Settings for an exact copy"). The PDF goes next to the document (Word and Pages are sandboxed: they write there directly), never over an existing file.
+- **Images → PDF** (`Pipeline/PDFMaker.swift`): images' Convert → **PDF** puts all of a drop's images into one PDF, in name order (1, 2, 10), named after the first (`scan 1-3-pages.pdf`). Each page is shaped like its image, at most A4's long side (842 pt) and never more than a point per pixel; pictures keep at most 300 ppi. Photos go in as JPEG 0.9 (stored as is), graphics, screenshots and anything see-through losslessly. It counts as **one** file on the free plan (§8.1).
+- **PDF → images** (`PDFOptimizer.pages`): the PDF's Convert → **PNG** (default; sharp text) or **JPG**: each page at 144 ppi (A4 → 1190 × 1684), upright, on white. One page: `name.png` next to the PDF. More: a folder `name pages` holding `name-01.png`… The page images go on the clipboard; History and the free plan count the folder once. Protected PDFs are left alone.
+- *(tune)* `PDFTuning` (page sizes, 300 ppi cap, 144 ppi pages, JPEG 0.9) and `DocumentTuning` (90 s limit, margins).
+
 ---
 
 ## 8. Dependencies and licensing
@@ -281,7 +293,7 @@ The owner asked for PDF optimization and approved doing it with Apple's own PDF 
 
 ### 8.1 Plans and pricing (owner's decision, 2026-11-01)
 
-- **Free:** 3 files a day, any action (images and video alike), counted per file that comes out, reset at local midnight. A drop with more files than are left runs what's left and says so on the card; with none left, the bubble says "No free files left today. Click for Pro." while you drag over it.
+- **Free:** 3 files a day, any action (images and video alike), counted per result (a file, or a PDF's pages folder; images combined into one PDF count once; 2026-11-09), reset at local midnight. A drop with more files than are left runs what's left and says so on the card; with none left, the bubble says "No free files left today. Click for Pro." while you drag over it.
 - **Pro:** unlimited, **$9.99 once**, for life (owner, 2026-11-02: "a commodity tool", so no subscription; this replaced $5/month or $50 lifetime).
 - **Sold directly through Dodo Payments** (owner switched from Lemon Squeezy, 2026-11-02; merchant of record: cards, tax, refunds), not the Mac App Store. The buyer gets a license key by email and pastes it into the Pro window (menu bar → Upgrade to Pro…). The app activates it and checks it weekly when online (to catch refunds); offline, Pro just keeps working. Code: `Store/` (portable), `App/Pro.swift`. The product ID and checkout link go in `StoreConfig`; until they're set, nothing is for sale and nothing is limited. A refunded purchase disables its key at Dodo, which the next check picks up.
 
@@ -371,12 +383,15 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 - Video "max quality" MP4s: FFmpeg (LGPL build, dynamic linking)? Needs the owner's OK (Rule 7). (WebM is settled: libvpx, libaom, libopus.)
 - WebM as Auto means QuickTime and Quick Look can't open Auto's videos. Keep it, or add a setting "Auto makes: WebM / MP4"?
 - Reading WebM (dropping a .webm in): needs decoders (libvpx's and libaom's, already in the build) and a WebM reader, or FFmpeg. Worth it?
-- PDF: is 144 ppi right for Auto (scans get a little soft when zoomed), or should Auto keep more for scans? Later: lossless cleanup with qpdf (Apache-2.0, needs the owner's OK), and PDF → images. The launch film gets updated once WebM and PDF are both in (owner).
+- PDF: is 144 ppi right for Auto (scans get a little soft when zoomed), or should Auto keep more for scans? Later: lossless cleanup with qpdf (Apache-2.0, needs the owner's OK).
+- Word → PDF with Word or Pages hasn't run yet (CI has neither app). On the owner's Mac: does Word or Pages save without asking for folder access, and is the one-time "control Word" prompt acceptable? If Word's sandbox asks every time, save through Pages first, or the built-in reader only.
+- Free plan: a PDF's pages and a stack of images into one PDF count as one file each. Right?
 
 ---
 
 ## 14. Changelog
 
+- 2026-11-09: **Word → PDF, images → PDF, PDF → images** (owner: "can we add a word to pdf converter"; chose Word or Pages when installed, else the built-in reader, and both PDF conversions). New menus: Word documents (Convert → PDF), PDFs gain Convert (PNG · JPG), images' Convert gains PDF. Free plan counts per result. No new dependency; an Apple Events entitlement and usage text for the one-time "control Word" prompt (§7c).
 - 2026-11-05: Launch film v8 (owner chose "PDF scene + Emma line"): two bars for PDFs (Compress → 1 MB on "limit") and WebM leading Convert's formats in the video scene; Emma's new line "PDFs too, under any upload limit." (one take, 33 credits). 56.25 s + 3 s end card; the music replays two bars so everything after keeps its music.
 - 2026-11-05: **Compress PDF** (owner: "yes go ahead with compress pdf", with Apple's own tools): PDFs from Finder or any app get a menu: Auto (Apple's screen setting: pictures to 144 ppi JPEG) and Compress with 200 KB · 500 KB · 1 MB · 2 MB · 5 MB · Custom, which keeps the sharpest picture setting that fits. Text, links and pages are kept and checked; protected and signed PDFs are left alone. Settings chosen from CI measurements of each of Apple's options (§7b).
 - 2026-11-05: **WebM and AV1 video** (owner approved libvpx + libopus; "WebM should be the default"): Auto and Convert now make WebM (VP9 + Opus); Convert also offers AV1 (a WebM too, `-av1.webm`). Menu: WebM · AV1 · MP4 · HEVC · GIF. Own WebM writer instead of libwebm (one dependency fewer). libvpx 1.17.0 and libopus 1.5.2 built by `scripts/build-deps.sh` with libaom's headers now installed too; C shims in `Modules/` for the calls Swift can't make. Owner: the launch film waits until PDF optimization is in too.
