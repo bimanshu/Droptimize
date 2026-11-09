@@ -51,9 +51,10 @@ final class DocumentMacTests: XCTestCase {
         let size = try XCTUnwrap(pdf.page(at: 0)?.bounds(for: .mediaBox).size)
         let paper = [CGSize(width: 595, height: 842), CGSize(width: 612, height: 792)]
         XCTAssertTrue(paper.contains(size), "A4 or Letter, not \(size)")
-        let text = pdf.string ?? ""
+        // Lines wrap wherever the page puts them, so compare the words, not the line breaks.
+        let text = (pdf.string ?? "").split(whereSeparator: \.isWhitespace).joined(separator: " ")
         XCTAssertTrue(text.contains("Quarterly report"), "the text is still text")
-        XCTAssertTrue(text.contains("The end of paragraph 59."), "nothing is cut off at the end")
+        XCTAssertTrue(text.contains("The end of paragraph 59."), "nothing is cut off at the end: …\(text.suffix(80))")
     }
 
     func testAPageBreakStartsANewPage() async throws {
