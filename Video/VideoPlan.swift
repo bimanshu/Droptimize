@@ -46,6 +46,8 @@ struct VideoPlan: Equatable {
     var targetBytes: Int?
     /// Conversions and Mute do what was asked even if bigger; the rest never hand back a bigger file (Rule 3).
     var appliesSizeGuard: Bool
+    /// Convert changes the format and keeps the picture; only Compress, Resize and Auto shrink.
+    var keepsQuality: Bool
 
     static func make(action: Action, option: ActionOption?, sourceExtension: String) throws -> VideoPlan {
         let ext = sourceExtension.lowercased()
@@ -59,16 +61,15 @@ struct VideoPlan: Equatable {
             if case .videoFormat(let chosen) = option { format = chosen }
             switch format {
             case .webm:
-                return VideoPlan(work: .encode(.vp9), fileExtension: "webm", appliesSizeGuard: false)
+                return VideoPlan(work: .encode(.vp9), fileExtension: "webm", appliesSizeGuard: false, keepsQuality: true)
             case .av1:
-                return VideoPlan(work: .encode(.av1), fileExtension: "webm", suffix: "-av1", appliesSizeGuard: false)
+                return VideoPlan(work: .encode(.av1), fileExtension: "webm", suffix: "-av1", appliesSizeGuard: false, keepsQuality: true)
             case .mp4 where ext == "mp4":
-                // Already MP4: a smaller one.
-                return VideoPlan(work: .encode(.h264), fileExtension: "mp4", suffix: "-min", appliesSizeGuard: true)
+                throw JobError.alreadyFormat("MP4")
             case .mp4:
-                return VideoPlan(work: .remuxOrEncode(.h264), fileExtension: "mp4", appliesSizeGuard: false)
+                return VideoPlan(work: .remuxOrEncode(.h264), fileExtension: "mp4", appliesSizeGuard: false, keepsQuality: true)
             case .hevc:
-                return VideoPlan(work: .encode(.hevc), fileExtension: "mp4", suffix: "-hevc", appliesSizeGuard: false)
+                return VideoPlan(work: .encode(.hevc), fileExtension: "mp4", suffix: "-hevc", appliesSizeGuard: false, keepsQuality: true)
             case .gif:
                 return VideoPlan(work: .gif, fileExtension: "gif", appliesSizeGuard: false)
             }
@@ -91,13 +92,14 @@ struct VideoPlan: Equatable {
     }
 
     init(work: Work, fileExtension: String, suffix: String? = nil, maxShortSide: Int? = nil,
-         targetBytes: Int? = nil, appliesSizeGuard: Bool) {
+         targetBytes: Int? = nil, appliesSizeGuard: Bool, keepsQuality: Bool = false) {
         self.work = work
         self.fileExtension = fileExtension
         self.suffix = suffix
         self.maxShortSide = maxShortSide
         self.targetBytes = targetBytes
         self.appliesSizeGuard = appliesSizeGuard
+        self.keepsQuality = keepsQuality
     }
 }
 
@@ -112,6 +114,13 @@ enum VideoTuning {
     static let av1Quality = 34
     static let vp9BitsPerPixel = 0.06
     static let av1BitsPerPixel = 0.045
+    /// Convert keeps the picture: a high constant quality for WebM (the bitrate is its ceiling).   (tune)
+    static let vp9ConvertQuality = 20
+    static let av1ConvertQuality = 22
+    /// What a conversion spends when the source doesn't say its bitrate, and at most (a ProRes
+    /// master's bitrate isn't worth copying).                                                 (tune)
+    static let convertBitsPerPixel = 0.2
+    static let maxConvertBitsPerPixel = 0.6
     /// Encoder presets (libvpx/libaom cpu-used): the fastest of their good-quality modes.     (tune)
     static let vp9Speed = 5
     static let av1Speed = 6
@@ -171,11 +180,18 @@ enum VideoTuning {
         return clamp(Int(Double(width * height) * max(fps, 1) * bitsPerPixel))
     }
 
+    /// A conversion's bitrate: the source's own, so the file isn't squeezed.
+    static func conversionBitrate(sourceBitrate: Int?, width: Int, height: Int, fps: Double) -> Int {
+        let pixelsPerSecond = Double(width * height) * max(fps, 1)
+        let wanted = sourceBitrate.map(Double.init) ?? pixelsPerSecond * convertBitsPerPixel
+        return max(minBitrate, Int(min(wanted, pixelsPerSecond * maxConvertBitsPerPixel)))
+    }
+
     /// The constant quality WebM encodes at; nil (aim at the bitrate) for Apple's encoders.
-    static func quality(for codec: VideoPlan.Codec) -> Int? {
+    static func quality(for codec: VideoPlan.Codec, keepsQuality: Bool = false) -> Int? {
         switch codec {
-        case .vp9: return vp9Quality
-        case .av1: return av1Quality
+        case .vp9: return keepsQuality ? vp9ConvertQuality : vp9Quality
+        case .av1: return keepsQuality ? av1ConvertQuality : av1Quality
         case .h264, .hevc: return nil
         }
     }

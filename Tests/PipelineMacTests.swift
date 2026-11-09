@@ -122,19 +122,35 @@ final class PipelineMacTests: XCTestCase {
         XCTAssertEqual(try ImageDecoder.decode(outcome.output).image.pixels, flatGraphic.pixels, "lossless")
     }
 
-    func testWebPConvertsAndIsSmaller() throws {
-        let input = try write(TestImages.gradient(width: 300, height: 200), "photo.png")
+    func testConvertFromALosslessSourceKeepsEveryPixel() throws {
+        let picture = TestImages.gradient(width: 300, height: 200)
+        let input = try write(picture, "photo.png")
         let outcome = try ImageOptimizer.process(input, action: .convert, option: .format(.webp), wantsPicture: true)
         XCTAssertEqual(outcome.output.lastPathComponent, "photo.webp")
-        XCTAssertLessThan(outcome.outputBytes, outcome.inputBytes)
+        XCTAssertEqual(try ImageDecoder.decode(outcome.output).image.pixels, picture.pixels, "only the format changed")
         XCTAssertNotNil(outcome.picture, "a single file also goes on the clipboard as a picture")
+    }
+
+    func testConvertKeepsMoreThanAuto() throws {
+        let input = try write(TestImages.noise(width: 300, height: 300), "camera.jpg", as: .jpeg, quality: 1)
+        let converted = try ImageOptimizer.process(input, action: .convert, option: .format(.webp), wantsPicture: false)
+        let auto = try ImageOptimizer.process(input, action: .auto, wantsPicture: false)
+        XCTAssertGreaterThan(converted.outputBytes, auto.outputBytes, "Convert doesn't squeeze; Auto does")
+    }
+
+    func testConvertToTheSameFormatSaysSoAndWritesNothing() throws {
+        let input = try write(TestImages.gradient(width: 100, height: 100), "photo.jpg", as: .jpeg, quality: 1)
+        XCTAssertThrowsError(try ImageOptimizer.process(input, action: .convert, option: .format(.jpeg), wantsPicture: false)) {
+            XCTAssertEqual($0 as? JobError, .alreadyFormat("JPG"))
+            XCTAssertEqual($0.localizedDescription, "Already in JPG.")
+        }
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: folder.path), ["photo.jpg"])
     }
 
     func testAVIFConvertsAndMacOSReadsIt() throws {
         let input = try write(TestImages.gradient(width: 300, height: 200, alpha: true), "art.png")
         let outcome = try ImageOptimizer.process(input, action: .convert, option: .format(.avif), wantsPicture: false)
         XCTAssertEqual(outcome.output.lastPathComponent, "art.avif")
-        XCTAssertLessThan(outcome.outputBytes, outcome.inputBytes)
         let decoded = try ImageDecoder.decode(outcome.output)
         XCTAssertEqual(decoded.format, .avif)
         XCTAssertEqual(decoded.image.width, 300)

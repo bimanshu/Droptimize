@@ -27,6 +27,14 @@ enum ImageFormat: String, CaseIterable {
         }
     }
 
+    /// Whether a file in this format holds every pixel exactly.
+    var isLossless: Bool {
+        switch self {
+        case .png, .tiff, .bmp, .gif: return true
+        case .jpeg, .webp, .heic, .avif: return false
+        }
+    }
+
     /// The extension for a new file in this format.
     var fileExtension: String {
         switch self {

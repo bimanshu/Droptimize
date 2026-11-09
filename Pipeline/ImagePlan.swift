@@ -6,12 +6,22 @@ struct ImagePlan: Equatable {
         case webp, png, jpeg, heic, avif
     }
 
+    /// How much the encoder may give up to make the file smaller.
+    enum Fidelity: Equatable {
+        case optimized
+        /// Convert from a lossy source: looks the same as the original.
+        case high
+        /// Convert from a lossless source: every pixel kept, where the format can.
+        case lossless
+    }
+
     var encoding: Encoding
     var fileExtension: String
     /// Added to the original's name, as in `photo-min.png`. Nil when the new extension is enough.
     var suffix: String?
     /// 1, or 0.5 for Half size.
     var scale: Double
+    var fidelity: Fidelity = .optimized
 
     static let compressSuffix = "-min"
     static let halfSizeSuffix = "-half"
@@ -58,8 +68,11 @@ struct ImagePlan: Equatable {
             if action == .convert, case .format(let format) = option { target = format }
             let encoding = try convertEncoding(for: target)
             let same = target == source
-            return ImagePlan(encoding: encoding, fileExtension: same ? sourceExtension.lowercased() : extensionFor(encoding),
-                             suffix: same ? compressSuffix : nil, scale: scale)
+            if action == .convert && same { throw JobError.alreadyFormat(target.displayName) }
+            var plan = ImagePlan(encoding: encoding, fileExtension: same ? sourceExtension.lowercased() : extensionFor(encoding),
+                                 suffix: same ? compressSuffix : nil, scale: scale)
+            if action == .convert { plan.fidelity = source.isLossless ? .lossless : .high }
+            return plan
         case .halfSize:
             let encoding = try sameFormatEncoding(for: source)
             let keepsFormat = encoding == sameFormatEncoding(ofExactly: source)

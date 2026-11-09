@@ -53,6 +53,8 @@ struct JobResult {
 /// The short lines the bubble shows when something doesn't work (CORE.md §4.3).
 enum JobError: LocalizedError, Equatable {
     case alreadySmallest
+    /// Convert to the format the file is already in: there's nothing to change.
+    case alreadyFormat(String)
     case noSubject
     case unsupported
     case unreadable
@@ -75,6 +77,7 @@ enum JobError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .alreadySmallest: return "Already as small as it gets."
+        case .alreadyFormat(let name): return "Already in \(name)."
         case .noSubject: return "Couldn't find a clear subject."
         case .unsupported: return "Can't open this file type yet."
         case .unreadable: return "Couldn't open this image."

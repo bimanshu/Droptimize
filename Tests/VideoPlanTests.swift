@@ -12,21 +12,38 @@ final class VideoPlanTests: XCTestCase {
 
     func testConvert() throws {
         XCTAssertEqual(try VideoPlan.make(action: .convert, option: nil, sourceExtension: "mov"),
-                       VideoPlan(work: .encode(.vp9), fileExtension: "webm", appliesSizeGuard: false),
+                       VideoPlan(work: .encode(.vp9), fileExtension: "webm", appliesSizeGuard: false, keepsQuality: true),
                        "Convert itself = WebM")
         XCTAssertEqual(try VideoPlan.make(action: .convert, option: .videoFormat(.webm), sourceExtension: "mp4"),
-                       VideoPlan(work: .encode(.vp9), fileExtension: "webm", appliesSizeGuard: false))
+                       VideoPlan(work: .encode(.vp9), fileExtension: "webm", appliesSizeGuard: false, keepsQuality: true))
         XCTAssertEqual(try VideoPlan.make(action: .convert, option: .videoFormat(.av1), sourceExtension: "mov"),
-                       VideoPlan(work: .encode(.av1), fileExtension: "webm", suffix: "-av1", appliesSizeGuard: false))
+                       VideoPlan(work: .encode(.av1), fileExtension: "webm", suffix: "-av1", appliesSizeGuard: false, keepsQuality: true))
         XCTAssertEqual(try VideoPlan.make(action: .convert, option: .videoFormat(.mp4), sourceExtension: "mov"),
-                       VideoPlan(work: .remuxOrEncode(.h264), fileExtension: "mp4", appliesSizeGuard: false))
-        XCTAssertEqual(try VideoPlan.make(action: .convert, option: .videoFormat(.mp4), sourceExtension: "mp4"),
-                       VideoPlan(work: .encode(.h264), fileExtension: "mp4", suffix: "-min", appliesSizeGuard: true),
-                       "MP4 to MP4 is a recompress")
+                       VideoPlan(work: .remuxOrEncode(.h264), fileExtension: "mp4", appliesSizeGuard: false, keepsQuality: true))
+        XCTAssertThrowsError(try VideoPlan.make(action: .convert, option: .videoFormat(.mp4), sourceExtension: "mp4"),
+                             "MP4 to MP4 has nothing to change") { XCTAssertEqual($0 as? JobError, .alreadyFormat("MP4")) }
         XCTAssertEqual(try VideoPlan.make(action: .convert, option: .videoFormat(.hevc), sourceExtension: "mov"),
-                       VideoPlan(work: .encode(.hevc), fileExtension: "mp4", suffix: "-hevc", appliesSizeGuard: false))
+                       VideoPlan(work: .encode(.hevc), fileExtension: "mp4", suffix: "-hevc", appliesSizeGuard: false, keepsQuality: true))
         XCTAssertEqual(try VideoPlan.make(action: .convert, option: .videoFormat(.gif), sourceExtension: "mp4"),
                        VideoPlan(work: .gif, fileExtension: "gif", appliesSizeGuard: false))
+    }
+
+    func testOnlyConvertKeepsQuality() throws {
+        XCTAssertFalse(try VideoPlan.make(action: .auto, option: nil, sourceExtension: "mov").keepsQuality)
+        XCTAssertFalse(try VideoPlan.make(action: .compress, option: nil, sourceExtension: "mov").keepsQuality)
+        XCTAssertFalse(try VideoPlan.make(action: .resize, option: nil, sourceExtension: "mov").keepsQuality)
+    }
+
+    func testConversionsSpendTheSourcesBitrate() {
+        let sourceRate = 8_000_000
+        XCTAssertEqual(VideoTuning.conversionBitrate(sourceBitrate: sourceRate, width: 1920, height: 1080, fps: 30), sourceRate)
+        let pixelsPerSecond = Double(1920 * 1080 * 30)
+        XCTAssertEqual(VideoTuning.conversionBitrate(sourceBitrate: nil, width: 1920, height: 1080, fps: 30),
+                       Int(pixelsPerSecond * VideoTuning.convertBitsPerPixel), "a generous bitrate when the source doesn't say")
+        XCTAssertEqual(VideoTuning.conversionBitrate(sourceBitrate: 700_000_000, width: 1920, height: 1080, fps: 30),
+                       Int(pixelsPerSecond * VideoTuning.maxConvertBitsPerPixel), "a ProRes master's bitrate isn't copied")
+        XCTAssertLessThan(VideoTuning.quality(for: .vp9, keepsQuality: true)!, VideoTuning.quality(for: .vp9)!, "lower is better")
+        XCTAssertLessThan(VideoTuning.quality(for: .av1, keepsQuality: true)!, VideoTuning.quality(for: .av1)!)
     }
 
     func testCompressKeepsTheContainer() throws {

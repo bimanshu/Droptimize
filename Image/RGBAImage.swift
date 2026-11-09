@@ -77,6 +77,11 @@ enum EncoderTuning {
     static let heicQuality: Double = 0.75
     /// libavif quality, 0–100. AVIF at 60 looks about like WebP at 80.             (tune)
     static let avifQuality = 60
+    /// Convert changes the format and keeps the picture; only Compress, Half size and Auto shrink.
+    static let convertWebPQuality: Float = 95
+    static let convertJPEGQuality = 0.95
+    static let convertHEICQuality = 0.95
+    static let convertAVIFQuality = 90
     /// libaom speed, 0 (slowest, smallest) – 10. CORE.md §6.3 suggests ~6.         (tune)
     static let avifSpeed = 6
     /// Faster speed while searching for a target size (each step is an encode).

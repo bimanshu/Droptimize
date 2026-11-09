@@ -45,7 +45,7 @@ enum PDFTuning {
     static let maxPageSide = 842.0
     static let maxImagePPI = 300.0
     /// Photos are stored in the PDF as JPEG at this quality; graphics and screenshots stay lossless.
-    static let photoQuality = 0.9
+    static let photoQuality = 0.95
 
     /// The page, in points, for a picture of `width` × `height` pixels.
     static func pageSize(pixelWidth width: Int, pixelHeight height: Int) -> (width: Double, height: Double) {

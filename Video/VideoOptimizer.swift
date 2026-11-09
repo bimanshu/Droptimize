@@ -111,13 +111,16 @@ enum VideoOptimizer {
                 size = VideoTuning.size(width: source.width, height: source.height, maxShortSide: side)
                 note = "Scaled to \(side)p to fit"
             }
+        } else if plan.keepsQuality {
+            bitrate = VideoTuning.conversionBitrate(sourceBitrate: source.videoBitrate,
+                                                    width: size.width, height: size.height, fps: source.fps)
         } else {
             bitrate = VideoTuning.bitrate(width: size.width, height: size.height, fps: source.fps, codec: codec)
             if plan.appliesSizeGuard, let sourceBitrate = source.videoBitrate {
                 bitrate = min(bitrate, Int(Double(sourceBitrate) * VideoTuning.maxShareOfSource))
             }
         }
-        let quality = plan.targetBytes == nil ? VideoTuning.quality(for: codec) : nil
+        let quality = plan.targetBytes == nil ? VideoTuning.quality(for: codec, keepsQuality: plan.keepsQuality) : nil
         // Retries fill part of what's left of the ring, so it keeps moving forward.
         var shown = 0.0
         func stage(_ share: Double) -> @Sendable (Double) -> Void {

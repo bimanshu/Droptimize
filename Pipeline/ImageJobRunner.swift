@@ -39,11 +39,10 @@ enum ImageOptimizer {
                 image = Compositor.cutOut(image, mask: [Float](repeating: 1, count: image.pixelCount), background: .white)
                 note = "Transparency filled with white"
             }
-            let data = try encode(image, as: plan.encoding)
-            // A conversion into another format is what was asked for, even when it comes out bigger
-            // (WebP → PNG often does). Everything else never hands back a bigger file (Rule 3).
-            let isFormatChange = action == .convert && plan.suffix == nil
-            if !isFormatChange {
+            let data = try encode(image, as: plan.encoding, fidelity: plan.fidelity)
+            // A conversion is what was asked for, even when it comes out bigger (WebP → PNG often
+            // does). Everything else never hands back a bigger file (Rule 3).
+            if action != .convert {
                 guard SizeGuard.accepts(inputBytes: inputBytes, outputBytes: data.count) else { throw JobError.alreadySmallest }
             }
             return try save(data, showing: image, for: input, plan: plan, inputBytes: inputBytes,
@@ -51,10 +50,15 @@ enum ImageOptimizer {
         }
     }
 
-    static func encode(_ image: RGBAImage, as encoding: ImagePlan.Encoding) throws -> Data {
+    static func encode(_ image: RGBAImage, as encoding: ImagePlan.Encoding,
+                       fidelity: ImagePlan.Fidelity = .optimized) throws -> Data {
+        let keepsPicture = fidelity != .optimized
         switch encoding {
         case .webp:
-            let lossy = try WebPEncoder.encode(image, quality: EncoderTuning.webpQuality)
+            if fidelity == .lossless || (keepsPicture && image.looksLikeGraphic) {
+                return try WebPEncoder.encode(image, quality: nil)
+            }
+            let lossy = try WebPEncoder.encode(image, quality: keepsPicture ? EncoderTuning.convertWebPQuality : EncoderTuning.webpQuality)
             // Graphics often come out smaller lossless; keep whichever is smaller.
             guard image.looksLikeGraphic else { return lossy }
             let lossless = try WebPEncoder.encode(image, quality: nil)
@@ -62,11 +66,11 @@ enum ImageOptimizer {
         case .png:
             return try PNGEncoder.encode(image)
         case .jpeg:
-            return try ImageIOEncoder.encode(image, as: .jpeg, quality: EncoderTuning.jpegQuality)
+            return try ImageIOEncoder.encode(image, as: .jpeg, quality: keepsPicture ? EncoderTuning.convertJPEGQuality : EncoderTuning.jpegQuality)
         case .heic:
-            return try ImageIOEncoder.encode(image, as: .heic, quality: EncoderTuning.heicQuality)
+            return try ImageIOEncoder.encode(image, as: .heic, quality: keepsPicture ? EncoderTuning.convertHEICQuality : EncoderTuning.heicQuality)
         case .avif:
-            return try AVIFEncoder.encode(image, quality: EncoderTuning.avifQuality)
+            return try AVIFEncoder.encode(image, quality: keepsPicture ? EncoderTuning.convertAVIFQuality : EncoderTuning.avifQuality)
         }
     }
 

@@ -114,15 +114,20 @@ final class OutputWriterTests: XCTestCase {
 
 final class ImagePlanTests: XCTestCase {
     func testAutoAndConvert() throws {
-        let webp = ImagePlan(encoding: .webp, fileExtension: "webp", suffix: nil, scale: 1)
-        XCTAssertEqual(try ImagePlan.make(action: .auto, source: .png, sourceExtension: "png"), webp)
-        XCTAssertEqual(try ImagePlan.make(action: .convert, source: .png, sourceExtension: "png"), webp, "Convert itself = WebP")
+        XCTAssertEqual(try ImagePlan.make(action: .auto, source: .png, sourceExtension: "png"),
+                       ImagePlan(encoding: .webp, fileExtension: "webp", suffix: nil, scale: 1), "Auto makes it smaller")
+        XCTAssertEqual(try ImagePlan.make(action: .convert, source: .png, sourceExtension: "png"),
+                       ImagePlan(encoding: .webp, fileExtension: "webp", suffix: nil, scale: 1, fidelity: .lossless),
+                       "Convert itself = WebP, every pixel kept")
         XCTAssertEqual(try ImagePlan.make(action: .convert, option: .format(.jpeg), source: .heic, sourceExtension: "HEIC"),
-                       ImagePlan(encoding: .jpeg, fileExtension: "jpg", suffix: nil, scale: 1))
+                       ImagePlan(encoding: .jpeg, fileExtension: "jpg", suffix: nil, scale: 1, fidelity: .high))
         XCTAssertEqual(try ImagePlan.make(action: .convert, option: .format(.png), source: .webp, sourceExtension: "webp"),
-                       ImagePlan(encoding: .png, fileExtension: "png", suffix: nil, scale: 1))
-        XCTAssertEqual(try ImagePlan.make(action: .convert, option: .format(.webp), source: .webp, sourceExtension: "webp").suffix,
-                       "-min", "same format: a recompress, named like one")
+                       ImagePlan(encoding: .png, fileExtension: "png", suffix: nil, scale: 1, fidelity: .high))
+        XCTAssertEqual(try ImagePlan.make(action: .auto, source: .webp, sourceExtension: "webp").suffix,
+                       "-min", "Auto on a WebP: a recompress, named like one")
+        XCTAssertThrowsError(try ImagePlan.make(action: .convert, option: .format(.webp), source: .webp, sourceExtension: "webp")) {
+            XCTAssertEqual($0 as? JobError, .alreadyFormat("WebP"))
+        }
     }
 
     func testCompressKeepsTheFormatAndItsSpelling() throws {
@@ -160,7 +165,7 @@ final class ImagePlanTests: XCTestCase {
 
     func testAVIF() throws {
         XCTAssertEqual(try ImagePlan.make(action: .convert, option: .format(.avif), source: .png, sourceExtension: "png"),
-                       ImagePlan(encoding: .avif, fileExtension: "avif", suffix: nil, scale: 1))
+                       ImagePlan(encoding: .avif, fileExtension: "avif", suffix: nil, scale: 1, fidelity: .lossless))
         XCTAssertEqual(try ImagePlan.make(action: .compress, source: .avif, sourceExtension: "avif"),
                        ImagePlan(encoding: .avif, fileExtension: "avif", suffix: "-min", scale: 1))
     }
