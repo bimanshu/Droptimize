@@ -78,6 +78,8 @@ enum EncoderTuning {
     /// libavif quality, 0–100. AVIF at 60 looks about like WebP at 80.             (tune)
     static let avifQuality = 60
     /// Convert changes the format and keeps the picture; only Compress, Half size and Auto shrink.
+    /// From a lossy source: these. From a lossless one: WebP lossless and the top of the rest, since
+    /// anything lower visibly costs detail (JPG below 1 also halves the color resolution).
     static let convertWebPQuality: Float = 95
     static let convertJPEGQuality = 0.95
     static let convertHEICQuality = 0.95

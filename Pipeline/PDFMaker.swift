@@ -4,8 +4,8 @@ import ImageIO
 import UniformTypeIdentifiers
 
 /// Images → one PDF (CORE.md §7c): a page per image, in name order, each page shaped like its
-/// image and at most A4 (`PDFTuning.pageSize`). Photos go in as JPEG (the PDF keeps the JPEG as it
-/// is); graphics, screenshots and anything see-through stay lossless.
+/// image and at most A4 (`PDFTuning.pageSize`). Only the format changes: every pixel goes in,
+/// JPEGs keep their own bytes and lossless images stay lossless.
 enum PDFMaker {
     static func combine(_ files: [URL]) throws -> FileOutcome {
         let images = files.sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
@@ -21,13 +21,13 @@ enum PDFMaker {
         for url in images {
             try Task.checkCancellation()
             inputBytes += fileSize(url) ?? 0
-            let (width, height) = try pixelSize(of: url)
-            let image = try ImageDecoder.decode(url, scale: PDFTuning.pixelScale(pixelWidth: width, pixelHeight: height)).image
-            let page = PDFTuning.pageSize(pixelWidth: image.width, pixelHeight: image.height)
+            let picture = try Picture(url)
+            let page = PDFTuning.pageSize(pixelWidth: picture.width, pixelHeight: picture.height)
             var box = CGRect(x: 0, y: 0, width: page.width, height: page.height)
             context.beginPage(mediaBox: &box)
             context.interpolationQuality = .high
-            context.draw(try picture(for: image), in: box)
+            context.concatenate(picture.placement(on: box.size))
+            context.draw(picture.image, in: CGRect(x: 0, y: 0, width: 1, height: 1))
             context.endPage()
         }
         context.closePDF()
@@ -39,27 +39,61 @@ enum PDFMaker {
                            note: images.count > 1 ? "\(images.count) pages" : nil)
     }
 
-    /// Photos as JPEG; graphics and anything with transparency as they are (the PDF compresses them losslessly).
-    private static func picture(for image: RGBAImage) throws -> CGImage {
-        if image.isOpaque && !image.looksLikeGraphic {
-            let jpeg = try ImageIOEncoder.encode(image, as: .jpeg, quality: PDFTuning.photoQuality)
-            guard let provider = CGDataProvider(data: jpeg as CFData),
-                  let photo = CGImage(jpegDataProviderSource: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
-            else { throw JobError.cantSave }
-            return photo
-        }
-        guard let graphic = image.makeCGImage() else { throw JobError.cantSave }
-        return graphic
-    }
+    private struct Picture {
+        let image: CGImage
+        /// `image`'s EXIF orientation: it's stored as it came, and turned as it's drawn.
+        let orientation: Int
+        /// The upright size in pixels.
+        let width: Int
+        let height: Int
 
-    /// The stored size in pixels, read without decoding.
-    private static func pixelSize(of url: URL) throws -> (Int, Int) {
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
-              let width = properties[kCGImagePropertyPixelWidth] as? Int,
-              let height = properties[kCGImagePropertyPixelHeight] as? Int
-        else { throw JobError.unreadable }
-        return (width, height)
+        init(_ url: URL) throws {
+            let noCache = [kCGImageSourceShouldCache: false] as CFDictionary
+            guard let source = CGImageSourceCreateWithURL(url as CFURL, noCache),
+                  let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+                  let format = CGImageSourceGetType(source).flatMap({ ImageFormat(typeIdentifier: $0 as String) })
+                      ?? ImageFormat(fileExtension: url.pathExtension)
+            else { throw JobError.unreadable }
+
+            if format == .jpeg || format.isLossless, let stored = CGImageSourceCreateImageAtIndex(source, 0, noCache) {
+                image = stored
+                orientation = properties[kCGImagePropertyOrientation] as? Int ?? 1
+                width = orientation >= 5 ? stored.height : stored.width
+                height = orientation >= 5 ? stored.width : stored.height
+                return
+            }
+
+            // A PDF can't hold HEIC, WebP or AVIF, so these go in as a near-top-quality JPEG.
+            let decoded = try ImageDecoder.decode(url).image
+            orientation = 1
+            width = decoded.width
+            height = decoded.height
+            if decoded.isOpaque {
+                let jpeg = try ImageIOEncoder.encode(decoded, as: .jpeg, quality: PDFTuning.photoQuality)
+                guard let provider = CGDataProvider(data: jpeg as CFData),
+                      let photo = CGImage(jpegDataProviderSource: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
+                else { throw JobError.cantSave }
+                image = photo
+            } else {
+                guard let graphic = decoded.makeCGImage() else { throw JobError.cantSave }
+                image = graphic
+            }
+        }
+
+        /// Maps the unit square the image is drawn in onto a page of `page`, upright.
+        func placement(on page: CGSize) -> CGAffineTransform {
+            let w = page.width, h = page.height
+            switch orientation {
+            case 2: return CGAffineTransform(a: -w, b: 0, c: 0, d: h, tx: w, ty: 0)
+            case 3: return CGAffineTransform(a: -w, b: 0, c: 0, d: -h, tx: w, ty: h)
+            case 4: return CGAffineTransform(a: w, b: 0, c: 0, d: -h, tx: 0, ty: h)
+            case 5: return CGAffineTransform(a: 0, b: -h, c: -w, d: 0, tx: w, ty: h)
+            case 6: return CGAffineTransform(a: 0, b: -h, c: w, d: 0, tx: 0, ty: h)
+            case 7: return CGAffineTransform(a: 0, b: h, c: w, d: 0, tx: 0, ty: 0)
+            case 8: return CGAffineTransform(a: 0, b: h, c: -w, d: 0, tx: w, ty: 0)
+            default: return CGAffineTransform(a: w, b: 0, c: 0, d: h, tx: 0, ty: 0)
+            }
+        }
     }
 
     private static func fileSize(_ url: URL) -> Int? {

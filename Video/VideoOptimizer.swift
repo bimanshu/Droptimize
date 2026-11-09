@@ -129,7 +129,7 @@ enum VideoOptimizer {
             return { progress(start + span * $0) }
         }
         try await transcode(asset, source: source, width: size.width, height: size.height, bitrate: bitrate,
-                            quality: quality, codec: codec, to: url, fileType: fileType,
+                            quality: quality, codec: codec, to: url, fileType: fileType, keepsQuality: plan.keepsQuality,
                             progress: stage(plan.targetBytes == nil ? 1 : VideoTuning.firstTryShare))
 
         // Encoders don't hit a bitrate exactly, and busy footage (grain, confetti, noise) can come out
@@ -163,11 +163,11 @@ enum VideoOptimizer {
     }
 
     private static func transcode(_ asset: AVAsset, source: VideoSource, width: Int, height: Int, bitrate: Int,
-                                  quality: Int?, codec: VideoPlan.Codec, to url: URL, fileType: AVFileType,
+                                  quality: Int?, codec: VideoPlan.Codec, to url: URL, fileType: AVFileType, keepsQuality: Bool = false,
                                   progress: @escaping @Sendable (Double) -> Void) async throws {
         if codec.isWebM {
             try WebMTranscoder.transcode(asset, source: source, width: width, height: height, bitrate: bitrate,
-                                         quality: quality, codec: codec, to: url, progress: progress)
+                                         quality: quality, codec: codec, to: url, keepsQuality: keepsQuality, progress: progress)
             return
         }
         let reader = try AVAssetReader(asset: asset)
@@ -218,7 +218,7 @@ enum VideoOptimizer {
                 AVFormatIDKey: kAudioFormatMPEG4AAC,
                 AVNumberOfChannelsKey: channels,
                 AVSampleRateKey: sampleRate,
-                AVEncoderBitRateKey: VideoTuning.audioBitrate,
+                AVEncoderBitRateKey: keepsQuality ? channels * VideoTuning.convertAudioBitratePerChannel : VideoTuning.audioBitrate,
             ])
             input.expectsMediaDataInRealTime = false
             if reader.canAdd(output), writer.canAdd(input) {

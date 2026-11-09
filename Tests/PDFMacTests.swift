@@ -315,8 +315,8 @@ extension PDFMacTests {
         for file in outcome.files ?? [] {
             let source = try XCTUnwrap(CGImageSourceCreateWithURL(file as CFURL, nil))
             let image = try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil))
-            XCTAssertEqual(image.width, 1190, "A4 at 144 ppi: sharp on a Retina screen")
-            XCTAssertEqual(image.height, 1684)
+            XCTAssertEqual(image.width, 2479, "A4 at 300 ppi: Convert keeps the detail")
+            XCTAssertEqual(image.height, 3508)
         }
         // A second time: a new folder, nothing overwritten.
         let again = try PDFOptimizer.process(input, action: .convert, option: .format(.png))
@@ -332,7 +332,7 @@ extension PDFMacTests {
         XCTAssertEqual(CGImageSourceGetType(source) as String?, UTType.jpeg.identifier)
         // The photo is still there, drawn where it was.
         let image = try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil))
-        XCTAssertEqual(image.width, 1190)
+        XCTAssertEqual(image.width, 2479)
     }
 
     @MainActor
@@ -372,6 +372,60 @@ extension PDFMacTests {
         XCTAssertEqual(stored.count, 3)
         XCTAssertTrue(stored[1].hasSuffix("DCTDecode"), "the photo as JPEG: \(stored)")
         XCTAssertFalse(stored[2].hasSuffix("DCTDecode"), "the graphic stays lossless: \(stored)")
+    }
+
+    func testALongScreenshotKeepsEveryPixelInThePDF() throws {
+        let input = folder.appendingPathComponent("page.png")
+        try write(Self.solid(width: 1200, height: 9000), to: input, type: .png)
+        let outcome = try PDFMaker.combine([input])
+        XCTAssertEqual(Self.images(in: outcome.output), ["1200×9000 FlateDecode"], "not scaled, and lossless")
+        let page = try XCTUnwrap(CGPDFDocument(outcome.output as CFURL)?.page(at: 1)).getBoxRect(.mediaBox).size
+        XCTAssertEqual(page.height, 842, accuracy: 0.5, "the page is A4 tall; the pixels aren't touched")
+    }
+
+    func testAJPEGGoesIntoThePDFByteForByte() throws {
+        let input = folder.appendingPathComponent("camera.jpg")
+        try write(Self.photo, to: input, type: .jpeg)
+        let outcome = try PDFMaker.combine([input])
+        XCTAssertNotNil(try Data(contentsOf: outcome.output).range(of: try Data(contentsOf: input)), "no second JPEG generation")
+    }
+
+    func testPhotosStayUprightWhateverTheirOrientation() throws {
+        let raw = CGContext(data: nil, width: 80, height: 40, bitsPerComponent: 8, bytesPerRow: 320,
+                            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+        let quadrants: [(CGRect, (CGFloat, CGFloat, CGFloat))] = [(CGRect(x: 0, y: 20, width: 40, height: 20), (1, 0, 0)),
+                                                                  (CGRect(x: 40, y: 20, width: 40, height: 20), (0, 1, 0)),
+                                                                  (CGRect(x: 0, y: 0, width: 40, height: 20), (0, 0, 1)),
+                                                                  (CGRect(x: 40, y: 0, width: 40, height: 20), (1, 1, 1))]
+        for (rect, color) in quadrants {
+            raw.setFillColor(CGColor(srgbRed: color.0, green: color.1, blue: color.2, alpha: 1))
+            raw.fill(rect)
+        }
+        for orientation in 1...8 {
+            let input = folder.appendingPathComponent("turned-\(orientation).jpg")
+            let destination = try XCTUnwrap(CGImageDestinationCreateWithURL(input as CFURL, UTType.jpeg.identifier as CFString, 1, nil))
+            CGImageDestinationAddImage(destination, try XCTUnwrap(raw.makeImage()),
+                                       [kCGImagePropertyOrientation: orientation, kCGImageDestinationLossyCompressionQuality: 1] as CFDictionary)
+            XCTAssertTrue(CGImageDestinationFinalize(destination))
+            let upright = try ImageDecoder.decode(input).image
+            let outcome = try PDFMaker.combine([input])
+            let page = try PDFOptimizer.render(try XCTUnwrap(CGPDFDocument(outcome.output as CFURL)?.page(at: 1)))
+            XCTAssertEqual(Double(page.width) / Double(page.height), Double(upright.width) / Double(upright.height), accuracy: 0.02)
+            for (x, y) in [(0.25, 0.25), (0.75, 0.25), (0.25, 0.75), (0.75, 0.75)] {
+                func red(_ image: RGBAImage) -> Int {
+                    Int(image.pixels[(Int(Double(image.height) * y) * image.width + Int(Double(image.width) * x)) * 4])
+                }
+                XCTAssertEqual(red(page), red(upright), accuracy: 12, "orientation \(orientation) at \(x), \(y)")
+            }
+        }
+    }
+
+    private static func solid(width: Int, height: Int) -> CGImage {
+        let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+        context.setFillColor(CGColor(srgbRed: 0.2, green: 0.4, blue: 0.8, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        return context.makeImage()!
     }
 
     /// Flat colors and hard edges, like a screenshot.

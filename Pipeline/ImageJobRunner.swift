@@ -66,11 +66,14 @@ enum ImageOptimizer {
         case .png:
             return try PNGEncoder.encode(image)
         case .jpeg:
-            return try ImageIOEncoder.encode(image, as: .jpeg, quality: keepsPicture ? EncoderTuning.convertJPEGQuality : EncoderTuning.jpegQuality)
+            let quality = fidelity == .lossless ? 1 : keepsPicture ? EncoderTuning.convertJPEGQuality : EncoderTuning.jpegQuality
+            return try ImageIOEncoder.encode(image, as: .jpeg, quality: quality)
         case .heic:
-            return try ImageIOEncoder.encode(image, as: .heic, quality: keepsPicture ? EncoderTuning.convertHEICQuality : EncoderTuning.heicQuality)
+            let quality = fidelity == .lossless ? 1 : keepsPicture ? EncoderTuning.convertHEICQuality : EncoderTuning.heicQuality
+            return try ImageIOEncoder.encode(image, as: .heic, quality: quality)
         case .avif:
-            return try AVIFEncoder.encode(image, quality: keepsPicture ? EncoderTuning.convertAVIFQuality : EncoderTuning.avifQuality)
+            let quality = fidelity == .lossless ? 100 : keepsPicture ? EncoderTuning.convertAVIFQuality : EncoderTuning.avifQuality
+            return try AVIFEncoder.encode(image, quality: quality, fullColor: keepsPicture)
         }
     }
 

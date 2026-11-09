@@ -11,9 +11,10 @@ enum AVIFEncoder {
     }
 
     /// `quality` is libavif's 0–100 (100 is lossless). `speed` is libaom's 0 (slowest, smallest) – 10.
-    static func encode(_ image: RGBAImage, quality: Int, speed: Int = EncoderTuning.avifSpeed) throws -> Data {
+    /// `fullColor` keeps 4:4:4 even for photos.
+    static func encode(_ image: RGBAImage, quality: Int, speed: Int = EncoderTuning.avifSpeed, fullColor: Bool = false) throws -> Data {
         let opaque = image.isOpaque
-        let chroma = image.looksLikeGraphic ? AVIF_PIXEL_FORMAT_YUV444 : AVIF_PIXEL_FORMAT_YUV420
+        let chroma = fullColor || image.looksLikeGraphic ? AVIF_PIXEL_FORMAT_YUV444 : AVIF_PIXEL_FORMAT_YUV420
         guard let avif = avifImageCreate(UInt32(image.width), UInt32(image.height), 8, chroma) else { throw Failure.setup }
         defer { avifImageDestroy(avif) }
         avif.pointee.colorPrimaries = avifColorPrimaries(AVIF_COLOR_PRIMARIES_BT709)

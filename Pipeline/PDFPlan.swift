@@ -35,29 +35,21 @@ enum PDFTuning {
     /// PDF → images: what Convert offers, the first being what Convert alone makes. PNG keeps text
     /// sharp; JPG is smaller for photo pages.
     static let pageFormats: [ImageFormat] = [.png, .jpeg]
-    /// Page images at twice the page's point size: sharp on a Retina screen (A4 → 1191 × 1684).  (tune)
-    static let pageImagePPI = 144.0
+    /// Page images at print resolution (A4 → 2479 × 3508): Convert shouldn't lose detail.        (tune)
+    static let pageImagePPI = 300.0
     /// Never more pixels than this on a page image's longer side (huge posters).
     static let maxPageImageSide = 8000
 
     /// Images → PDF: each picture becomes a page shaped like it, at most A4's long side (842 pt)
-    /// and never bigger than one point per pixel; pictures keep at most 300 ppi on that page. (tune)
+    /// and never bigger than one point per pixel. The page size doesn't touch the pixels.     (tune)
     static let maxPageSide = 842.0
-    static let maxImagePPI = 300.0
-    /// Photos are stored in the PDF as JPEG at this quality; graphics and screenshots stay lossless.
+    /// HEIC, WebP and AVIF, which a PDF can't hold, go in as JPEG at this quality.
     static let photoQuality = 0.95
 
     /// The page, in points, for a picture of `width` × `height` pixels.
     static func pageSize(pixelWidth width: Int, pixelHeight height: Int) -> (width: Double, height: Double) {
         let scale = min(1, maxPageSide / Double(max(width, height, 1)))
         return (Double(width) * scale, Double(height) * scale)
-    }
-
-    /// How much to shrink a picture before it goes on its page (1: not at all).
-    static func pixelScale(pixelWidth width: Int, pixelHeight height: Int) -> Double {
-        let page = pageSize(pixelWidth: width, pixelHeight: height)
-        let maxPixels = max(page.width, page.height) / 72 * maxImagePPI
-        return min(1, maxPixels / Double(max(width, height, 1)))
     }
 
     /// A page image's size in pixels for a page of `width` × `height` points.

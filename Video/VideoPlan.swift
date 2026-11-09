@@ -121,6 +121,8 @@ enum VideoTuning {
     /// master's bitrate isn't worth copying).                                                 (tune)
     static let convertBitsPerPixel = 0.2
     static let maxConvertBitsPerPixel = 0.6
+    /// Sound in a conversion, AAC or Opus, per channel: well clear of audible loss.          (tune)
+    static let convertAudioBitratePerChannel = 128_000
     /// Encoder presets (libvpx/libaom cpu-used): the fastest of their good-quality modes.     (tune)
     static let vp9Speed = 5
     static let av1Speed = 6

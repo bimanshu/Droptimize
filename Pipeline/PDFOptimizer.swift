@@ -143,7 +143,7 @@ enum PDFOptimizer {
         for number in 1...count {
             try Task.checkCancellation()
             guard let page = document.page(at: number) else { throw JobError.unreadablePDF }
-            let data = try ImageOptimizer.encode(try render(page), as: format == .jpeg ? .jpeg : .png, fidelity: .high)
+            let data = try ImageOptimizer.encode(try render(page), as: format == .jpeg ? .jpeg : .png, fidelity: .lossless)
             let name = count == 1 ? stem : stem + "-" + String(format: "%0\(String(count).count)ld", number)
             let url = pagesFolder.appendingPathComponent(name).appendingPathExtension(format.fileExtension)
             try data.write(to: url)

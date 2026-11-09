@@ -138,6 +138,17 @@ final class PipelineMacTests: XCTestCase {
         XCTAssertGreaterThan(converted.outputBytes, auto.outputBytes, "Convert doesn't squeeze; Auto does")
     }
 
+    func testJPGFromALosslessSourceKeepsFullColorDetail() throws {
+        let input = try write(TestImages.noise(width: 64, height: 64), "art.png")
+        let outcome = try ImageOptimizer.process(input, action: .convert, option: .format(.jpeg), wantsPicture: false)
+        let bytes = [UInt8](try Data(contentsOf: outcome.output))
+        var i = 2
+        while i + 11 < bytes.count, !(bytes[i] == 0xFF && [0xC0, 0xC2].contains(bytes[i + 1])) {
+            i += 2 + Int(bytes[i + 2]) << 8 + Int(bytes[i + 3])
+        }
+        XCTAssertEqual(bytes[i + 11], 0x11, "4:4:4: no color resolution given up")
+    }
+
     func testConvertToTheSameFormatSaysSoAndWritesNothing() throws {
         let input = try write(TestImages.gradient(width: 100, height: 100), "photo.jpg", as: .jpeg, quality: 1)
         XCTAssertThrowsError(try ImageOptimizer.process(input, action: .convert, option: .format(.jpeg), wantsPicture: false)) {

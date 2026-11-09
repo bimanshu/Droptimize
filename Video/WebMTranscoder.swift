@@ -12,7 +12,7 @@ enum WebMTranscoder {
     /// `width` × `height` is the stored (unrotated) size, as for the MP4 encoder. `quality` nil aims
     /// at `bitrate` (Compress to a size); otherwise it's a constant quality capped at `bitrate`.
     static func transcode(_ asset: AVAsset, source: VideoSource, width: Int, height: Int, bitrate: Int,
-                          quality: Int?, codec: VideoPlan.Codec, to url: URL,
+                          quality: Int?, codec: VideoPlan.Codec, to url: URL, keepsQuality: Bool = false,
                           progress: @escaping @Sendable (Double) -> Void) throws {
         let orientation = GIFFrameReader.orientation(of: source.transform)
         let sideways = orientation == .left || orientation == .right
@@ -44,7 +44,8 @@ enum WebMTranscoder {
             if reader.canAdd(output) {
                 reader.add(output)
                 audioOutput = output
-                opus = try OpusAudioEncoder(channels: channels, bitrate: channels * VideoTuning.opusBitratePerChannel)
+                opus = try OpusAudioEncoder(channels: channels, bitrate: channels * (keepsQuality ? VideoTuning.convertAudioBitratePerChannel
+                                                                                                  : VideoTuning.opusBitratePerChannel))
             }
         }
 

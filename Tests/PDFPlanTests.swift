@@ -79,14 +79,8 @@ final class PDFConversionTests: XCTestCase {
         XCTAssertTrue(icon == (300, 200), "a small picture isn't blown up")
     }
 
-    func testPicturesKeepAtMost300PPIOnTheirPage() {
-        XCTAssertEqual(PDFTuning.pixelScale(pixelWidth: 2480, pixelHeight: 3508), 1, "a 300 dpi A4 scan stays as it is")
-        XCTAssertEqual(PDFTuning.pixelScale(pixelWidth: 8000, pixelHeight: 6000), 3508.3 / 8000, accuracy: 0.001)
-        XCTAssertEqual(PDFTuning.pixelScale(pixelWidth: 300, pixelHeight: 200), 1)
-    }
-
-    func testPageImagesAreRetinaSharp() {
-        XCTAssertTrue(PDFTuning.pageImageSize(pointWidth: 595, pointHeight: 842) == (1190, 1684))
+    func testPageImagesAreAtPrintResolution() {
+        XCTAssertTrue(PDFTuning.pageImageSize(pointWidth: 595, pointHeight: 842) == (2479, 3508))
         let poster = PDFTuning.pageImageSize(pointWidth: 5000, pointHeight: 3000)
         XCTAssertEqual(poster.width, PDFTuning.maxPageImageSide, "huge pages are capped")
     }
