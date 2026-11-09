@@ -3,7 +3,8 @@
 #   1. every Swift file parses;
 #   2. the portable code passes its unit tests: layout, spring, dock position, action menus,
 #      output naming, the size guard, the updater's feed and swap script, the PNG, WebP and AVIF
-#      encoders, and WebM (our muxer with VP9, AV1 and Opus; checked by FFmpeg when it's installed).
+#      encoders, WebM (our muxer with VP9, AV1 and Opus; checked by FFmpeg when it's installed), and
+#      the Word reader that lays out .docx files without Word.
 #      libwebp, libaom, libavif, libvpx and libopus are built for the host by scripts/build-deps.sh;
 #      zlib comes from the system.
 # This is NOT a build: AppKit/SwiftUI code is only type-checked by Xcode or by CI
@@ -25,6 +26,9 @@ PORTABLE_SOURCES=(
   Pipeline/History.swift
   Pipeline/PDFPlan.swift
   Pipeline/DocumentPlan.swift
+  Pipeline/Word/Zip.swift
+  Pipeline/Word/WordModel.swift
+  Pipeline/Word/WordReader.swift
   Image/RGBAImage.swift
   Image/ImageFormat.swift
   Image/RGBColor.swift
@@ -55,12 +59,14 @@ PORTABLE_TESTS=(
   Tests/GIFTests.swift
   Tests/WebMTests.swift
   Tests/PDFPlanTests.swift
+  Tests/WordReaderTests.swift
   Tests/StoreTests.swift
   Tests/UpdateTests.swift
   Tests/Support/TestPNGReader.swift
   Tests/Support/TestGIFReader.swift
   Tests/Support/TestWebMReader.swift
   Tests/Support/TestAV1Decoder.swift
+  Tests/Support/TestZipWriter.swift
 )
 
 command -v swiftc >/dev/null || { echo "swiftc not found. See HANDOFF.md → 'Checking code without a Mac'." >&2; exit 1; }
