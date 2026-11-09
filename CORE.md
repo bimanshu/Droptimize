@@ -297,7 +297,7 @@ The owner asked for a Word to PDF converter and, offered them, both PDF conversi
 
 - **Free:** 3 files a day, any action (images and video alike), counted per result (a file, or a PDF's pages folder; images combined into one PDF count once; 2026-11-09), reset at local midnight. A drop with more files than are left runs what's left and says so on the card; with none left, the bubble says "No free files left today. Activate Pro?" while you drag over it, and letting go there asks for the license key (owner, 2026-11-09).
 - **Pro:** unlimited, **$4.99 once at launch, rising as more people download** (owner, 2026-11-09; was $9.99), for life, with a 7-day refund (same day). No subscription (owner, 2026-11-02: "a commodity tool"; this replaced $5/month or $50 lifetime).
-- **Sold directly through Dodo Payments** (owner switched from Lemon Squeezy, 2026-11-02; merchant of record: cards, tax, refunds), not the Mac App Store. The buyer gets a license key by email and pastes it into the Pro window (menu bar → Activate Pro…). The app activates it and checks it weekly when online (to catch refunds); offline, Pro just keeps working. Code: `Store/` (portable), `App/Pro.swift`. The product ID and checkout link go in `StoreConfig`; until they're set, nothing is for sale and nothing is limited. A refunded purchase disables its key at Dodo, which the next check picks up.
+- **Sold directly through Dodo Payments** (owner switched from Lemon Squeezy, 2026-11-02; merchant of record: cards, tax, refunds), not the Mac App Store. The buyer gets a license key by email and pastes it into the Pro window (menu bar → Activate Pro…). One payment, one key, one Mac at a time (owner, 2026-11-10; the activation limit in Dodo Payments is 1). The app activates it and checks it weekly when online (to catch refunds); offline, Pro just keeps working. Code: `Store/` (portable), `App/Pro.swift`. The product ID and checkout link go in `StoreConfig`; until they're set, nothing is for sale and nothing is limited. A refunded purchase disables its key at Dodo, which the next check picks up.
 
 ### 8.2 Updates (built in, 2026-11-02)
 
@@ -375,7 +375,6 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 - Auto's default format: WebP (current) or AVIF.
 - Whether "wake on any drag" (§4.1) is worth a permission prompt.
 - Direct download only (current, with Dodo Payments), or also the Mac App Store later?
-- How many Macs per Pro key (the activation limit in Dodo Payments; 3 suggested)?
 - Pro's rising price (owner, 2026-11-09): what triggers each rise, and how does the app show the current price?
 - Hovered label inside the bubble (current) or next to the segment?
 - Show/hide shortcut: ⌃⌥⌘D for now (⌥⌘D is macOS's Dock toggle). Make it configurable in Settings?
@@ -395,6 +394,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-10: **One Pro key, one Mac** (owner; was up to 3). Website, Terms and the app's "already active" message updated; the key can still be moved by deactivating it.
 - 2026-11-09: **Every conversion keeps the file** (owner: a 4 MB PNG became a visibly worse 387 KB PDF; "any conversion"; Rule 9). Images → PDF no longer scales or re-encodes: JPEGs go in byte for byte, lossless images stay lossless (the owner's 1722 × 8000 PNG: 4.3 MB → 4.9 MB, sampled pixels identical). From a lossless source JPG and HEIC use 1.0 and AVIF 100, with full color detail in AVIF. PDF → images at 300 ppi (was 144). Video conversions keep their sound at 128 kbps per channel. Measured on real files: PNG → JPG 4.29 → 4.11 MB; MP4 → HEVC 25.8 → 22.5 MB, same frame size and rate.
 - 2026-11-09: Dropped the 3-day trial before launch (owner): the free plan already shows every feature, and the 7-day refund covers the rest. Removed from the website, Terms and Refunds pages.
 - 2026-11-09: **Convert no longer shrinks** (owner: "only compression shd compress the size"). Images from lossless sources stay lossless where the format can; others use WebP 95, AVIF 90, JPG and HEIC 0.95. Video keeps the source's bitrate (WebM at constant quality 20, AV1 at 22). PDF pages and images-to-PDF use the same JPG quality. Converting to the same format says so and writes nothing. Auto, Compress, Half size and Resize still shrink.

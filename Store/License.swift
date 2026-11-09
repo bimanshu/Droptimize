@@ -105,7 +105,7 @@ enum Dodo {
         var message: String {
             switch self {
             case .notFound: return "That key wasn't found. Check it and try again."
-            case .tooManyMacs: return "This key is on too many Macs. Deactivate it on one, then try again."
+            case .tooManyMacs: return "This key is already active on another Mac. Deactivate it there, then try again."
             case .inactive: return "This key isn't active (refunded or disabled)."
             case .notDroptimize: return "That key isn't for Droptimize Pro."
             case .unreadable: return "Couldn't read the license server's answer. Try again later."

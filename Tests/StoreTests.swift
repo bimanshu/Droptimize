@@ -75,7 +75,7 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(Dodo.activation(status: 403, data: refusal, key: "KEY", at: now, isOurs: ours), .failure(.inactive))
         XCTAssertEqual(Dodo.activation(status: 201, data: Data("<html>".utf8), key: "KEY", at: now, isOurs: ours),
                        .failure(.unreadable))
-        XCTAssertEqual(Dodo.Failure.tooManyMacs.message, "This key is on too many Macs. Deactivate it on one, then try again.")
+        XCTAssertEqual(Dodo.Failure.tooManyMacs.message, "This key is already active on another Mac. Deactivate it there, then try again.")
         XCTAssertFalse(Dodo.isPro(product: "pdt_pro"), "nothing is ours until StoreConfig is filled in")
     }
 
