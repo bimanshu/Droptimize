@@ -202,7 +202,18 @@ private final class OneShot: @unchecked Sendable {
 /// new page at each), its fonts, lists, tables and pictures as far as the reader brings them in.
 /// Headers, footers, text boxes and columns aren't read.
 enum BuiltInDocumentRenderer {
+    /// A .docx with our own reader (pictures, styles, tables, headers and footers); a .doc, or a
+    /// .docx it can't read, with Apple's importer, which keeps the words but not much else.
     static func render(_ input: URL, to output: URL) throws {
+        if input.pathExtension.lowercased() == "docx", let data = try? Data(contentsOf: input),
+           let document = try? WordReader.read(data) {
+            try WordPDFRenderer.render(document, title: input.deletingPathExtension().lastPathComponent, to: output)
+            return
+        }
+        try renderWithApple(input, to: output)
+    }
+
+    static func renderWithApple(_ input: URL, to output: URL) throws {
         let type: NSAttributedString.DocumentType = input.pathExtension.lowercased() == "doc" ? .docFormat : .officeOpenXML
         var attributes: NSDictionary?
         let text: NSAttributedString

@@ -131,9 +131,11 @@ struct ParagraphProps {
     var spaceBefore: Double?, spaceAfter: Double?
     var lineSpacing: ParagraphFormat.LineSpacing?
     var indentLeft: Double?, indentRight: Double?, firstLine: Double?
-    var keepWithNext: Bool?, pageBreakBefore: Bool?, contextualSpacing: Bool?
-    var tabStops: [Double]?
+    var keepWithNext: Bool?, keepLines: Bool?, pageBreakBefore: Bool?, contextualSpacing: Bool?
+    /// By position; nil clears a stop set further down the style chain.
+    var tabs: [Double: WordTab?] = [:]
     var shading: WordColor??
+    var borders: WordBorders?
     var numbering: (id: String, level: Int)?
     var mark = RunProps()
 
@@ -146,10 +148,12 @@ struct ParagraphProps {
         indentRight = other.indentRight ?? indentRight
         firstLine = other.firstLine ?? firstLine
         keepWithNext = other.keepWithNext ?? keepWithNext
+        keepLines = other.keepLines ?? keepLines
         pageBreakBefore = other.pageBreakBefore ?? pageBreakBefore
         contextualSpacing = other.contextualSpacing ?? contextualSpacing
-        tabStops = other.tabStops ?? tabStops
+        tabs.merge(other.tabs) { $1 }
         if let shading = other.shading { self.shading = shading }
+        borders = other.borders ?? borders
         numbering = other.numbering ?? numbering
         mark.apply(other.mark)
     }
@@ -164,10 +168,15 @@ struct ParagraphProps {
         format.indentRight = indentRight ?? 0
         format.firstLine = firstLine ?? 0
         format.keepWithNext = keepWithNext ?? false
+        format.keepLines = keepLines ?? false
         format.pageBreakBefore = pageBreakBefore ?? false
         format.contextualSpacing = contextualSpacing ?? false
-        format.tabStops = tabStops ?? []
+        format.tabStops = tabs.values.compactMap { $0 }.sorted { $0.position < $1.position }
         format.shading = shading ?? nil
+        if let borders, [borders.top, borders.left, borders.bottom, borders.right, borders.insideHorizontal]
+            .contains(where: { ($0?.width ?? 0) > 0 }) {
+            format.borders = borders
+        }
         format.markFormat = mark
         return format
     }
@@ -486,13 +495,29 @@ private struct Reader {
             else if let first = WordUnits.twips(ind.attr("firstLine")) { props.firstLine = first }
         }
         if let element = pPr.child("w:keepNext") { props.keepWithNext = element.isOn }
+        if let element = pPr.child("w:keepLines") { props.keepLines = element.isOn }
         if let element = pPr.child("w:pageBreakBefore") { props.pageBreakBefore = element.isOn }
         if let element = pPr.child("w:contextualSpacing") { props.contextualSpacing = element.isOn }
-        if let tabs = pPr.child("w:tabs") {
-            props.tabStops = tabs.children("w:tab").filter { $0.attr("val") != "clear" }
-                .compactMap { WordUnits.twips($0.attr("pos")) }.sorted()
+        for tab in pPr.child("w:tabs")?.children("w:tab") ?? [] {
+            guard let position = WordUnits.twips(tab.attr("pos")) else { continue }
+            let alignment: WordTab.Alignment
+            switch tab.attr("val") {
+            case "clear":
+                props.tabs[position] = .some(nil)
+                continue
+            case "center": alignment = .center
+            case "right", "end": alignment = .right
+            case "decimal": alignment = .decimal
+            default: alignment = .left
+            }
+            props.tabs[position] = WordTab(position: position, alignment: alignment)
         }
         if let shd = pPr.child("w:shd") { props.shading = shading(shd) }
+        if let pBdr = pPr.child("w:pBdr") {
+            var lines = borders(pBdr)
+            lines.insideHorizontal = border(pBdr.child("w:between"))
+            props.borders = lines
+        }
         if let numPr = pPr.child("w:numPr"), let id = numPr.child("w:numId")?.attr("val") {
             props.numbering = (id, numPr.child("w:ilvl")?.attr("val").flatMap(Int.init) ?? 0)
         }
@@ -816,17 +841,30 @@ private struct Reader {
     private func float(_ anchor: XElement) -> WordFloat {
         var float = WordFloat()
         float.overText = anchor.child("wp:wrapNone") != nil
+        float.behindText = anchor.attr("behindDoc") == "1" || anchor.attr("behindDoc") == "true"
         if let position = anchor.child("wp:positionH") {
-            float.horizontalFrame = WordFloat.Frame(rawValue: position.attr("relativeFrom") ?? "column") ?? .column
+            float.horizontalFrame = Self.frame(position.attr("relativeFrom"), otherwise: .column)
             float.x = WordUnits.emu(position.child("wp:posOffset")?.text) ?? 0
             float.horizontalAlign = position.child("wp:align").flatMap { WordFloat.Align(rawValue: $0.text) }
         }
         if let position = anchor.child("wp:positionV") {
-            float.verticalFrame = WordFloat.Frame(rawValue: position.attr("relativeFrom") ?? "paragraph") ?? .paragraph
+            float.verticalFrame = Self.frame(position.attr("relativeFrom"), otherwise: .paragraph)
             float.y = WordUnits.emu(position.child("wp:posOffset")?.text) ?? 0
             float.verticalAlign = position.child("wp:align").flatMap { WordFloat.Align(rawValue: $0.text) }
         }
         return float
+    }
+
+    /// What a placed picture's position is measured from. The margin areas themselves ("leftMargin")
+    /// are measured from the paper's edge, as near as this gets.
+    private static func frame(_ value: String?, otherwise fallback: WordFloat.Frame) -> WordFloat.Frame {
+        guard let value else { return fallback }
+        if let frame = WordFloat.Frame(rawValue: value) { return frame }
+        switch value {
+        case "insideMargin", "outsideMargin": return .margin
+        case "leftMargin", "rightMargin", "topMargin", "bottomMargin": return .page
+        default: return fallback
+        }
     }
 
     /// "width:123.4pt;height:56pt" (VML) → points.

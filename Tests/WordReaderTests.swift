@@ -76,6 +76,7 @@ final class WordReaderTests: XCTestCase {
         XCTAssertEqual(image.height, 50, accuracy: 0.01)
         let float = try XCTUnwrap(image.floating)
         XCTAssertTrue(float.overText, "no wrapping: drawn over or under the text")
+        XCTAssertTrue(float.behindText)
         XCTAssertEqual(float.horizontalFrame, .page)
         XCTAssertEqual(float.x, 72, accuracy: 0.01)
         XCTAssertEqual(float.verticalFrame, .margin)
@@ -169,9 +170,29 @@ final class WordReaderTests: XCTestCase {
         XCTAssertEqual(paragraph.format.indentLeft, 36)
         XCTAssertEqual(paragraph.format.indentRight, 18)
         XCTAssertEqual(paragraph.format.firstLine, -18, "a hanging indent")
-        XCTAssertEqual(paragraph.format.tabStops, [36, 450])
+        XCTAssertEqual(paragraph.format.tabStops, [WordTab(position: 36), WordTab(position: 450, alignment: .right)])
         XCTAssertEqual(paragraph.format.shading, WordColor(red: 1, green: 1, blue: 0))
         XCTAssertEqual(paragraph.text, "A\tB")
+    }
+
+    func testStyleTabsAndRules() throws {
+        let styles = """
+            <w:style w:type="paragraph" w:styleId="Header"><w:pPr><w:tabs><w:tab w:val="center" w:pos="4680"/>
+            <w:tab w:val="right" w:pos="9360"/></w:tabs><w:pBdr><w:bottom w:val="single" w:sz="12" w:color="1F3864"/></w:pBdr>
+            <w:keepLines/></w:pPr></w:style>
+            """
+        let body = """
+            <w:p><w:pPr><w:pStyle w:val="Header"/></w:pPr></w:p>
+            <w:p><w:pPr><w:pStyle w:val="Header"/><w:tabs><w:tab w:val="clear" w:pos="4680"/><w:tab w:val="decimal" w:pos="7200"/></w:tabs>
+            <w:pBdr><w:bottom w:val="nil"/></w:pBdr></w:pPr></w:p>
+            """
+        let list = paragraphs(try WordReader.read(parts: parts(body: body, styles: styles)))
+        XCTAssertEqual(list[0].format.tabStops, [WordTab(position: 234, alignment: .center), WordTab(position: 468, alignment: .right)])
+        XCTAssertEqual(list[0].format.borders?.bottom, WordBorder(width: 1.5, color: WordColor(hex: "1F3864")))
+        XCTAssertTrue(list[0].format.keepLines)
+        XCTAssertEqual(list[1].format.tabStops, [WordTab(position: 360, alignment: .decimal), WordTab(position: 468, alignment: .right)],
+                       "a cleared stop is gone, the others stay")
+        XCTAssertNil(list[1].format.borders, "the rule switched off")
     }
 
     func testThemeFonts() throws {

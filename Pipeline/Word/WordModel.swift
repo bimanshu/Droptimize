@@ -85,6 +85,8 @@ struct WordFloat: Equatable {
     var verticalAlign: Align?
     /// Behind or in front of the text, so no text moves out of its way.
     var overText = false
+    /// Drawn under the text rather than over it.
+    var behindText = false
 }
 
 struct ParagraphFormat: Equatable {
@@ -104,13 +106,23 @@ struct ParagraphFormat: Equatable {
     /// Positive: the first line starts further in; negative: it hangs out (list items).
     var firstLine = 0.0
     var keepWithNext = false
+    /// All its lines on one page.
+    var keepLines = false
     var pageBreakBefore = false
     /// Spacing between paragraphs of the same style is left out.
     var contextualSpacing = false
-    var tabStops: [Double] = []
+    var tabStops: [WordTab] = []
     var shading: WordColor?
+    /// Lines above, below and beside the paragraph (`insideHorizontal`: between paragraphs that share them).
+    var borders: WordBorders?
     /// The font used for an empty paragraph's line (Word sizes the line by it).
     var markFormat = RunFormat()
+}
+
+struct WordTab: Equatable {
+    enum Alignment: Equatable { case left, center, right, decimal }
+    var position: Double
+    var alignment: Alignment = .left
 }
 
 struct RunFormat: Equatable {
