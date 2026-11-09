@@ -272,7 +272,7 @@ private struct ProView: View {
 
     private func ended(_ license: License) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Your Pro license (\(license.maskedKey)) isn't active any more (refunded or disabled). If that's a mistake, check again or contact support.")
+            Text("Your Pro license (\(license.maskedKey)) isn't active any more (refunded or disabled). If that's a mistake, check again or email support@droptimize.app.")
                 .font(.system(size: 12))
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
