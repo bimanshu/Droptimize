@@ -510,6 +510,7 @@ button { font: inherit; color: inherit; }
   .stage { --u: 1.05; justify-self: center; margin-bottom: 4px; }
   .switch { align-self: center; }
   .switch button { padding: 0 10px; font-size: 14px; }
+  .menu-card .auto { font-size: 14px; }
   .plans { grid-template-columns: 1fr; gap: 12px; }
   .plan { padding: 28px; border-radius: 24px; }
   .footer { padding-top: 72px; }

@@ -395,6 +395,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-09: Website: the features card's "Or drop in the middle" line now fits on one row on every tab (owner's Agentation note), by saying "for a smaller WebP" instead of "for Auto: straight to WebP".
 - 2026-11-09: **Support address: support@droptimize.app** (owner's choice), on all four website pages and in the Pro window's license-ended message. The domain isn't bought yet, so mail to it bounces until it is and Cloudflare Email Routing is on.
 - 2026-11-09: **Launch film v9** (owner: the "No background" label spilled out of its bubble): the label is "No bg", and the end card says "Free and unlimited for now · Pro $4.99 once", in both cuts. Only those pixels were re-rendered and pasted into the v8 masters; the website's film was re-encoded from the new master, now with fast start.
 - 2026-11-09: **Pro's launch price, trial and refund** (owner, from their Agentation notes on the site): $4.99 once, going up as more people download; 3-day free trial; 7-day refund (was $9.99 and 14 days). Website, terms, refund policy and the app's Pro window (`StoreConfig.price`) updated; a trial is still to do. Same notes: the features list and bubble centered in their card, the footer glow 60% softer, the privacy card's corner glow replaced by the film's wallpaper.

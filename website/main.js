@@ -16,7 +16,7 @@ const M = {
 
 const MENUS = {
   image: {
-    auto: "<b>Or drop in the middle</b> for Auto: straight to WebP.",
+    auto: "<b>Or drop in the middle</b> for a smaller WebP.",
     segments: [
       { id: "convert", icon: "i-convert", title: "Convert", label: "Convert", what: "To WebP, AVIF, JPG, PNG or HEIC. Or a whole drop into one PDF.", options: ["WebP", "AVIF", "JPG", "PNG", "HEIC", "PDF"] },
       { id: "compress", icon: "i-compress", title: "Compress", label: "Compress", what: "Same format, smaller. Or under 100 KB, 250 KB, 500 KB, 1 MB, 2 MB, or any size you type.", options: ["100K", "250K", "500K", "1M", "2M", "…"] },
@@ -25,7 +25,7 @@ const MENUS = {
     ],
   },
   video: {
-    auto: "<b>Or drop in the middle</b> for Auto: a smaller WebM.",
+    auto: "<b>Or drop in the middle</b> for a smaller WebM.",
     segments: [
       { id: "convert", icon: "i-convert", title: "Convert", label: "Convert", what: "To WebM, AV1, MP4, HEVC or a smooth GIF.", options: ["WebM", "AV1", "MP4", "HEVC", "GIF"] },
       { id: "compress", icon: "i-compress", title: "Compress", label: "Compress", what: "Under 10, 25, 50 or 100 MB, or any size. Made for upload limits.", options: ["10M", "25M", "50M", "100M", "…"] },
@@ -34,14 +34,14 @@ const MENUS = {
     ],
   },
   pdf: {
-    auto: "<b>Or drop in the middle</b> for Auto: a smaller PDF.",
+    auto: "<b>Or drop in the middle</b> for a smaller PDF.",
     segments: [
       { id: "convert", icon: "i-convert", title: "Convert", label: "Convert", what: "Every page as a PNG or JPG.", options: ["PNG", "JPG"] },
       { id: "compress", icon: "i-compress", title: "Compress", label: "Compress", what: "Under 200 KB, 500 KB, 1 MB, 2 MB, 5 MB, or any size you type. Text and pages stay as they are.", options: ["200K", "500K", "1M", "2M", "5M", "…"] },
     ],
   },
   word: {
-    auto: "<b>Or drop in the middle</b> for Auto: the same PDF.",
+    auto: "<b>Or drop in the middle</b> for a PDF.",
     segments: [
       { id: "convert", icon: "i-convert", title: "Convert", label: "Convert", what: "A .docx or .doc to PDF, with Word or Pages if you have them, or our built-in reader if you don't.", options: ["PDF"] },
     ],
