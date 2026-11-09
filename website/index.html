@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Droptimize: smaller images and videos for your Mac</title>
-  <meta name="description" content="Drag any image or video onto a small bubble at the edge of your Mac, let go on what you want, and get a smaller, web-ready file back. Everything happens on your Mac. Free for 3 files a day, Pro $9.99 once.">
+  <meta name="description" content="Drag any image or video onto a small bubble at the edge of your Mac, let go on what you want, and get a smaller, web-ready file back. Everything happens on your Mac. Free and unlimited for now.">
   <meta property="og:title" content="Droptimize: Drop it. Done.">
   <meta property="og:description" content="Smaller, web-ready images and videos in one drop. Everything happens on your Mac.">
   <meta property="og:type" content="website">
@@ -91,12 +91,12 @@
         <span class="line"><span data-word style="--i:0">Smaller</span> <span data-word style="--i:1">images</span> <span data-word style="--i:2">and</span> <span data-word style="--i:3">videos.</span></span>
         <span class="line"><span data-word style="--i:4">Drop</span> <span data-word style="--i:5">it.</span> <span data-word style="--i:6">Done.</span></span>
       </h1>
-      <p class="sub">Drag any image or video onto a small bubble at the edge of your Mac, let go on what you want, and get a smaller, web-ready file back. Saved next to the original and already copied.</p>
+      <p class="sub">Drag any image, video or PDF onto a small bubble at the edge of your Mac, let go on what you want, and get a smaller, web-ready file back. Saved next to the original and already copied.</p>
       <div class="actions">
         <a class="button button-mint" href="https://github.com/bimanshu/Droptimize/releases/download/preview/Droptimize.dmg"><svg aria-hidden="true"><use href="#i-download"/></svg>Download for macOS</a>
       </div>
       <ul class="facts">
-        <li><svg aria-hidden="true"><use href="#i-gift"/></svg>Free for 3 files a day</li>
+        <li><svg aria-hidden="true"><use href="#i-gift"/></svg>Free and unlimited for now</li>
         <li><svg aria-hidden="true"><use href="#i-lock"/></svg>Nothing leaves your Mac</li>
         <li><svg aria-hidden="true"><use href="#i-laptop"/></svg>macOS 14 or later</li>
       </ul>
@@ -104,7 +104,7 @@
 
     <figure class="window" style="margin-bottom:0">
       <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span class="title">Droptimize, in 60 seconds</span></div>
-      <video id="film" autoplay muted loop playsinline preload="auto" poster="assets/film-poster.jpg" aria-label="Droptimize launch film: a photo dragged onto the bubble, compressed, converted, its background removed, a video compressed to 25 MB, all on the Mac.">
+      <video id="film" autoplay muted loop playsinline preload="auto" poster="assets/film-poster.jpg" aria-label="Droptimize launch film: a photo dragged onto the bubble, compressed, converted, its background removed, a video compressed to 25 MB and a PDF to 1 MB, all on the Mac.">
         <source src="assets/film-hevc.mp4" type='video/mp4; codecs="hvc1"'>
         <source src="assets/film-h264.mp4" type="video/mp4">
       </video>
@@ -127,6 +127,8 @@
               <span class="thumb" aria-hidden="true"></span>
               <button type="button" data-kind="image" aria-pressed="true">Photos</button>
               <button type="button" data-kind="video" aria-pressed="false">Videos</button>
+              <button type="button" data-kind="pdf" aria-pressed="false">PDFs</button>
+              <button type="button" data-kind="word" aria-pressed="false">Word</button>
             </div>
             <ul class="actions-list" id="actions"></ul>
             <p class="auto" id="auto"></p>
@@ -152,7 +154,7 @@
         <article class="card">
           <div class="icon"><svg aria-hidden="true"><use href="#i-shield"/></svg></div>
           <h3>Never bigger. Never overwritten.</h3>
-          <p>A new file next to the original, and only if it's really smaller. Your original stays as it was.</p>
+          <p>Always a new file next to the original, which stays as it was. And compressing only keeps a result that's really smaller.</p>
         </article>
 
         <article class="card">
@@ -164,7 +166,7 @@
         <article class="card">
           <div class="icon"><svg aria-hidden="true"><use href="#i-stack"/></svg></div>
           <h3>Many files at once</h3>
-          <p>Drop a whole selection. They run side by side, and the bubble counts them off.</p>
+          <p>Drop a whole selection and the bubble counts them off as they finish.</p>
         </article>
 
         <ul class="extras">
@@ -181,8 +183,8 @@
   <section class="section pricing" id="pricing" aria-labelledby="pricing-title">
     <div class="wrap">
       <div class="section-head">
-        <h2 id="pricing-title">Start free. Go unlimited for $9.99.</h2>
-        <p>Every feature is in both. Pro just takes the limit away, once and for good.</p>
+        <h2 id="pricing-title">Free and unlimited, for now.</h2>
+        <p>Pro goes on sale soon. Until then, every feature is yours with no limit.</p>
       </div>
 
       <div class="plans">
@@ -190,7 +192,7 @@
           <div class="name">Free</div>
           <div class="price"><b>$0</b><span>forever</span></div>
           <ul>
-            <li><svg aria-hidden="true"><use href="#i-check"/></svg>3 files a day</li>
+            <li><svg aria-hidden="true"><use href="#i-check"/></svg>Unlimited until Pro goes on sale, then 3 files a day</li>
             <li><svg aria-hidden="true"><use href="#i-check"/></svg>Every action and format</li>
             <li><svg aria-hidden="true"><use href="#i-check"/></svg>No account, no card</li>
           </ul>
@@ -206,8 +208,8 @@
             <li><svg aria-hidden="true"><use href="#i-check"/></svg>Pay once, yours for life</li>
             <li><svg aria-hidden="true"><use href="#i-check"/></svg>On up to 3 Macs</li>
           </ul>
-          <!-- TODO(owner): the Dodo Payments checkout link goes here once the product exists. -->
-          <a class="button button-mint" href="#pricing" data-checkout>Get Pro</a>
+          <!-- Swap for a link to the Dodo Payments checkout once the product exists. -->
+          <button class="button" type="button" disabled>Coming soon</button>
           <p class="note">14-day refund, no questions asked</p>
         </div>
       </div>

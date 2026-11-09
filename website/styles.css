@@ -146,6 +146,8 @@ button { font: inherit; color: inherit; }
 }
 @media (hover: hover) { .button-dark:hover { background: var(--ink-hover); } }
 
+.button:disabled { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.62); cursor: default; transform: none; }
+
 /* ───────────── Nav: one pill, pinned ───────────── */
 
 .nav {
@@ -498,6 +500,7 @@ button { font: inherit; color: inherit; }
   .menu-card .copy { order: 2; }
   .stage { --u: 1.05; justify-self: center; margin-bottom: 4px; }
   .switch { align-self: center; }
+  .switch button { padding: 0 10px; font-size: 14px; }
   .plans { grid-template-columns: 1fr; gap: 12px; }
   .plan { padding: 28px; border-radius: 24px; }
   .footer { padding-top: 72px; }

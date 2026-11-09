@@ -18,27 +18,40 @@ const MENUS = {
   image: {
     auto: "<b>Or drop in the middle</b> for Auto: straight to WebP.",
     segments: [
-      { id: "convert", icon: "i-convert", title: "Convert", label: "Convert", what: "To WebP, AVIF, JPG, PNG or HEIC.", options: ["WebP", "AVIF", "JPG", "PNG", "HEIC"] },
+      { id: "convert", icon: "i-convert", title: "Convert", label: "Convert", what: "To WebP, AVIF, JPG, PNG or HEIC. Or a whole drop into one PDF.", options: ["WebP", "AVIF", "JPG", "PNG", "HEIC", "PDF"] },
       { id: "compress", icon: "i-compress", title: "Compress", label: "Compress", what: "Same format, smaller. Or under 100 KB, 250 KB, 500 KB, 1 MB, 2 MB, or any size you type.", options: ["100K", "250K", "500K", "1M", "2M", "…"] },
       { id: "half", icon: "i-half", title: "Half size", label: "Half size", what: "Half the width and height, then compressed.", options: [] },
       { id: "removebg", icon: "i-scissors", title: "Remove BG", label: "Remove BG", what: "Lifts the subject out, onto transparent, white, black or any colour.", options: [{ swatch: "clear" }, { swatch: "#FFFFFF" }, { swatch: "#0E0E0F" }, "…"] },
     ],
   },
   video: {
-    auto: "<b>Or drop in the middle</b> for Auto: a smaller MP4.",
+    auto: "<b>Or drop in the middle</b> for Auto: a smaller WebM.",
     segments: [
-      { id: "convert", icon: "i-convert", title: "Convert", label: "Convert", what: "To MP4, HEVC or a smooth GIF.", options: ["MP4", "HEVC", "GIF"] },
+      { id: "convert", icon: "i-convert", title: "Convert", label: "Convert", what: "To WebM, AV1, MP4, HEVC or a smooth GIF.", options: ["WebM", "AV1", "MP4", "HEVC", "GIF"] },
       { id: "compress", icon: "i-compress", title: "Compress", label: "Compress", what: "Under 10, 25, 50 or 100 MB, or any size. Made for upload limits.", options: ["10M", "25M", "50M", "100M", "…"] },
       { id: "resize", icon: "i-resize", title: "Resize", label: "Resize", what: "1080p, 720p or 480p. Never upscaled.", options: ["1080p", "720p", "480p"] },
       { id: "mute", icon: "i-mute", title: "Mute", label: "Mute", what: "Takes the sound out, for hero videos and loops.", options: [] },
+    ],
+  },
+  pdf: {
+    auto: "<b>Or drop in the middle</b> for Auto: a smaller PDF.",
+    segments: [
+      { id: "convert", icon: "i-convert", title: "Convert", label: "Convert", what: "Every page as a PNG or JPG.", options: ["PNG", "JPG"] },
+      { id: "compress", icon: "i-compress", title: "Compress", label: "Compress", what: "Under 200 KB, 500 KB, 1 MB, 2 MB, 5 MB, or any size you type. Text and pages stay as they are.", options: ["200K", "500K", "1M", "2M", "5M", "…"] },
+    ],
+  },
+  word: {
+    auto: "<b>Or drop in the middle</b> for Auto: the same PDF.",
+    segments: [
+      { id: "convert", icon: "i-convert", title: "Convert", label: "Convert", what: "A .docx or .doc to PDF, with Word or Pages if you have them, or our built-in reader if you don't.", options: ["PDF"] },
     ],
   },
 };
 
 // Docked right: the arc faces left, index 0 at the top. Offsets in points, y down (for CSS).
 function segmentAngle(i, count) {
-  const step = count > 1 ? M.arcSpan / (count - 1) : 0;
-  return Math.PI + (-M.arcSpan / 2 + i * step);
+  if (count < 2) return Math.PI;
+  return Math.PI + (-M.arcSpan / 2 + i * (M.arcSpan / (count - 1)));
 }
 function ringRadius(count) {
   if (count < 2) return M.ringRadius;
@@ -146,7 +159,7 @@ function setKind(next) {
   moveThumb();
   const fold = () => {
     opts.forEach((el) => el.remove()); opts = [];
-    active = 1;
+    active = Math.min(1, MENUS[kind].segments.length - 1);
     buildList(); buildSegments(); setActive(active, { labelBubble: false });
   };
   if (reduceMotion.matches) { fold(); return; }
