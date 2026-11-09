@@ -11,6 +11,8 @@ struct FileOutcome {
     var picture: Data?
     /// Worth telling the user, such as "Resized to 1600 × 1200 to fit".
     var note: String?
+    /// When `output` is a folder (a PDF's pages), the files in it: what goes on the clipboard.
+    var files: [URL]? = nil
 }
 
 /// Turns one image into a new file next to it (CORE.md §6). Synchronous and CPU-bound: call it
@@ -147,8 +149,9 @@ enum ImageOptimizer {
     }
 }
 
-/// Runs a drop through `ImageOptimizer` (several images at a time), `VideoOptimizer` or `PDFOptimizer`
-/// (one video or PDF at a time, CORE.md §5), and puts the results on the clipboard.
+/// Runs a drop through `ImageOptimizer` (several images at a time), `VideoOptimizer`, `PDFOptimizer` or
+/// `DocumentConverter` (one video, PDF or Word document at a time, CORE.md §5), or `PDFMaker` (images
+/// into one PDF), and puts the results on the clipboard.
 struct ImageJobRunner: JobRunner {
     func run(_ job: Job, progress: @escaping @MainActor (JobProgress) -> Void) async throws -> JobResult {
         let action = job.action
@@ -157,9 +160,14 @@ struct ImageJobRunner: JobRunner {
         let wantsPicture = total == 1
         var outcomes: [(index: Int, outcome: FileOutcome)] = []
         var errors: [Error] = []
-        let hasVideo = job.files.contains { MediaKind(url: $0) == .video }
-        // Long PDFs can hold hundreds of pictures, so like videos they go one at a time.
-        let concurrency = hasVideo || job.files.contains { MediaKind(url: $0) == .pdf } ? 1 : Self.concurrency
+        let kinds = Set(job.files.compactMap(MediaKind.init(url:)))
+        if Job.combinesIntoOnePDF(kinds: kinds, action: action, option: option) {
+            let outcome = try PDFMaker.combine(job.files)
+            return await finish([outcome])
+        }
+        // Long PDFs can hold hundreds of pictures, and Word converts one document at a time, so
+        // like videos they go one by one.
+        let concurrency = kinds.isDisjoint(with: [.video, .pdf, .document]) ? Self.concurrency : 1
         // Videos report progress within the file; images only as each one finishes.
         let reporter = ProgressReporter(total: total, report: progress)
 
@@ -185,6 +193,8 @@ struct ImageJobRunner: JobRunner {
                             return (index, .success(outcome))
                         case .pdf?:
                             return (index, .success(try PDFOptimizer.process(url, action: action, option: option)))
+                        case .document?:
+                            return (index, .success(try await DocumentConverter.process(url, action: action, option: option)))
                         case .image?, nil:
                             break
                         }
@@ -204,7 +214,12 @@ struct ImageJobRunner: JobRunner {
             // Report a real problem before "already as small as it gets".
             throw errors.first { ($0 as? JobError) != .alreadySmallest } ?? errors.first ?? JobError.unreadable
         }
-        let outputs = results.map(\.output)
+        return await finish(results)
+    }
+
+    /// Puts the results on the clipboard and sums them up. A folder of pages puts its pages there.
+    private func finish(_ results: [FileOutcome]) async -> JobResult {
+        let outputs = results.flatMap { $0.files ?? [$0.output] }
         let picture = results.first?.picture
         await MainActor.run { Clipboard.put(outputs, picture: picture) }
         return JobResult(outputs: outputs,

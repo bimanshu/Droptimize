@@ -2,8 +2,8 @@ import Foundation
 import PDFKit
 import Quartz
 
-/// Makes a smaller copy of a PDF next to it (CORE.md §7b), with Apple's own PDF engine: no new
-/// dependency. Synchronous: call it off the main thread.
+/// Makes a smaller copy of a PDF next to it (CORE.md §7b), or turns its pages into images (§7c), with
+/// Apple's own PDF engine: no new dependency. Synchronous: call it off the main thread.
 enum PDFOptimizer {
     /// Apple's image recompression (Preview's "Optimize images for screen" and "Save images as
     /// JPEG"): pictures bigger than a screen needs are scaled down and stored as JPEG. Text, vector
@@ -16,6 +16,7 @@ enum PDFOptimizer {
     static func process(_ input: URL, action: Action, option: ActionOption?) throws -> FileOutcome {
         let inputBytes = fileSize(input) ?? 0
         let plan = try PDFPlan.make(action: action, option: option)
+        if let format = plan.pageFormat { return try pages(input, format: format, inputBytes: inputBytes) }
         if let target = plan.targetBytes, inputBytes <= target { throw JobError.alreadyUnder(target) }
         guard let document = PDFDocument(url: input), document.pageCount > 0 else { throw JobError.unreadablePDF }
         // Rewriting would drop the encryption or break the signature: leave those alone.
@@ -121,6 +122,68 @@ enum PDFOptimizer {
             }
         }
         return false
+    }
+
+    // MARK: PDF → images
+
+    /// Each page as an image at `PDFTuning.pageImagePPI`, on white: a one-page PDF becomes
+    /// `name.png` next to it; a longer one a folder "name pages" holding `name-01.png`, `name-02.png`….
+    static func pages(_ input: URL, format: ImageFormat, inputBytes: Int) throws -> FileOutcome {
+        guard let document = CGPDFDocument(input as CFURL), document.numberOfPages > 0 else { throw JobError.unreadablePDF }
+        if document.isEncrypted { throw JobError.protectedPDF }
+        let count = document.numberOfPages
+        let stem = input.deletingPathExtension().lastPathComponent
+        let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("droptimize-\(UUID().uuidString)")
+        let pagesFolder = scratch.appendingPathComponent("pages")
+        try FileManager.default.createDirectory(at: pagesFolder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: scratch) }
+
+        var written: [URL] = []
+        var bytes = 0
+        for number in 1...count {
+            try Task.checkCancellation()
+            guard let page = document.page(at: number) else { throw JobError.unreadablePDF }
+            let data = try ImageOptimizer.encode(try render(page), as: format == .jpeg ? .jpeg : .png)
+            let name = count == 1 ? stem : stem + "-" + String(format: "%0\(String(count).count)ld", number)
+            let url = pagesFolder.appendingPathComponent(name).appendingPathExtension(format.fileExtension)
+            try data.write(to: url)
+            written.append(url)
+            bytes += data.count
+        }
+        if count == 1 {
+            let output = try OutputWriter.move(written[0], for: input, fileExtension: format.fileExtension, suffix: nil)
+            return FileOutcome(input: input, output: output, inputBytes: inputBytes, outputBytes: bytes, picture: nil, note: nil)
+        }
+        let folder = try OutputWriter.moveFolder(pagesFolder, for: input, named: "\(stem) pages")
+        return FileOutcome(input: input, output: folder, inputBytes: inputBytes, outputBytes: bytes, picture: nil,
+                           note: "\(count) pages, in “\(folder.lastPathComponent)”",
+                           files: written.map { folder.appendingPathComponent($0.lastPathComponent) })
+    }
+
+    /// One page drawn upright (its rotation applied) on white, RGBA, rows top to bottom.
+    static func render(_ page: CGPDFPage) throws -> RGBAImage {
+        let box = page.getBoxRect(.cropBox)
+        let sideways = (page.rotationAngle / 90) % 2 != 0
+        let size = sideways ? CGSize(width: box.height, height: box.width) : box.size
+        let pixels = PDFTuning.pageImageSize(pointWidth: Double(size.width), pointHeight: Double(size.height))
+        var data = [UInt8](repeating: 255, count: pixels.width * pixels.height * 4)
+        let drawn = data.withUnsafeMutableBytes { buffer -> Bool in
+            guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+                  let context = CGContext(data: buffer.baseAddress, width: pixels.width, height: pixels.height,
+                                          bitsPerComponent: 8, bytesPerRow: pixels.width * 4, space: space,
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return false }
+            context.setFillColor(CGColor(gray: 1, alpha: 1))
+            context.fill(CGRect(x: 0, y: 0, width: pixels.width, height: pixels.height))
+            context.interpolationQuality = .high
+            context.scaleBy(x: CGFloat(pixels.width) / size.width, y: CGFloat(pixels.height) / size.height)
+            context.concatenate(page.getDrawingTransform(.cropBox, rect: CGRect(origin: .zero, size: size), rotate: 0,
+                                                         preserveAspectRatio: true))
+            context.drawPDFPage(page)
+            return true
+        }
+        guard drawn else { throw JobError.unreadablePDF }
+        return RGBAImage(width: pixels.width, height: pixels.height, pixels: data)
     }
 
     private static func letters(in document: PDFDocument) -> Int {

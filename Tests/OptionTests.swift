@@ -145,14 +145,14 @@ final class ActionOptionTests: XCTestCase {
         XCTAssertEqual(menu.option(for: .option(segment: 3, index: 1))?.option, .background(.white))
         XCTAssertNil(menu.option(for: .segment(1)))
         XCTAssertNil(menu.option(for: .option(segment: 2, index: 0)), "Half size has no options")
-        XCTAssertEqual(menu.geometryOptionCounts, [5, 6, 0, 4])
+        XCTAssertEqual(menu.geometryOptionCounts, [6, 6, 0, 4])
     }
 
-    func testConvertOffersTheWebFormats() {
+    func testConvertOffersTheWebFormatsAndPDF() {
         XCTAssertEqual(Action.convert.options(lastColor: nil).map(\.option),
-                       [.format(.webp), .format(.avif), .format(.jpeg), .format(.png), .format(.heic)])
+                       [.format(.webp), .format(.avif), .format(.jpeg), .format(.png), .format(.heic), .pdf])
         XCTAssertEqual(Action.convert.options(lastColor: nil).map(\.label),
-                       [.text("WebP"), .text("AVIF"), .text("JPG"), .text("PNG"), .text("HEIC")])
+                       [.text("WebP"), .text("AVIF"), .text("JPG"), .text("PNG"), .text("HEIC"), .text("PDF")])
     }
 }
 

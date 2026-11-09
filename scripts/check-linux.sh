@@ -24,6 +24,7 @@ PORTABLE_SOURCES=(
   Pipeline/ActionOptions.swift
   Pipeline/History.swift
   Pipeline/PDFPlan.swift
+  Pipeline/DocumentPlan.swift
   Image/RGBAImage.swift
   Image/ImageFormat.swift
   Image/RGBColor.swift

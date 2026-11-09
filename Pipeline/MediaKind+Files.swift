@@ -2,11 +2,23 @@ import Foundation
 import UniformTypeIdentifiers
 
 extension MediaKind {
+    /// Word documents: .docx and the older .doc (CORE.md §7c).
+    static let wordTypes: [UTType] = ["org.openxmlformats.wordprocessingml.document", "com.microsoft.word.doc"]
+        .compactMap { UTType($0) }
+
     /// The kind of media at `url`, or nil when Droptimize can't handle it (yet).
     init?(url: URL) {
+        if DocumentPlan.extensions.contains(url.pathExtension.lowercased()) {
+            self = .document
+            return
+        }
         let type = (try? url.resourceValues(forKeys: [.contentTypeKey]))?.contentType
             ?? UTType(filenameExtension: url.pathExtension)
         guard let type else { return nil }
+        if Self.wordTypes.contains(where: { type.conforms(to: $0) }) {
+            self = .document
+            return
+        }
         // SVG conforms to public.image but is out of scope for v1 (CORE.md §6.1).
         if type.conforms(to: .svg) { return nil }
         if type.conforms(to: .pdf) {

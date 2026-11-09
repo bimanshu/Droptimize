@@ -93,6 +93,31 @@ enum OutputWriter {
 }
 
 extension OutputWriter {
+    /// Moves a finished folder (a PDF's pages) next to `input` as `name`, or `name 2`, `name 3`… on
+    /// a clash; never overwrites. Falls back to Downloads like `write`.
+    static func moveFolder(_ folder: URL, for input: URL, named name: String,
+                           fallbackDirectory: URL? = defaultFallback) throws -> URL {
+        func place(in directory: URL) throws -> URL {
+            for number in 1...100 {
+                let url = directory.appendingPathComponent(number == 1 ? name : "\(name) \(number)", isDirectory: true)
+                guard !FileManager.default.fileExists(atPath: url.path) else { continue }
+                do {
+                    try FileManager.default.moveItem(at: folder, to: url)
+                    return url
+                } catch let error as CocoaError where error.code == .fileWriteFileExists {
+                    continue
+                }
+            }
+            throw JobError.cantSave
+        }
+        do {
+            return try place(in: self.folder(for: input, fallback: fallbackDirectory) ?? input.deletingLastPathComponent())
+        } catch let error as CocoaError where error.isPermissionProblem {
+            guard let fallbackDirectory else { throw JobError.cantSave }
+            return try place(in: fallbackDirectory)
+        }
+    }
+
     /// Moves a finished file (a video written to a temporary folder) next to `input` under a fresh
     /// name; never overwrites. Falls back to Downloads like `write`.
     static func move(_ file: URL, for input: URL, fileExtension: String, suffix: String?,

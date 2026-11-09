@@ -9,8 +9,16 @@ final class PDFPlanTests: XCTestCase {
         XCTAssertEqual(try PDFPlan.make(action: .compress, option: nil), plan)
     }
 
+    func testConvertMakesPageImages() throws {
+        XCTAssertEqual(try PDFPlan.make(action: .convert, option: nil),
+                       PDFPlan(fileExtension: "png", suffix: "", appliesSizeGuard: false, pageFormat: .png), "PNG by default")
+        XCTAssertEqual(try PDFPlan.make(action: .convert, option: .format(.jpeg)).pageFormat, .jpeg)
+        XCTAssertEqual(try PDFPlan.make(action: .convert, option: .format(.jpeg)).fileExtension, "jpg")
+        XCTAssertEqual(try PDFPlan.make(action: .convert, option: .format(.webp)).pageFormat, .png, "only PNG or JPG")
+    }
+
     func testOtherActionsSayWhatTheyAreFor() {
-        for action in [Action.convert, .halfSize, .removeBackground] {
+        for action in [Action.halfSize, .removeBackground] {
             XCTAssertThrowsError(try PDFPlan.make(action: action, option: nil)) { error in
                 XCTAssertEqual(error as? JobError, .notYet("That's for images."))
             }
@@ -56,5 +64,64 @@ final class PDFTuningTests: XCTestCase {
         XCTAssertLessThanOrEqual(tries, 4)
         XCTAssertEqual(PDFTuning.bestFit(under: 50_000_000, size: size), PDFTuning.ladder.first)
         XCTAssertNil(PDFTuning.bestFit(under: 500_000, size: size), "even the smallest is too big")
+    }
+}
+
+final class PDFConversionTests: XCTestCase {
+    func testPagesForImagesAreShapedLikeThemAndAtMostA4() {
+        let scan = PDFTuning.pageSize(pixelWidth: 2480, pixelHeight: 3508)          // A4 at 300 dpi
+        XCTAssertEqual(scan.width, 595.3, accuracy: 0.1)
+        XCTAssertEqual(scan.height, 842, accuracy: 0.001)
+        let photo = PDFTuning.pageSize(pixelWidth: 4032, pixelHeight: 3024)
+        XCTAssertEqual(photo.width, 842, accuracy: 0.001)
+        XCTAssertEqual(photo.height, 631.5, accuracy: 0.001)
+        let icon = PDFTuning.pageSize(pixelWidth: 300, pixelHeight: 200)
+        XCTAssertTrue(icon == (300, 200), "a small picture isn't blown up")
+    }
+
+    func testPicturesKeepAtMost300PPIOnTheirPage() {
+        XCTAssertEqual(PDFTuning.pixelScale(pixelWidth: 2480, pixelHeight: 3508), 1, "a 300 dpi A4 scan stays as it is")
+        XCTAssertEqual(PDFTuning.pixelScale(pixelWidth: 8000, pixelHeight: 6000), 3508.3 / 8000, accuracy: 0.001)
+        XCTAssertEqual(PDFTuning.pixelScale(pixelWidth: 300, pixelHeight: 200), 1)
+    }
+
+    func testPageImagesAreRetinaSharp() {
+        XCTAssertTrue(PDFTuning.pageImageSize(pointWidth: 595, pointHeight: 842) == (1190, 1684))
+        let poster = PDFTuning.pageImageSize(pointWidth: 5000, pointHeight: 3000)
+        XCTAssertEqual(poster.width, PDFTuning.maxPageImageSide, "huge pages are capped")
+    }
+
+    func testImagesIntoOnePDFCountAsOneFreeFile() {
+        XCTAssertTrue(Job.combinesIntoOnePDF(kinds: [.image], action: .convert, option: .pdf))
+        XCTAssertFalse(Job.combinesIntoOnePDF(kinds: [.document], action: .convert, option: .pdf), "each document is its own PDF")
+        XCTAssertFalse(Job.combinesIntoOnePDF(kinds: [.image], action: .convert, option: .format(.webp)))
+        XCTAssertEqual(Job.freeFiles(fileCount: 12, kinds: [.image], action: .convert, option: .pdf), 1)
+        XCTAssertEqual(Job.freeFiles(fileCount: 12, kinds: [.image], action: .compress, option: nil), 12)
+    }
+}
+
+final class DocumentPlanTests: XCTestCase {
+    func testWordDocumentsBecomePDFs() throws {
+        XCTAssertEqual(try DocumentPlan.make(action: .auto, option: nil), DocumentPlan(fileExtension: "pdf"))
+        XCTAssertEqual(try DocumentPlan.make(action: .convert, option: .pdf), DocumentPlan(fileExtension: "pdf"))
+        XCTAssertThrowsError(try DocumentPlan.make(action: .compress, option: nil)) { error in
+            XCTAssertEqual(error as? JobError, .notYet("Word documents become PDFs: drop on Convert."))
+        }
+        XCTAssertEqual(DocumentPlan.extensions, ["docx", "doc"])
+    }
+
+    func testWordThenPagesThenTheBuiltInReader() {
+        XCTAssertEqual(DocumentEngine.order(wordInstalled: true, pagesInstalled: true), [.word, .pages, .builtIn])
+        XCTAssertEqual(DocumentEngine.order(wordInstalled: false, pagesInstalled: true), [.pages, .builtIn])
+        XCTAssertEqual(DocumentEngine.order(wordInstalled: false, pagesInstalled: false), [.builtIn])
+        XCTAssertEqual(DocumentEngine.word.bundleIdentifier, "com.microsoft.Word")
+        XCTAssertEqual(DocumentEngine.pages.bundleIdentifier, "com.apple.iWork.Pages")
+    }
+
+    func testTheCardSaysWhyTheLayoutMayDiffer() {
+        XCTAssertEqual(DocumentEngine.builtInNote(tried: [.builtIn], refused: nil), "Without Word or Pages, layout may differ")
+        XCTAssertEqual(DocumentEngine.builtInNote(tried: [.word, .builtIn], refused: nil), "Word didn't help: layout may differ")
+        XCTAssertEqual(DocumentEngine.builtInNote(tried: [.word, .pages, .builtIn], refused: .word),
+                       "Allow Word in Settings for an exact copy")
     }
 }

@@ -302,3 +302,95 @@ final class PDFMacTests: XCTestCase {
         return mse == 0 ? 99 : 10 * log10(255 * 255 / mse)
     }
 }
+
+// MARK: Conversions (CORE.md §7c), here to share the test PDFs and pictures above
+
+extension PDFMacTests {
+    func testAPDFsPagesBecomeImagesInAFolder() throws {
+        let input = try makePDF("deck.pdf", pages: [.photo, .text, .scan])
+        let outcome = try PDFOptimizer.process(input, action: .convert, option: nil)
+        XCTAssertEqual(outcome.output.lastPathComponent, "deck pages")
+        XCTAssertEqual(outcome.files?.map(\.lastPathComponent), ["deck-1.png", "deck-2.png", "deck-3.png"])
+        XCTAssertEqual(outcome.note, "3 pages, in “deck pages”")
+        for file in outcome.files ?? [] {
+            let source = try XCTUnwrap(CGImageSourceCreateWithURL(file as CFURL, nil))
+            let image = try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil))
+            XCTAssertEqual(image.width, 1190, "A4 at 144 ppi: sharp on a Retina screen")
+            XCTAssertEqual(image.height, 1684)
+        }
+        // A second time: a new folder, nothing overwritten.
+        let again = try PDFOptimizer.process(input, action: .convert, option: .format(.png))
+        XCTAssertEqual(again.output.lastPathComponent, "deck pages 2")
+    }
+
+    func testAOnePagePDFBecomesOneImage() throws {
+        let input = try makePDF("flyer.pdf", pages: [.photo])
+        let outcome = try PDFOptimizer.process(input, action: .convert, option: .format(.jpeg))
+        XCTAssertEqual(outcome.output.lastPathComponent, "flyer.jpg")
+        XCTAssertNil(outcome.files)
+        let source = try XCTUnwrap(CGImageSourceCreateWithURL(outcome.output as CFURL, nil))
+        XCTAssertEqual(CGImageSourceGetType(source) as String?, UTType.jpeg.identifier)
+        // The photo is still there, drawn where it was.
+        let image = try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        XCTAssertEqual(image.width, 1190)
+    }
+
+    @MainActor
+    func testThePagesGoOnTheClipboardAndCountAsOneFile() async throws {
+        let input = try makePDF("slides.pdf", pages: [.text, .text])
+        let result = try await ImageJobRunner().run(Job(files: [input], action: .convert, option: .format(.png))) { _ in }
+        XCTAssertEqual(result.outputs.map(\.lastPathComponent), ["slides-1.png", "slides-2.png"], "the pages, to paste")
+        XCTAssertEqual(result.items.map(\.output.lastPathComponent), ["slides pages"], "one result: the folder")
+    }
+
+    @MainActor
+    func testImagesBecomeOnePDFInNameOrder() async throws {
+        // A photo (JPEG), a screenshot-like graphic (PNG) and a tall scan, named so that only a
+        // natural sort puts them in order: 1, 2, 10.
+        let photo = folder.appendingPathComponent("scan 2.jpg")
+        let graphic = folder.appendingPathComponent("scan 10.png")
+        let page = folder.appendingPathComponent("scan 1.png")
+        try write(Self.photo, to: photo, type: .jpeg)
+        try write(Self.graphic, to: graphic, type: .png)
+        try write(Self.scan, to: page, type: .png)
+        let job = Job(files: [graphic, photo, page], action: .convert, option: .pdf)
+        let result = try await ImageJobRunner().run(job) { _ in }
+        XCTAssertEqual(result.outputs.map(\.lastPathComponent), ["scan 1-3-pages.pdf"])
+        XCTAssertEqual(result.items.count, 1, "one PDF, one free file")
+        XCTAssertEqual(result.note, "3 pages")
+
+        let pdf = try XCTUnwrap(result.outputs.first)
+        let document = try XCTUnwrap(CGPDFDocument(pdf as CFURL))
+        XCTAssertEqual(document.numberOfPages, 3)
+        func size(_ number: Int) -> CGSize { document.page(at: number)?.getBoxRect(.mediaBox).size ?? .zero }
+        XCTAssertEqual(size(1).height, 842, accuracy: 0.5, "the A4 scan: an A4 page")
+        XCTAssertEqual(size(1).width, 595.3, accuracy: 0.5)
+        XCTAssertEqual(size(2).width, 842, accuracy: 0.5, "the photo: landscape, at most A4")
+        XCTAssertEqual(size(2).height, 561.3, accuracy: 0.5)
+        XCTAssertEqual(size(3), CGSize(width: 800, height: 500), "the small graphic isn't blown up")
+        let stored = Self.images(in: pdf)
+        XCTAssertEqual(stored.count, 3)
+        XCTAssertTrue(stored[1].hasSuffix("DCTDecode"), "the photo as JPEG: \(stored)")
+        XCTAssertFalse(stored[2].hasSuffix("DCTDecode"), "the graphic stays lossless: \(stored)")
+    }
+
+    /// Flat colors and hard edges, like a screenshot.
+    private static let graphic: CGImage = {
+        let width = 800, height = 500
+        let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+        context.setFillColor(CGColor(srgbRed: 0.96, green: 0.96, blue: 0.97, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        context.setFillColor(CGColor(srgbRed: 0.24, green: 0.86, blue: 0.59, alpha: 1))
+        context.fill(CGRect(x: 60, y: 300, width: 300, height: 120))
+        context.setFillColor(CGColor(srgbRed: 0.05, green: 0.05, blue: 0.06, alpha: 1))
+        context.fill(CGRect(x: 60, y: 80, width: 680, height: 40))
+        return context.makeImage()!
+    }()
+
+    private func write(_ image: CGImage, to url: URL, type: UTType) throws {
+        let destination = try XCTUnwrap(CGImageDestinationCreateWithURL(url as CFURL, type.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, image, [kCGImageDestinationLossyCompressionQuality: 0.92] as CFDictionary)
+        XCTAssertTrue(CGImageDestinationFinalize(destination))
+    }
+}

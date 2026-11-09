@@ -48,6 +48,9 @@ targets:
         INFOPLIST_KEY_NSPrincipalClass: NSApplication
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.graphics-design
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        # Word → PDF uses Word or Pages when installed; macOS shows this when it asks the first time.
+        INFOPLIST_KEY_NSAppleEventsUsageDescription: "Droptimize opens Word or Pages out of sight to turn your Word documents into PDFs that look exactly like the original."
+        CODE_SIGN_ENTITLEMENTS: App/Droptimize.entitlements
     scheme:
       testTargets:
         - DroptimizeTests

@@ -6,6 +6,8 @@ enum ActionOption: Hashable {
     case format(ImageFormat)
     /// Convert a video to this format.
     case videoFormat(VideoFormat)
+    /// Convert into a PDF: a Word document, or images (all of a drop's images become one PDF).
+    case pdf
     /// Resize a video so its shorter side is at most this, as in "720p".
     case maxShortSide(Int)
     /// Compress to at most this many bytes.
@@ -67,6 +69,7 @@ extension Action {
         case .video?: return videoOptions
         case .image?: return imageOptions(lastColor: lastColor)
         case .pdf?: return pdfOptions
+        case .document?: return documentOptions
         case nil: return []
         }
     }
@@ -97,6 +100,12 @@ extension Action {
     }
 
     private var pdfOptions: [MenuOption] {
+        if self == .convert {
+            return PDFTuning.pageFormats.map { format in
+                MenuOption(option: .format(format), label: .text(format.displayName), title: "To \(format.displayName)",
+                           accessibilityLabel: "Turn each page into a \(format.displayName) image")
+            }
+        }
         guard self == .compress else { return [] }
         let sizes = PDFTuning.targetSizes.map { bytes in
             MenuOption(option: .maxBytes(bytes), label: .text(ByteCount.short(bytes)),
@@ -107,13 +116,23 @@ extension Action {
                                    accessibilityLabel: "Compress the PDF to a size you choose")]
     }
 
+    /// Word documents: Convert has one bubble, PDF.
+    private var documentOptions: [MenuOption] {
+        guard self == .convert else { return [] }
+        return [Self.pdfOption(accessibilityLabel: "Convert to PDF")]
+    }
+
+    private static func pdfOption(accessibilityLabel: String) -> MenuOption {
+        MenuOption(option: .pdf, label: .text("PDF"), title: "To PDF", accessibilityLabel: accessibilityLabel)
+    }
+
     private func imageOptions(lastColor: RGBColor?) -> [MenuOption] {
         switch self {
         case .convert:
             return Self.convertFormats.map { format in
                 MenuOption(option: .format(format), label: .text(format.displayName), title: "To \(format.displayName)",
                            accessibilityLabel: "Convert to \(format.displayName)")
-            }
+            } + [Self.pdfOption(accessibilityLabel: "Put the images into one PDF")]
         case .compress:
             let sizes = Self.targetSizes.map { bytes in
                 MenuOption(option: .maxBytes(bytes), label: .text(ByteCount.short(bytes)),

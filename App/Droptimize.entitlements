@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Word → PDF: Droptimize asks Word or Pages to save a document as PDF (CORE.md §7c). macOS asks
+	     the person once ("Droptimize wants to control Word"), with NSAppleEventsUsageDescription. -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+</dict>
+</plist>

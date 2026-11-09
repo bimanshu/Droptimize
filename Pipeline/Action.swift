@@ -1,7 +1,7 @@
 import Foundation
 
 /// Everything a drop can ask for. Image actions are Phase 1, video actions Phase 2 (CORE.md §6.5, §7.4);
-/// PDFs use Auto and Compress (§7b).
+/// PDFs use Auto, Convert and Compress (§7b), Word documents Auto and Convert (§7c).
 enum Action: String, CaseIterable, Identifiable {
     case auto
     // Images
@@ -53,7 +53,8 @@ enum Action: String, CaseIterable, Identifiable {
 
 /// What the media in a drag is.
 enum MediaKind: Hashable {
-    case image, video, pdf
+    /// `document`: a Word document (.docx, .doc), which Droptimize turns into a PDF.
+    case image, video, pdf, document
 }
 
 /// What the radial menu offers for one drag: Auto in the center, up to six segments around it,
@@ -79,14 +80,17 @@ struct ActionMenu: Equatable {
     /// Listed top to bottom as they sit on the arc.
     static let imageSegments: [Action] = [.convert, .compress, .halfSize, .removeBackground]
     static let videoSegments: [Action] = [.convert, .compress, .resize, .mute]
-    /// PDFs: Compress, to a size or not (Auto in the center is Compress without a size).
-    static let pdfSegments: [Action] = [.compress]
+    /// PDFs: Convert (each page as an image) and Compress (Auto in the center is Compress without a size).
+    static let pdfSegments: [Action] = [.convert, .compress]
+    /// Word documents: Convert, to PDF (so is Auto in the center).
+    static let documentSegments: [Action] = [.convert]
     /// Images and videos together: only what applies to both.
     static let mixedSegments: [Action] = [.compress]
 
     static let image = ActionMenu(segments: imageSegments, kind: .image)
     static let video = ActionMenu(segments: videoSegments, kind: .video)
     static let pdf = ActionMenu(segments: pdfSegments, kind: .pdf)
+    static let document = ActionMenu(segments: documentSegments, kind: .document)
     static let mixed = ActionMenu(segments: mixedSegments, kind: nil)
 
     /// The menu for a drag carrying `kinds`, or nil when there's nothing to offer.
@@ -96,6 +100,7 @@ struct ActionMenu: Equatable {
         case [.image]: self.init(segments: Self.imageSegments, kind: .image, lastColor: lastColor)
         case [.video]: self.init(segments: Self.videoSegments, kind: .video, lastColor: lastColor)
         case [.pdf]: self.init(segments: Self.pdfSegments, kind: .pdf, lastColor: lastColor)
+        case [.document]: self.init(segments: Self.documentSegments, kind: .document, lastColor: lastColor)
         default: self.init(segments: Self.mixedSegments, kind: nil, lastColor: lastColor)
         }
     }

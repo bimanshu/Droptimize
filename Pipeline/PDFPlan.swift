@@ -8,6 +8,8 @@ struct PDFPlan: Equatable {
     var targetBytes: Int?
     /// A smaller copy is the point, so it never hands back a bigger one (Rule 3).
     var appliesSizeGuard = true
+    /// Convert: each page as an image in this format instead of a smaller PDF.
+    var pageFormat: ImageFormat?
 
     static func make(action: Action, option: ActionOption?) throws -> PDFPlan {
         switch action {
@@ -16,7 +18,11 @@ struct PDFPlan: Equatable {
                 return PDFPlan(suffix: ByteCount.suffix(bytes), targetBytes: bytes)
             }
             return PDFPlan(suffix: "-min")
-        case .convert, .halfSize, .removeBackground:
+        case .convert:
+            var format = PDFTuning.pageFormats[0]
+            if case .format(let chosen) = option, PDFTuning.pageFormats.contains(chosen) { format = chosen }
+            return PDFPlan(fileExtension: format.fileExtension, suffix: "", appliesSizeGuard: false, pageFormat: format)
+        case .halfSize, .removeBackground:
             throw JobError.notYet("That's for images.")
         case .resize, .mute:
             throw JobError.notYet("That's for videos.")
@@ -24,8 +30,43 @@ struct PDFPlan: Equatable {
     }
 }
 
-/// PDF settings (CORE.md §7b).
+/// PDF settings (CORE.md §7b, §7c).
 enum PDFTuning {
+    /// PDF → images: what Convert offers, the first being what Convert alone makes. PNG keeps text
+    /// sharp; JPG is smaller for photo pages.
+    static let pageFormats: [ImageFormat] = [.png, .jpeg]
+    /// Page images at twice the page's point size: sharp on a Retina screen (A4 → 1191 × 1684).  (tune)
+    static let pageImagePPI = 144.0
+    /// Never more pixels than this on a page image's longer side (huge posters).
+    static let maxPageImageSide = 8000
+
+    /// Images → PDF: each picture becomes a page shaped like it, at most A4's long side (842 pt)
+    /// and never bigger than one point per pixel; pictures keep at most 300 ppi on that page. (tune)
+    static let maxPageSide = 842.0
+    static let maxImagePPI = 300.0
+    /// Photos are stored in the PDF as JPEG at this quality; graphics and screenshots stay lossless.
+    static let photoQuality = 0.9
+
+    /// The page, in points, for a picture of `width` × `height` pixels.
+    static func pageSize(pixelWidth width: Int, pixelHeight height: Int) -> (width: Double, height: Double) {
+        let scale = min(1, maxPageSide / Double(max(width, height, 1)))
+        return (Double(width) * scale, Double(height) * scale)
+    }
+
+    /// How much to shrink a picture before it goes on its page (1: not at all).
+    static func pixelScale(pixelWidth width: Int, pixelHeight height: Int) -> Double {
+        let page = pageSize(pixelWidth: width, pixelHeight: height)
+        let maxPixels = max(page.width, page.height) / 72 * maxImagePPI
+        return min(1, maxPixels / Double(max(width, height, 1)))
+    }
+
+    /// A page image's size in pixels for a page of `width` × `height` points.
+    static func pageImageSize(pointWidth width: Double, pointHeight height: Double) -> (width: Int, height: Int) {
+        var scale = pageImagePPI / 72
+        scale = min(scale, Double(maxPageImageSide) / max(width, height, 1))
+        return (max(1, Int((width * scale).rounded())), max(1, Int((height * scale).rounded())))
+    }
+
     /// A compressed copy must keep at least this share of the original's text, or it's refused
     /// (it would mean text had been turned into pictures).
     static let textKept = 0.98

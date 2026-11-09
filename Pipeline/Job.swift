@@ -7,6 +7,17 @@ struct Job: Identifiable {
     var action: Action
     /// The option bubble it was dropped on, with any custom value already filled in.
     var option: ActionOption? = nil
+
+    /// Images dropped on Convert → PDF all go into one PDF.
+    static func combinesIntoOnePDF(kinds: Set<MediaKind>, action: Action, option: ActionOption?) -> Bool {
+        action == .convert && option == .pdf && kinds == [.image]
+    }
+
+    /// How many files a drop of `fileCount` uses up on the free plan (CORE.md §8.1): one per result,
+    /// so a stack of images that becomes one PDF counts once.
+    static func freeFiles(fileCount: Int, kinds: Set<MediaKind>, action: Action, option: ActionOption?) -> Int {
+        combinesIntoOnePDF(kinds: kinds, action: action, option: option) ? min(fileCount, 1) : fileCount
+    }
 }
 
 struct JobProgress: Equatable {
@@ -52,6 +63,7 @@ enum JobError: LocalizedError, Equatable {
     case alreadyAtMost(Int)
     case unreadableVideo
     case unreadablePDF
+    case unreadableDocument
     /// Encrypted: rewriting it would drop the protection, so it's left alone.
     case protectedPDF
     /// Digitally signed: any rewrite breaks the signature.
@@ -73,6 +85,7 @@ enum JobError: LocalizedError, Equatable {
         case .alreadyAtMost(let side): return "Already \(side)p or smaller."
         case .unreadableVideo: return "Can't open this video. MOV and MP4 work."
         case .unreadablePDF: return "Can't open this PDF."
+        case .unreadableDocument: return "Can't open this Word document."
         case .protectedPDF: return "This PDF is password-protected, so it's left as it is."
         case .signedPDF: return "This PDF is signed. Compressing it would break the signature."
         case .notReceived: return "Couldn't get the files from that app."

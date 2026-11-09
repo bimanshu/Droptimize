@@ -270,18 +270,22 @@ final class BubbleController {
             returnToIdle()
             return false
         }
-        // The free plan runs what's left of today's files and says so on the card.
-        let allowed = pro.grant(items.count)
-        guard allowed > 0 else {
+        // The free plan runs what's left of today's files and says so on the card. Images that
+        // become one PDF are one file.
+        let option = model.menu.option(for: target)?.option
+        let combines = Job.combinesIntoOnePDF(kinds: items.kinds, action: action, option: option)
+        let needed = Job.freeFiles(fileCount: items.count, kinds: items.kinds, action: action, option: option)
+        let granted = pro.grant(needed)
+        guard granted > 0 else {
             offerPro()
             return false
         }
+        let allowed = combines ? items.count : granted
         limitNote = allowed < items.count ? "Free plan: \(allowed) of \(items.count). Pro does all" : nil
         if !reduceMotion {
             let mouse = NSEvent.mouseLocation
             addRipple(at: CGVector(dx: mouse.x - center.x, dy: mouse.y - center.y))
         }
-        let option = model.menu.option(for: target)?.option
         receivedFromApp = !items.isReady
         if items.isReady {
             go(with: Array(items.files.prefix(allowed)), action: action, option: option)
@@ -371,7 +375,7 @@ final class BubbleController {
     private func finish(_ result: JobResult) {
         jobTask = nil
         lastResult = result
-        pro.record(result.outputs.count)
+        pro.record(result.items.count)                         // one per result: a PDF of pages counts once
         let lastFree = pro.isLimited && pro.grant(1) == 0 ? "That was today's last free file" : nil
         history.record(result.items.map { item in
             HistoryEntry(action: runningAction?.title ?? "", detail: runningOption?.title,

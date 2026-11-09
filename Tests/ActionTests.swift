@@ -11,13 +11,30 @@ final class ActionMenuTests: XCTestCase {
         XCTAssertEqual(ActionMenu(kinds: [.video])?.segments, [.convert, .compress, .resize, .mute])
     }
 
-    func testPDFsGetCompress() {
+    func testPDFsGetConvertAndCompress() {
         let menu = ActionMenu(kinds: [.pdf])
         XCTAssertEqual(menu?.center, .auto)
-        XCTAssertEqual(menu?.segments, [.compress])
-        XCTAssertEqual(menu?.options.first?.map(\.title),
+        XCTAssertEqual(menu?.segments, [.convert, .compress])
+        XCTAssertEqual(menu?.options.first?.map(\.option), [.format(.png), .format(.jpeg)], "each page as an image")
+        XCTAssertEqual(menu?.options.last?.map(\.title),
                        ["Under 200 KB", "Under 500 KB", "Under 1 MB", "Under 2 MB", "Under 5 MB", "Custom size"])
-        XCTAssertEqual(menu?.options.first?.first?.option, .maxBytes(200_000))
+        XCTAssertEqual(menu?.options.last?.first?.option, .maxBytes(200_000))
+    }
+
+    func testWordDocumentsGetConvertToPDF() {
+        let menu = ActionMenu(kinds: [.document])
+        XCTAssertEqual(menu?.center, .auto)
+        XCTAssertEqual(menu?.segments, [.convert])
+        XCTAssertEqual(menu?.options.first?.map(\.option), [.pdf])
+        XCTAssertEqual(menu?.options.first?.first?.title, "To PDF")
+        XCTAssertEqual(ActionMenu(kinds: [.document, .image])?.segments, [.compress], "mixed: only what's shared")
+    }
+
+    func testImagesCanBecomeAPDF() {
+        let convert = Action.convert.options(for: .image, lastColor: nil)
+        XCTAssertEqual(convert.last?.option, .pdf)
+        XCTAssertEqual(convert.last?.label, .text("PDF"))
+        XCTAssertEqual(ActionOption.pdf.title, "To PDF")
     }
 
     func testMixedDropsOnlyOfferWhatAppliesToBoth() {
@@ -32,7 +49,7 @@ final class ActionMenuTests: XCTestCase {
     }
 
     func testNoMenuHasMoreThanSixSegments() {
-        for menu in [ActionMenu.image, .video, .pdf, .mixed] {
+        for menu in [ActionMenu.image, .video, .pdf, .document, .mixed] {
             XCTAssertLessThanOrEqual(menu.segments.count, ActionMenu.maxSegments)
         }
     }
