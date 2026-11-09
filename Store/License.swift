@@ -13,8 +13,8 @@ enum StoreConfig {
     static let checkout: URL? = nil
     /// Dodo's test mode (test cards, test keys) while trying purchases out; false to sell.
     static let testMode = false
-    /// One payment, Pro for life (owner's decision, 2026-11-02).
-    static let price = "$9.99"
+    /// One payment, Pro for life. The launch price: it goes up as more people download (owner, 2026-11-09).
+    static let price = "$4.99"
 
     static var isSelling: Bool { productID != nil && checkout != nil }
 }

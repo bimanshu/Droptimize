@@ -313,7 +313,7 @@ const SCENES = [
     result: { at: T(15, 2), thumb: 'hero', sizes: [[T(15, 2), '6.1 MB'], [T(15, 2, 2), '412 KB'], [T(15, 3), '−93%']], small: [[T(15, 2), 'hero.avif'], [T(15, 3), 'hero.avif · 412 KB']] }, cardOut: T(16) - 0.25 },
   { id: 'statue', tile: tStatue, grab: T(15, 4), enter: AT[5], release: T(17, 2), kind: 'image', midDrag: T(16),
     hovers: [[AT[5] + 0.23, 3, 'Remove BG']],
-    opts: ['checker', 'white', 'black', 'eyedropper'], optsAt: T(16, 3), optSeg: 3, optHover: [[T(16, 3) + 0.24, 0], [T(17) + 0.05, 1]], labels: ['No background', 'White', 'Black', 'Custom'],
+    opts: ['checker', 'white', 'black', 'eyedropper'], optsAt: T(16, 3), optSeg: 3, optHover: [[T(16, 3) + 0.24, 0], [T(17) + 0.05, 1]], labels: ['No bg', 'White', 'Black', 'Custom'],
     work: [T(17, 2), T(17, 2) + 0.45], done: T(17, 3), collapse: T(17, 2) + 0.3, result: null, cardOut: 0 },
   { id: 'video', tile: tVid, grab: T(18, 2), enter: T(18, 4), release: T(19, 3), kind: 'video', midDrag: T(18, 3),
     hovers: [[T(18, 4) + 0.1, 0, 'Convert'], [T(19) + 0.12, 1, 'Compress']],
@@ -597,7 +597,7 @@ const endGlow = el('div', endL, { left: W / 2 - 220 + 'px', top: '475px', width:
 const endLogo = icon(endL, 'logo', 150, '#FFFFFF', { left: W / 2 - 75 + 'px', top: '620px' });
 const endTitle = el('div', endL, { width: W + 'px', top: '800px', textAlign: 'center', color: '#FFFFFF' }, 'Droptimize', 't-hero nowrap');
 const endTag = el('div', endL, { width: W + 'px', top: '962px', textAlign: 'center', color: '#D4D4D8' }, '<span>Drop</span> <span>it.</span> <span>Done.</span>', 't-sub nowrap');
-const endPrice = el('div', endL, { width: W + 'px', top: '1070px', textAlign: 'center', color: '#8A8A8E' }, 'Free for 3 files a day · Pro $9.99 once', 't-body nowrap');
+const endPrice = el('div', endL, { width: W + 'px', top: '1070px', textAlign: 'center', color: '#8A8A8E' }, 'Free and unlimited for now · Pro $4.99 once', 't-body nowrap');
 
 // ───────────────────────────── Sound cues for mix.py ─────────────────────────────
 const EVENTS = [];
