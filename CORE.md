@@ -394,6 +394,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-11: **Share image** for droptimize.app (owner: links posted on X should show the value with a hook): `website/assets/og.jpg`, drawn by `docs/launch-video/film/og-image.html`, with Open Graph and X card tags.
 - 2026-11-11: **Pro is on sale.** `StoreConfig.productID` is the live Dodo product (`pdt_0NrhmMZKN9pE9ck3YwEGT`), so the free limit (3 files a day) is on; the website sells Pro through Dodo's checkout and plays the new-look film.
 - 2026-11-11: **Get Pro opens the website's pricing** (owner), so `StoreConfig` needs only the product ID; the site's button has the checkout. Live payments are on at Dodo; the product ID is still to come. Film: the end card says "Free for 3 files a day · Pro $4.99 once" (v10), and a **new-look cut**, `film/v5.html` (layered, lit wallpaper with parallax, the app's frosted material, a leaning desk in wide shots, sculpted laptop and keycaps, vignette and grain), same timeline, voice and music.
 - 2026-11-10: **One Pro key, one Mac** (owner; was up to 3). Website, Terms and the app's "already active" message updated; the key can still be moved by deactivating it.

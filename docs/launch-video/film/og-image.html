@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Droptimize share image</title>
+<!--
+  The link preview (Open Graph / X card) for droptimize.app, drawn like film v5: its wallpaper, the app's frosted
+  menu, Geist, one mint accent. Rendered at 1200 × 630, 2× (see HANDOFF-V4.md) to website/assets/og.jpg.
+  The number is the film's own (12.4 MB → 486 KB, −96%: a photo compressed to 500K).
+-->
+<style>
+@font-face { font-family: Geist; src: url(fonts/Geist-Variable.woff2) format('woff2'); font-weight: 100 900; }
+html { -webkit-font-smoothing: antialiased; }
+html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: #163A86; }
+#card { position: absolute; inset: 0; overflow: hidden; font-family: Geist, sans-serif; color: #FFFFFF; }
+.abs { position: absolute; left: 0; top: 0; }
+.glass { background: rgba(255,255,255,0.8); -webkit-backdrop-filter: blur(14px) saturate(1.8); backdrop-filter: blur(14px) saturate(1.8);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), inset 0 0 0 1px rgba(255,255,255,0.35), 0 0 0 1px rgba(8,24,64,0.16), 0 2px 4px rgba(8,24,64,0.16), 0 10px 26px -6px rgba(8,24,64,0.4); }
+.round { border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.opt { font-size: 19px; font-weight: 650; color: #0E0E0F; font-variant-numeric: tabular-nums; }
+.brand { left: 64px; top: 56px; display: flex; align-items: center; gap: 14px; font-size: 30px; font-weight: 600; letter-spacing: -0.01em; }
+.kicker { left: 64px; top: 172px; font-size: 26px; font-weight: 500; color: rgba(255,255,255,0.92); letter-spacing: -0.005em; text-shadow: 0 1px 16px rgba(4,16,48,0.35); }
+.head { left: 60px; top: 212px; font-size: 74px; font-weight: 650; letter-spacing: -0.035em; line-height: 1.04; white-space: nowrap; text-shadow: 0 2px 30px rgba(4,16,48,0.35); }
+.head .hl { background: #3DDC97; color: #0E0E0F; border-radius: 14px; padding: 0 12px; margin-left: -2px; text-shadow: none; }
+.head .from { color: rgba(255,255,255,0.86); }
+.sub { left: 64px; top: 404px; width: 640px; font-size: 29px; font-weight: 500; line-height: 1.32; color: rgba(255,255,255,0.92); letter-spacing: -0.005em; }
+.foot { left: 64px; top: 524px; display: flex; gap: 10px; }
+.chip { font-size: 21px; font-weight: 600; padding: 8px 16px; border-radius: 999px; background: rgba(255,255,255,0.14); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.24); color: #FFFFFF; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="card"></div>
+<script>
+'use strict';
+const W = 1200, H = 630, K = 2;                       // drawn at 2×
+const card = document.getElementById('card');
+const el = (tag, parent, style = {}, html = '', cls = '') => { const e = document.createElement(tag); e.className = 'abs' + (cls ? ' ' + cls : ''); Object.assign(e.style, style); if (html) e.innerHTML = html; parent.appendChild(e); return e; };
+
+// ── Wallpaper: film v5's folds of light (its 1920 × 1080 bands, framed for 1200 × 630)
+const cv = document.createElement('canvas'); cv.width = W * K; cv.height = H * K; cv.className = 'abs';
+Object.assign(cv.style, { width: W + 'px', height: H + 'px' }); card.appendChild(cv);
+{
+  const g = cv.getContext('2d'), s = (W * K) / 1920;   // film units → canvas pixels
+  g.scale(s, s); g.translate(0, -40);                   // 1920 × 1008 of the film's frame
+  const lin = g.createLinearGradient(0, 0, 1920, 1080);
+  [['#3272D6', 0], ['#2457B8', 0.55], ['#122F78', 1]].forEach(([c, p]) => lin.addColorStop(p, c));
+  g.fillStyle = lin; g.fillRect(0, 0, 1920, 1100);
+  const bloom = g.createRadialGradient(420, 120, 0, 420, 120, 1060);
+  bloom.addColorStop(0, 'rgba(222,240,255,0.6)'); bloom.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = bloom; g.fillRect(0, 0, 1920, 1100);
+  const BANDS = [[[-200, 820, 500, 520, 1100, 1100, 2200, 600], 260], [[-300, 300, 600, 700, 1300, 100, 2300, 380], 180], [[200, 1200, 800, 760, 1400, 880, 2100, 300], 140], [[-100, 80, 500, 260, 1200, -100, 2100, 120], 220]];
+  const COL = ['#2BB5C0', '#CFE6F7', '#3DDC97', '#7FB2F0'], ALPHA = [0.8, 0.55, 0.42, 0.6];
+  const stroke = (p, dy, w, c, a, blur) => { g.filter = `blur(${blur * s}px)`; g.globalAlpha = a; g.strokeStyle = c; g.lineWidth = w; g.lineCap = 'round'; g.beginPath(); g.moveTo(p[0], p[1] + dy); g.bezierCurveTo(p[2], p[3] + dy, p[4], p[5] + dy, p[6], p[7] + dy); g.stroke(); g.filter = 'none'; g.globalAlpha = 1; };
+  BANDS.forEach(([p, w], i) => { stroke(p, w * 0.42, w * 0.9, '#0B2364', 0.38, 70); stroke(p, 0, w, COL[i], ALPHA[i], 64); });
+  BANDS.forEach(([p, w], i) => { if (i !== 2) stroke(p, -w * 0.36, w * 0.16, '#F2F8FF', 0.55 * (i === 1 ? 1 : 0.7), 16); });
+  BANDS.forEach(([p, w], i) => { if (i === 0 || i === 3) stroke(p, -w * 0.30, w * 0.42, '#F2F8FF', 0.55 * 0.28, 34); });
+  [[0.30, 0.22, 0.42 * 1920, 'rgba(236,246,255,0.42)'], [0.78, 0.86, 0.36 * 1920, 'rgba(61,220,151,0.20)']].forEach(([x, y, r, c]) => {
+    const gr = g.createRadialGradient(1920 * x, 1080 * y, 0, 1920 * x, 1080 * y, r); gr.addColorStop(0, c); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 1920, 1100);
+  });
+  // Fine grain against banding in the JPEG
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  const img = g.getImageData(0, 0, cv.width, cv.height), d = img.data; let r = 11 >>> 0;
+  for (let i = 0; i < d.length; i += 4) { r = (r * 1664525 + 1013904223) >>> 0; const n = ((r >>> 24) - 128) * 0.035; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+  g.putImageData(img, 0, 0);
+}
+// Shade under the words, so they read on any part of the folds
+el('div', card, { width: W + 'px', height: H + 'px', background: 'linear-gradient(90deg, rgba(5,16,48,0.56) 0%, rgba(5,16,48,0.38) 38%, rgba(5,16,48,0.08) 62%, rgba(5,16,48,0) 74%)' });
+el('div', card, { width: W + 'px', height: H + 'px', background: 'radial-gradient(ellipse 80% 80% at 55% 45%, rgba(2,8,26,0) 60%, rgba(2,8,26,0.28) 100%)' });
+
+// ── Icons (the film's, one stroke weight)
+const ICON = {
+  logo: (c, dot = '#3DDC97') => `<circle cx="12" cy="12" r="9.5" fill="none" stroke="${c}" stroke-width="2"/><circle cx="9.6" cy="14.4" r="5.6" fill="none" stroke="${c}" stroke-width="2"/><circle cx="7.9" cy="16.1" r="2.6" fill="${dot}"/>`,
+  convert: c => `<g fill="none" stroke="${c}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 10a7 7 0 0 1 12.5-3.5L19 8"/><path d="M19 4v4h-4"/><path d="M19 14a7 7 0 0 1-12.5 3.5L5 16"/><path d="M5 20v-4h4"/></g>`,
+  compress: c => `<g fill="none" stroke="${c}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="6" rx="1.5"/><path d="M12 2.5v4M9.5 4.5 12 7l2.5-2.5M12 21.5v-4M9.5 19.5 12 17l2.5 2.5"/></g>`,
+  half: c => `<g fill="none" stroke="${c}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4l-6 6M14 5.5V10h4.5M4 20l6-6M10 18.5V14H5.5"/></g>`,
+  scissors: c => `<g fill="none" stroke="${c}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="6.5" cy="17.5" r="2.5"/><path d="M8.6 8 20 18M8.6 16 20 6"/></g>`,
+  ellipsis: c => `<g fill="${c}"><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/></g>`,
+};
+const icon = (name, size, color) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24">${ICON[name](color)}</svg>`;
+
+// ── The menu, as in the app: the bubble docked at the right edge, its arc opening left; Compress → 500K hovered
+const B = { x: 1112, y: 318 }, BD = 88, RING = 150, SEG = 74, OPT = 64, OPT_R = RING + 106;
+const ANG = [260, 206.67, 153.33, 100].map(a => a * Math.PI / 180);
+const at = (a, r) => [B.x + Math.cos(a) * r, B.y + Math.sin(a) * r];
+// Options of Compress, fanned around its segment and kept inside the arc's limits (the film's optPos)
+const OPTS = ['100K', '250K', '500K', '1M', '2M', '…'], HOT = 2;
+{
+  const n = OPTS.length, base = ANG[1], spacing = (OPT + 14) / OPT_R, lim = 85 * Math.PI / 180, mid = Math.PI;
+  const first = base - (n - 1) / 2 * spacing, last = base + (n - 1) / 2 * spacing;
+  let shift = 0; if (first < mid - lim) shift = (mid - lim) - first; if (last > mid + lim) shift = (mid + lim) - last;
+  OPTS.forEach((label, j) => {
+    const [x, y] = at(base + (j - (n - 1) / 2) * spacing + shift, OPT_R), hot = j === HOT, s = hot ? 1.15 : 1;
+    const o = el('div', card, { left: x - OPT * s / 2 + 'px', top: y - OPT * s / 2 + 'px', width: OPT * s + 'px', height: OPT * s + 'px' }, '', 'round glass opt');
+    if (hot) { o.style.background = '#0E0E0F'; o.style.color = '#FFFFFF'; }
+    o.innerHTML = label === '…' ? icon('ellipsis', 30, '#0E0E0F') : label;
+    if (label === '500K') window.HOT_XY = [x, y];
+  });
+}
+['convert', 'compress', 'half', 'scissors'].forEach((name, i) => {
+  const [x, y] = at(ANG[i], RING), hot = i === 1;
+  const sgm = el('div', card, { left: x - SEG / 2 + 'px', top: y - SEG / 2 + 'px', width: SEG + 'px', height: SEG + 'px' }, icon(name, 32, hot ? '#FFFFFF' : '#0E0E0F'), 'round glass');
+  if (hot) sgm.style.background = '#0E0E0F';
+});
+// The bubble, with its logo (one "500K" in the picture is clearer than the app's echo of it)
+el('div', card, { left: B.x - BD / 2 + 'px', top: B.y - BD / 2 + 'px', width: BD + 'px', height: BD + 'px' }, icon('logo', 44, '#6B6B6F'), 'round glass');
+// The cursor on 500K, at its lower right so the label stays readable
+{
+  const [cx, cy] = window.HOT_XY;
+  el('div', card, { left: cx + 6 + 'px', top: cy + 8 + 'px' }, `<svg width="34" height="46" viewBox="0 0 26 36"><path d="M3 2 L3 29 L9.4 22.8 L14 33.6 L18.6 31.6 L14 21 L22.6 21 Z" fill="#111111" stroke="#FFFFFF" stroke-width="1.7" stroke-linejoin="round"/></svg>`, '').style.filter = 'drop-shadow(0 3px 5px rgba(0,0,0,0.35))';
+}
+
+// ── Words
+el('div', card, {}, `${icon('logo', 40, '#FFFFFF')}<span>Droptimize</span>`, 'brand');
+el('div', card, {}, 'No upload. No converter site. No waiting.', 'kicker');
+el('div', card, {}, '<span class="from">12.4 MB →</span> <span class="hl">486 KB</span><br>in one drop.', 'head');
+el('div', card, {}, 'Drag any photo, video or PDF onto a bubble on your Mac. Let go. Done.', 'sub');
+el('div', card, {}, '<span class="chip">Free for Mac</span><span class="chip">Everything stays on your Mac</span>', 'foot');
+
+window.ready = document.fonts.ready.then(() => document.fonts.load('650 74px Geist'));
+</script>
+</body>
+</html>
