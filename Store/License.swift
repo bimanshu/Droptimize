@@ -3,11 +3,11 @@ import Foundation
 import FoundationNetworking
 #endif
 
-/// Fill in the product ID from the Dodo Payments dashboard (HANDOFF.md → "Selling Pro"). Until
-/// it's set, Pro can't be bought and the free limit isn't enforced, so preview builds stay unlimited.
+/// Selling Pro through Dodo Payments (HANDOFF.md → "Selling Pro"). With no product ID, Pro can't be
+/// bought and the free limit isn't enforced (set it to nil for an unlimited test build).
 enum StoreConfig {
-    /// Pro's product ID ("pdt_…"), from Products in the dashboard.
-    static let productID: String? = nil
+    /// Pro's product ID, from Products in the dashboard: "Droptimize Pro", live mode (owner, 2026-11-11).
+    static let productID: String? = "pdt_0NrhmMZKN9pE9ck3YwEGT"
     /// Where Get Pro goes: the website's pricing, whose button opens Dodo's checkout (owner, 2026-11-11).
     static let pricing = URL(string: "https://droptimize.app/#pricing")!
     /// Dodo's test mode (test cards, test keys) while trying purchases out; false to sell.

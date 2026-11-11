@@ -76,7 +76,11 @@ final class StoreTests: XCTestCase {
         XCTAssertEqual(Dodo.activation(status: 201, data: Data("<html>".utf8), key: "KEY", at: now, isOurs: ours),
                        .failure(.unreadable))
         XCTAssertEqual(Dodo.Failure.tooManyMacs.message, "This key is already active on another Mac. Deactivate it there, then try again.")
-        XCTAssertFalse(Dodo.isPro(product: "pdt_pro"), "nothing is ours until StoreConfig is filled in")
+        XCTAssertTrue(Dodo.isPro(product: "pdt_0NrhmMZKN9pE9ck3YwEGT"), "Droptimize Pro, live")
+        XCTAssertFalse(Dodo.isPro(product: "pdt_pro"), "another product's key")
+        XCTAssertFalse(Dodo.isPro(product: nil))
+        XCTAssertTrue(StoreConfig.isSelling)
+        XCTAssertFalse(StoreConfig.testMode, "live keys only")
     }
 
     func testGetProOpensTheWebsitesPricing() {
