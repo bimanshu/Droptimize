@@ -394,6 +394,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-11: **Lighter share image** (owner: slow to load in X replies): 1200 × 630, 131 KB (was 2400 × 1260, 428 KB), under a new name with a year's cache.
 - 2026-11-11: **⌘V works in the Pro window's key field** (owner: it didn't). Windows with text fields route the edit shortcuts themselves (`EditShortcuts`), since a menu bar app has no Edit menu.
 - 2026-11-11: **First-open help on the website:** each Download button opens a dialog with the three Gatekeeper steps and an Open Privacy & Security button (also at `#first-open`). The real fix is notarization (Apple Developer Program), still the owner's call.
 - 2026-11-11: **Refunds within 3 days** (owner; was 7): the pricing card and the Refunds page say so.
