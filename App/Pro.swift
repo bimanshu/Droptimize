@@ -238,7 +238,7 @@ private struct ProView: View {
                 benefit("photo.on.rectangle.angled", "Every action, for images and video")
                 benefit("square.stack.3d.up", "Whole folders in one drop")
             }
-            Button { open(StoreConfig.checkout) } label: {
+            Button { open(StoreConfig.pricing) } label: {
                 VStack(spacing: 1) {
                     Text("Get Pro for \(StoreConfig.price)").font(.system(size: 14, weight: .semibold))
                     Text("One payment. Yours for life.").font(.system(size: 11)).opacity(0.8)

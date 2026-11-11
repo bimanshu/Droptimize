@@ -79,6 +79,10 @@ final class StoreTests: XCTestCase {
         XCTAssertFalse(Dodo.isPro(product: "pdt_pro"), "nothing is ours until StoreConfig is filled in")
     }
 
+    func testGetProOpensTheWebsitesPricing() {
+        XCTAssertEqual(StoreConfig.pricing.absoluteString, "https://droptimize.app/#pricing")
+    }
+
     func testValidationTurnsProOffOnlyOnADefiniteNo() {
         let then = Date(timeIntervalSince1970: 1_800_000_000), now = then.addingTimeInterval(86_400)
         let license = License(key: "KEY", instanceID: "lki_1", isActive: true, checked: then)

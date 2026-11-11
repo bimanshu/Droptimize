@@ -24,7 +24,7 @@ if (mode === 'encode') {             // no browser needed
   return;
 }
 const REEL = process.env.REEL === '1';            // REEL=1: the vertical reel (v4-reel.html, made by make-reel-v4.py)
-const page_url = 'file://' + path.join(__dirname, REEL ? 'v4-reel.html' : 'v4.html');
+const page_url = 'file://' + path.join(__dirname, process.env.FILM || (REEL ? 'v4-reel.html' : 'v4.html'));   // FILM=v5.html: the new look
 const VIEW = REEL ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 };
 
 (async () => {

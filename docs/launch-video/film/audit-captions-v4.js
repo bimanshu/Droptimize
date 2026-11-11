@@ -1,11 +1,12 @@
 // Checks that no caption word overlaps a visible UI element, every 0.1 s of film v4.
 //   node audit-captions-v4.js            the landscape film (v4.html)
 //   REEL=1 node audit-captions-v4.js     the vertical reel (v4-reel.html)
+//   FILM=v5.html node audit-captions-v4.js   another cut of the same timeline
 // Prints each overlap once per run of consecutive frames: time span, the word, and what it hits.
 const { chromium } = require('playwright');
 const path = require('path');
 const REEL = process.env.REEL === '1';
-const file = REEL ? 'v4-reel.html' : 'v4.html';
+const file = process.env.FILM || (REEL ? 'v4-reel.html' : 'v4.html');
 const view = REEL ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 };
 
 (async () => {

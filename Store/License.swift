@@ -3,20 +3,19 @@ import Foundation
 import FoundationNetworking
 #endif
 
-/// Fill these in from the Dodo Payments dashboard (HANDOFF.md → "Selling Pro"). Until the
-/// product and its checkout link are set, Pro can't be bought and the free limit isn't enforced,
-/// so preview builds stay unlimited.
+/// Fill in the product ID from the Dodo Payments dashboard (HANDOFF.md → "Selling Pro"). Until
+/// it's set, Pro can't be bought and the free limit isn't enforced, so preview builds stay unlimited.
 enum StoreConfig {
     /// Pro's product ID ("pdt_…"), from Products in the dashboard.
     static let productID: String? = nil
-    /// Its checkout link (the product's share or payment link).
-    static let checkout: URL? = nil
+    /// Where Get Pro goes: the website's pricing, whose button opens Dodo's checkout (owner, 2026-11-11).
+    static let pricing = URL(string: "https://droptimize.app/#pricing")!
     /// Dodo's test mode (test cards, test keys) while trying purchases out; false to sell.
     static let testMode = false
     /// One payment, Pro for life. The launch price: it goes up as more people download (owner, 2026-11-09).
     static let price = "$4.99"
 
-    static var isSelling: Bool { productID != nil && checkout != nil }
+    static var isSelling: Bool { productID != nil }
 }
 
 /// A Pro license activated on this Mac, as of the last answer from Dodo Payments. Pro is a
