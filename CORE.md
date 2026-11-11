@@ -394,6 +394,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-11: **First-open help on the website:** each Download button opens a dialog with the three Gatekeeper steps and an Open Privacy & Security button (also at `#first-open`). The real fix is notarization (Apple Developer Program), still the owner's call.
 - 2026-11-11: **Refunds within 3 days** (owner; was 7): the pricing card and the Refunds page say so.
 - 2026-11-11: **Share image** for droptimize.app (owner: links posted on X should show the value with a hook): `website/assets/og.jpg`, drawn by `docs/launch-video/film/og-image.html`, with Open Graph and X card tags.
 - 2026-11-11: **Pro is on sale.** `StoreConfig.productID` is the live Dodo product (`pdt_0NrhmMZKN9pE9ck3YwEGT`), so the free limit (3 files a day) is on; the website sells Pro through Dodo's checkout and plays the new-look film.

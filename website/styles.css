@@ -435,6 +435,43 @@ button { font: inherit; color: inherit; }
   content: ""; position: absolute; width: 420px; height: 420px; right: -180px; top: -220px; border-radius: 50%; pointer-events: none;
 }
 .fine { max-width: 640px; margin: 28px auto 0; text-align: center; font-size: 14px; color: var(--muted); }
+.fine a { color: var(--ink); text-underline-offset: 3px; }
+
+/* ───────────── Opening it the first time (a dialog when a download starts) ───────────── */
+
+.first-open {
+  --elevation-dialog: 0 0 0 1px rgb(0 0 0 / 0.06), 0 2px 6px rgb(0 0 0 / 0.08), 0 32px 64px -16px rgb(8 24 70 / 0.4);
+  width: min(460px, calc(100vw - 2 * var(--gutter))); max-height: calc(100dvh - 32px); overflow: auto;
+  padding: 28px; border: 0; border-radius: var(--radius-card);
+  background: var(--surface); color: var(--text); box-shadow: var(--elevation-dialog);
+}
+.first-open[open] { animation: first-open-in 320ms var(--ease-out); }
+.first-open::backdrop { background: rgb(6 10 24 / 0.42); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.first-open[open]::backdrop { animation: first-open-fade 240ms ease-out; }
+@keyframes first-open-in { from { opacity: 0; transform: translateY(12px) scale(0.97); } }
+@keyframes first-open-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .first-open[open], .first-open[open]::backdrop { animation: none; } }
+
+.first-open .close {
+  position: absolute; top: 16px; right: 16px; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%;
+  display: grid; place-items: center; background: var(--card); color: var(--muted); cursor: pointer;
+  transition: background-color 160ms, color 160ms;
+}
+@media (hover: hover) { .first-open .close:hover { color: var(--ink); background: var(--surface-dim); } }
+.first-open .close svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.first-open .started { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.first-open .started svg { width: 16px; height: 16px; color: var(--mint-deep); }
+.first-open:not(.from-download) .started { display: none; }
+.first-open h2 { margin: 0 40px 18px 0; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; color: var(--ink); }
+.first-open ol { margin: 0 0 22px; padding: 0; list-style: none; counter-reset: step; display: grid; gap: 14px; }
+.first-open li { counter-increment: step; position: relative; padding-left: 38px; font-size: 15px; line-height: 1.45; }
+.first-open li::before {
+  content: counter(step); position: absolute; left: 0; top: -1px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--mint); color: var(--on-mint); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.first-open li b { color: var(--ink); font-weight: 600; }
+.first-open .button { width: 100%; }
+.first-open .why { margin: 14px 0 0; font-size: 13px; line-height: 1.45; color: var(--muted); text-align: center; }
 
 /* ───────────── Footer: the film's end card ───────────── */
 

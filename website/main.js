@@ -236,3 +236,28 @@ new IntersectionObserver(([entry]) => {
     film.pause();
   }
 }, { threshold: 0.15 }).observe(film);
+
+// ───────────── Opening it the first time ─────────────
+// macOS blocks apps Apple hasn't notarized until they're allowed in Privacy & Security, so when a
+// download starts, the steps and a button that opens that pane come up. The download carries on.
+
+const firstOpen = document.getElementById("first-open");
+
+function showFirstOpen(fromDownload) {
+  if (!firstOpen || firstOpen.open) return;
+  firstOpen.classList.toggle("from-download", fromDownload);
+  firstOpen.showModal();
+}
+
+document.addEventListener("click", (event) => {
+  const link = event.target.closest("a[href$='Droptimize.dmg']");
+  if (link) setTimeout(() => showFirstOpen(true), 400);
+  if (event.target.closest("[data-first-open]")) { event.preventDefault(); showFirstOpen(false); }
+});
+// A click on the backdrop closes it (the dialog's own padding is the dialog too, so check the point)
+firstOpen?.addEventListener("click", (event) => {
+  if (event.target !== firstOpen) return;
+  const r = firstOpen.getBoundingClientRect();
+  if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) firstOpen.close();
+});
+if (location.hash === "#first-open") showFirstOpen(false);

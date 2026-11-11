@@ -8,7 +8,7 @@ Droptimize
        xattr -cr /Applications/Droptimize.app
 
    Or: open the app, click Done, then go to System Settings > Privacy & Security
-   and click Open Anyway.
+   and click Open Anyway. Step by step: https://droptimize.app/#first-open
 
 3. Open Droptimize. It has no window and no Dock icon. Look for the circles icon
    in the menu bar and the bubble on the right edge of your screen.

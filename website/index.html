@@ -237,7 +237,7 @@
         </div>
       </div>
 
-      <p class="fine">Droptimize isn't from the App Store, so the first time you open it, macOS asks you to confirm: System Settings → Privacy &amp; Security → Open Anyway. Updates after that install themselves.</p>
+      <p class="fine">Droptimize isn't from the App Store, so the first time you open it, macOS asks you to confirm in Privacy &amp; Security. <a href="#first-open" data-first-open>Show me how</a>. Updates after that install themselves.</p>
     </div>
   </section>
 </main>
@@ -259,6 +259,20 @@
     </div>
   </div>
 </footer>
+
+<!-- ───────────── Opening it the first time: shown when a download starts (and at #first-open) ───────────── -->
+<dialog class="first-open" id="first-open" aria-labelledby="first-open-title">
+  <form method="dialog"><button class="close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></form>
+  <p class="started"><svg aria-hidden="true"><use href="#i-check"/></svg>Your download has started</p>
+  <h2 id="first-open-title">Opening it the first time</h2>
+  <ol>
+    <li><b>Open the download</b> and drag Droptimize into Applications.</li>
+    <li><b>Open Droptimize.</b> macOS says it can't check it: click Done.</li>
+    <li><b>Open Privacy &amp; Security,</b> scroll down to Droptimize and click Open Anyway.</li>
+  </ol>
+  <a class="button button-mint" href="x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension"><svg aria-hidden="true"><use href="#i-shield"/></svg>Open Privacy &amp; Security</a>
+  <p class="why">macOS asks this once for apps from outside the App Store that Apple hasn't notarized. After that, Droptimize opens like any app and updates itself.</p>
+</dialog>
 
 <script src="main.js" defer></script>
 </body>
