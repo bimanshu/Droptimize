@@ -185,6 +185,47 @@ final class FreeLimitGuardRailTests: XCTestCase {
     }
 }
 
+/// A menu bar app has no Edit menu, so its windows route ⌘V and friends themselves (owner, 2026-11-11:
+/// ⌘V did nothing in the Pro window's key field).
+@MainActor
+final class EditShortcutTests: XCTestCase {
+    private func key(_ character: String, _ flags: NSEvent.ModifierFlags = .command, in window: NSWindow) throws -> NSEvent {
+        try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: flags, timestamp: 0,
+                                       windowNumber: window.windowNumber, context: nil, characters: character,
+                                       charactersIgnoringModifiers: character, isARepeat: false, keyCode: 0))
+    }
+
+    func testPasteSelectAllAndCutInTheProWindowsKind() throws {
+        let window = ClosableWindow(contentRect: NSRect(x: 0, y: 0, width: 320, height: 80),
+                                    styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let field = NSTextField(frame: NSRect(x: 10, y: 20, width: 300, height: 24))
+        window.contentView?.addSubview(field)
+        XCTAssertTrue(window.makeFirstResponder(field))
+
+        let pasteboard = NSPasteboard.general
+        let saved = pasteboard.string(forType: .string)
+        defer { pasteboard.clearContents(); if let saved { pasteboard.setString(saved, forType: .string) } }
+        pasteboard.clearContents()
+        pasteboard.setString("PRO-AAAA-BBBB", forType: .string)
+
+        XCTAssertTrue(window.performKeyEquivalent(with: try key("v", in: window)))
+        XCTAssertEqual(field.stringValue, "PRO-AAAA-BBBB")
+        XCTAssertTrue(window.performKeyEquivalent(with: try key("a", in: window)))
+        XCTAssertTrue(window.performKeyEquivalent(with: try key("x", in: window)))
+        XCTAssertEqual(field.stringValue, "")
+        XCTAssertEqual(pasteboard.string(forType: .string), "PRO-AAAA-BBBB")
+    }
+
+    func testOnlyTheEditShortcuts() throws {
+        let window = NSWindow()
+        XCTAssertEqual(EditShortcuts.action(for: try key("v", in: window)), #selector(NSText.paste(_:)))
+        XCTAssertEqual(EditShortcuts.action(for: try key("Z", [.command, .shift], in: window)), Selector(("redo:")))
+        XCTAssertNil(EditShortcuts.action(for: try key("v", [.command, .option], in: window)))
+        XCTAssertNil(EditShortcuts.action(for: try key("q", in: window)))
+    }
+}
+
 @MainActor
 final class DroppedItemsTests: XCTestCase {
     private var pasteboard: NSPasteboard!

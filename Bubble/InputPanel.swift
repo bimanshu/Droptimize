@@ -86,28 +86,15 @@ final class InputPanel {
     }
 }
 
-/// A borderless panel that can take the keyboard. Handles ⌘X/C/V/A/Z itself, since a menu bar
-/// app has no Edit menu to route them.
+/// A borderless panel that can take the keyboard. Handles the edit shortcuts itself, since a menu
+/// bar app has no Edit menu to route them.
 private final class KeyPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
-           let action = Self.editActions[event.charactersIgnoringModifiers ?? ""],
-           NSApp.sendAction(action, to: nil, from: self) {
-            return true
-        }
-        return super.performKeyEquivalent(with: event)
+        EditShortcuts.perform(event, in: self) || super.performKeyEquivalent(with: event)
     }
-
-    private static let editActions: [String: Selector] = [
-        "x": #selector(NSText.cut(_:)),
-        "c": #selector(NSText.copy(_:)),
-        "v": #selector(NSText.paste(_:)),
-        "a": #selector(NSText.selectAll(_:)),
-        "z": Selector(("undo:")),
-    ]
 }
 
 // MARK: - Views

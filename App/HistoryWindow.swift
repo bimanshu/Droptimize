@@ -64,7 +64,8 @@ final class HistoryWindowController {
     }
 }
 
-/// ⌘W closes it (a menu bar app has no File menu to do that).
+/// ⌘W closes it and the edit shortcuts work in its text fields (a menu bar app has no File or
+/// Edit menu to do that).
 final class ClosableWindow: NSWindow {
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
@@ -72,6 +73,7 @@ final class ClosableWindow: NSWindow {
             performClose(nil)
             return true
         }
+        if EditShortcuts.perform(event, in: self) { return true }
         return super.performKeyEquivalent(with: event)
     }
 }
