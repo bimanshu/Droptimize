@@ -296,7 +296,7 @@ The owner asked for a Word to PDF converter and, offered them, both PDF conversi
 ### 8.1 Plans and pricing (owner's decision, 2026-11-01)
 
 - **Free:** 3 files a day, any action (images and video alike), counted per result (a file, or a PDF's pages folder; images combined into one PDF count once; 2026-11-09), reset at local midnight. A drop with more files than are left runs what's left and says so on the card; with none left, the bubble says "No free files left today. Activate Pro?" while you drag over it, and letting go there asks for the license key (owner, 2026-11-09).
-- **Pro:** unlimited, **$4.99 once at launch, rising as more people download** (owner, 2026-11-09; was $9.99), for life, with a 7-day refund (same day). No subscription (owner, 2026-11-02: "a commodity tool"; this replaced $5/month or $50 lifetime).
+- **Pro:** unlimited, **$4.99 once at launch, rising as more people download** (owner, 2026-11-09; was $9.99), for life, with a **3-day refund** (owner, 2026-11-11; was 7 days). No subscription (owner, 2026-11-02: "a commodity tool"; this replaced $5/month or $50 lifetime).
 - **Sold directly through Dodo Payments** (owner switched from Lemon Squeezy, 2026-11-02; merchant of record: cards, tax, refunds), not the Mac App Store. The buyer gets a license key by email and pastes it into the Pro window (menu bar → Activate Pro…). One payment, one key, one Mac at a time (owner, 2026-11-10; the activation limit in Dodo Payments is 1). The app activates it and checks it weekly when online (to catch refunds); offline, Pro just keeps working. Code: `Store/` (portable), `App/Pro.swift`. The product ID and checkout link go in `StoreConfig`; until they're set, nothing is for sale and nothing is limited. A refunded purchase disables its key at Dodo, which the next check picks up.
 
 ### 8.2 Updates (built in, 2026-11-02)
@@ -394,6 +394,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-11: **Refunds within 3 days** (owner; was 7): the pricing card and the Refunds page say so.
 - 2026-11-11: **Share image** for droptimize.app (owner: links posted on X should show the value with a hook): `website/assets/og.jpg`, drawn by `docs/launch-video/film/og-image.html`, with Open Graph and X card tags.
 - 2026-11-11: **Pro is on sale.** `StoreConfig.productID` is the live Dodo product (`pdt_0NrhmMZKN9pE9ck3YwEGT`), so the free limit (3 files a day) is on; the website sells Pro through Dodo's checkout and plays the new-look film.
 - 2026-11-11: **Get Pro opens the website's pricing** (owner), so `StoreConfig` needs only the product ID; the site's button has the checkout. Live payments are on at Dodo; the product ID is still to come. Film: the end card says "Free for 3 files a day · Pro $4.99 once" (v10), and a **new-look cut**, `film/v5.html` (layered, lit wallpaper with parallax, the app's frosted material, a leaning desk in wide shots, sculpted laptop and keycaps, vignette and grain), same timeline, voice and music.
