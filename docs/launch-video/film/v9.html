@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Droptimize film v9</title>
+<!--
+  UNFINISHED (2026-11-12). A second new-look film started in the cloud session (owner, 2026-11-10: "another
+  launch video with much better visuals"), before it knew the other session's new look (v5.html) was
+  already made and on the website. Not rendered, not sent. What draws: the light, the windows, the glass
+  bubble and menu, dragged copies, the pointer, the captions. Still placeholders (v9/sets.js): the big file
+  cards, the old way, the laptop, keys, the chat, the end card; there is no sound cue list yet.
+  Try it: FILM=v9.html node render-v4.js stills out/ 19.6   (photos: prepare-images-v4.py, then -v9.py).
+  Ask the owner before finishing it; delete v9.html, v9/ and prepare-images-v9.py if they keep v5.
+  Same voice, music and beat grid as v8 (PROMPT-v4.md), so mix-v4.py would make its soundtrack.
+  Like v4, the whole film is a pure function of time: window.seek(t) sets every style. No CSS
+  transitions, no timers, no state between frames. The code is in v9/ (loaded in this order).
+-->
+<style>
+@font-face { font-family: Geist; src: url(fonts/Geist-Variable.woff2) format('woff2'); font-weight: 100 900; }
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #07080B; }
+#stage { position: absolute; inset: 0; overflow: hidden; font-family: Geist, sans-serif; color: #0B0C0F; }
+.abs { position: absolute; left: 0; top: 0; }
+.nowrap { white-space: nowrap; }
+.num { font-variant-numeric: tabular-nums; }
+img.abs { display: block; object-fit: cover; }
+canvas.abs { display: block; }
+/* Captions: one size, one weight. Words arrive one at a time; one word sits in a mint box. */
+.cap { font-size: 64px; font-weight: 600; letter-spacing: -0.014em; word-spacing: 0.1em; line-height: 1.16; color: #FFFFFF; white-space: nowrap; text-shadow: 0 2px 30px rgba(2,10,40,0.45); }
+.cap .w { display: inline-block; white-space: pre; line-height: 1.02; border-radius: 12px; padding: 0 9px; margin: 0 -9px; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script src="v9/core.js"></script>
+<script src="v9/timeline.js"></script>
+<script src="v9/desk.js"></script>
+<script src="v9/sets.js"></script>
+<script src="v9/main.js"></script>
+</body>
+</html>
