@@ -394,6 +394,7 @@ Menu bar app; floating bubble on all spaces; drag to reposition with edge snap; 
 
 ## 14. Changelog
 
+- 2026-11-12: **Share image is the owner's own picture** ("How it works: Drop. Pick. Done.", three steps): `website/assets/share-steps.jpg`, 1200 × 675, 113 KB, a new name so link previews refresh.
 - 2026-11-11: **Lighter share image** (owner: slow to load in X replies): 1200 × 630, 131 KB (was 2400 × 1260, 428 KB), under a new name with a year's cache.
 - 2026-11-11: **⌘V works in the Pro window's key field** (owner: it didn't). Windows with text fields route the edit shortcuts themselves (`EditShortcuts`), since a menu bar app has no Edit menu.
 - 2026-11-11: **First-open help on the website:** each Download button opens a dialog with the three Gatekeeper steps and an Open Privacy & Security button (also at `#first-open`). The real fix is notarization (Apple Developer Program), still the owner's call.

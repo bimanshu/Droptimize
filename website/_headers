@@ -1,3 +1,6 @@
 # Cloudflare static-asset headers. The share image is versioned by its file name, so it can be cached for good.
+# share-steps.jpg is the one the pages point to (2026-11-12); share-1200.jpg stays for previews made before then.
+/assets/share-steps.jpg
+  Cache-Control: public, max-age=31536000, immutable
 /assets/share-1200.jpg
   Cache-Control: public, max-age=31536000, immutable
